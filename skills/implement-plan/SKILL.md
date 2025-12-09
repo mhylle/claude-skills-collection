@@ -25,6 +25,7 @@ When given a plan path or asked to implement a plan:
 5. **Understand Interconnections**: Analyze how components fit together
 6. **Create Progress Tracker**: Use TodoWrite to track implementation progress
 7. **Begin Implementation**: Start only when requirements are clearly understood
+8. **Implementation rules**: Use subagents when possible. When implementing a step in the plan make sure to determine if the step can be implemented as an isolated step in a subagent.
 
 If no plan path is provided, ask: "Which plan should I implement? Please provide the path or name."
 
