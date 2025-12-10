@@ -6,6 +6,22 @@ JSON schema for tracking E2E test results over time.
 
 History file is stored at: `tests/e2e/test_history.json`
 
+## CRITICAL: Test Status Integrity
+
+**The `result` field must accurately reflect test outcomes.** See SKILL.md for full details.
+
+| Status | Meaning | When to Use |
+|--------|---------|-------------|
+| `pass` | Feature works as specified | Test completed successfully |
+| `fail` | Feature doesn't work or doesn't exist | Test failed, element not found, feature missing, test incomplete |
+| `blocked` | Cannot run due to dependency | A blocking scenario failed |
+| `skipped` | **ONLY** for valid environmental reasons | Environment unavailable, platform mismatch, with ticket reference |
+
+**Invalid uses of `skipped`** (use `fail` instead):
+- Feature not implemented → `fail` with "Feature not implemented"
+- Test not executed → `fail` with "Test not executed"
+- Would fail anyway → `fail` (that's the point)
+
 ## Purpose
 
 The history system enables:

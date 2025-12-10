@@ -165,6 +165,61 @@ Show user:
 
 **Purpose**: Execute tests sequentially with full evidence capture.
 
+### CRITICAL: Test Status Integrity
+
+**Principle: No Invalid Skips**
+
+A test should only have three outcomes:
+
+| Status | Meaning |
+|--------|---------|
+| **PASSED** | The feature works as specified |
+| **FAILED** | The feature doesn't work or doesn't exist |
+| **SKIPPED** | Only for legitimate environmental reasons (see below) |
+
+#### Valid Reasons to Skip a Test
+
+- Test environment unavailable (database down, service unreachable)
+- Explicit `@skip` decorator for documented WIP features with ticket reference
+- Platform-specific tests running on wrong platform
+- External dependency unavailable (third-party API down)
+
+#### Invalid Reasons to Skip (Mark as FAILED Instead)
+
+| Situation | Correct Status | Notes Format |
+|-----------|----------------|--------------|
+| Feature doesn't exist in UI | **FAILED** | "Expected [feature] not found. Feature not implemented." |
+| Test wasn't executed/completed | **FAILED** | "Test not executed. [What wasn't verified]." |
+| Test would fail | **FAILED** | That's the point of testing |
+| "Didn't get around to it" | **FAILED** | Incomplete test coverage is a failure |
+| Feature works differently than spec | **FAILED** | "Implementation doesn't match specification: [details]" |
+
+#### Rationale
+
+The purpose of a test is to **fail when something doesn't work**. Marking missing features or unexecuted tests as "skipped" produces artificially inflated pass rates and hides real issues. A test report that only shows green isn't useful if it achieved that by ignoring problems.
+
+#### Implementation Examples
+
+**When a test cannot find the expected UI element or feature:**
+```
+Status: FAILED
+Notes: "FAILED: Expected 'Add to Cart' button not found. Feature not implemented or selector changed."
+```
+
+**When a test is not fully executed:**
+```
+Status: FAILED
+Notes: "FAILED: Test not executed. Checkout flow verification was not completed - stopped at payment step."
+```
+
+**When environment is genuinely unavailable (valid skip):**
+```
+Status: SKIPPED
+Notes: "SKIPPED: Payment gateway sandbox unavailable. Ticket: PAY-123"
+```
+
+---
+
 ### Pre-Run Checks
 
 1. **Verify regime exists**: Check for `tests/e2e/test_regime.yml`
@@ -194,7 +249,11 @@ Execute scenarios in order. For each scenario:
    d. Capture network activity
    e. Capture console logs
    f. Evaluate success using flexibility criteria
-3. Record result (pass/fail/blocked)
+3. Record result (pass/fail/blocked/skipped)
+   - PASS: Step completed successfully
+   - FAIL: Step failed OR element not found OR feature missing
+   - BLOCKED: Dependent on a failed blocking scenario
+   - SKIPPED: Only for valid environmental reasons (see Test Status Integrity)
 4. If failed: Try alternatives if defined
 5. If blocking failure: Stop dependent scenarios
 ```
@@ -271,7 +330,8 @@ After run completes:
       "timestamp": "ISO-8601",
       "scenarios": {
         "scenario-name": {
-          "result": "pass|fail|blocked",
+          "result": "pass|fail|blocked|skipped",
+          "result_notes": "Details about the result",
           "duration_ms": 1234,
           "steps_completed": 5,
           "confidence": "high|medium|low",
@@ -290,6 +350,12 @@ After run completes:
   ]
 }
 ```
+
+**Result status rules** (see Test Status Integrity):
+- `pass`: Feature works as specified
+- `fail`: Feature doesn't work, doesn't exist, or test incomplete
+- `blocked`: Depends on failed blocking scenario
+- `skipped`: ONLY for valid environmental reasons (with ticket reference)
 
 3. **Generate variations for flaky areas**:
    - If scenario failed 3+ times in last 10 runs: Auto-suggest new test variations
@@ -314,7 +380,7 @@ Output to `tests/e2e/reports/YYYY-MM-DD-HHmmss-report.md`:
 
 **Run Date**: YYYY-MM-DD HH:mm:ss
 **Duration**: X minutes
-**Result**: X passed, Y failed, Z blocked
+**Result**: X passed, Y failed, Z blocked, W skipped
 
 ## Summary
 
@@ -383,7 +449,8 @@ Output to `tests/e2e/reports/YYYY-MM-DD-HHmmss-report.json`:
     "total": 10,
     "passed": 7,
     "failed": 2,
-    "blocked": 1
+    "blocked": 1,
+    "skipped": 0
   },
   "scenarios": [
     {
