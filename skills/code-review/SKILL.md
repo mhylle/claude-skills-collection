@@ -180,10 +180,6 @@ Status: PASS | NEEDS_CHANGES
 
 [Optional improvements that don't block approval]
 
-## Tech Debt Identified (Out of Scope)
-
-[Pre-existing issues noted but NOT blocking this phase, or "None"]
-
 ## Files Reviewed
 
 | File | Status | Notes |
@@ -275,77 +271,81 @@ Detailed checklists are available in references:
 | **WARNING** | Should fix, but doesn't block | Note for follow-up |
 | **INFO** | Suggestion for improvement | Optional enhancement |
 
-## Critical Rule: Only Review NEW Issues
+## Critical Rule: All Errors Are New Errors
 
-> **BLOCKING issues must be NEWLY INTRODUCED by the current phase.**
-> Pre-existing issues are OUT OF SCOPE for the phase review.
+> **Every phase ends with a clean baseline (exit conditions pass).**
+> Therefore, ANY error present at code review time was introduced by this phase.
 
-### Why This Matters
+### The Clean Baseline Principle
 
-A code review gates a specific phase's implementation. It would be unfair and counterproductive to block a phase due to legacy issues that:
-- Existed before the phase started
-- Were not touched by the current changes
-- Are unrelated to the phase's objectives
-
-### How to Identify New vs Pre-existing Issues
+The implement-phase pipeline guarantees:
 
 ```
-1. CHECK git diff to see what actually changed in this phase
-   - git diff [base]...HEAD -- [files]
-   - Only lines added/modified are in scope
-
-2. USE git blame to verify issue origin
-   - If problematic code predates this phase → OUT OF SCOPE
-   - If problematic code was added/modified in this phase → IN SCOPE
-
-3. COMPARE against baseline
-   - Did build/lint pass BEFORE this phase? → New failures are blocking
-   - Did build/lint already fail? → Pre-existing, not blocking for this phase
+Previous Phase → Exit Conditions PASS → Clean State
+                                            ↓
+Current Phase Implementation
+                                            ↓
+Code Review ← ANY errors here are from THIS phase
 ```
 
-### Scope Determination
+Since each phase must pass exit conditions (build, lint, typecheck, tests) before completion:
+- The previous phase left the codebase in a clean state
+- Any errors now present were introduced by the current phase
+- This applies to ALL files, not just files we directly modified
 
-| Scenario | In Scope? | Action |
-|----------|-----------|--------|
-| New security vulnerability in new code | YES | BLOCKING |
-| Pre-existing security issue in untouched file | NO | Note as tech debt, don't block |
-| Modified file now violates SRP | YES | BLOCKING if change caused it |
-| Existing god class that wasn't modified | NO | Out of scope |
-| New code missing tests | YES | BLOCKING |
-| Old code missing tests (not touched) | NO | Out of scope |
-| Lint error in new code | YES | BLOCKING |
-| Lint error in file not changed | NO | Out of scope |
+### Why This Works
 
-### Pre-existing Issues Protocol
+| State | Implication |
+|-------|-------------|
+| Lint passed before this phase | Any lint errors now = we caused them |
+| Build passed before this phase | Any build errors now = we caused them |
+| Tests passed before this phase | Any test failures now = we caused them |
+| No type errors before this phase | Any type errors now = we caused them |
 
-When you discover pre-existing issues during review:
+**There is no "pre-existing error" exception** because:
+- If errors existed before, the previous phase wouldn't have completed
+- Exit conditions are blocking gates - phases cannot complete with errors
+- The baseline is always clean
 
-1. **DO NOT** mark them as blocking for the current phase
-2. **DO** note them in a separate "Tech Debt Identified" section
-3. **DO** suggest creating follow-up tasks or tickets
-4. **DO NOT** let them affect the phase's PASS/FAIL status
+### Errors in Unchanged Files
 
-```markdown
-## Tech Debt Identified (Out of Scope)
+Even errors in files we didn't directly modify are our responsibility:
 
-The following pre-existing issues were noted but are NOT blocking this phase:
+```
+Example: We modify src/auth/types.ts
+         This causes type errors in src/api/endpoints.ts (which imports our types)
 
-- `src/legacy/auth.js:45` - SQL injection vulnerability (predates this phase)
-- `src/utils/helpers.ts` - God module with 50+ functions (not modified)
-- Missing tests in `src/services/old-service.ts` (not touched)
-
-Recommend: Create tech debt tickets for these items.
+         → The error in endpoints.ts is OUR error
+         → We broke it by changing the types it depends on
+         → This is BLOCKING
 ```
 
-### Blocking Issues (NEW issues only - always fail review)
+### What This Means for Code Review
 
-- Security vulnerabilities (injection, auth bypass, etc.) **introduced by this phase**
-- Hardcoded secrets or credentials **added in this phase**
-- Violation of accepted ADR **by new/modified code**
-- Missing test coverage **for new functionality**
-- Build/lint/typecheck failures **caused by this phase's changes**
-- Broken single responsibility **in new/modified classes**
-- Business logic in wrong layer **in new/modified code**
+1. **All build/lint/type errors are blocking** - No exceptions
+2. **All test failures are blocking** - No exceptions
+3. **No need to check git blame** - If it's broken, we broke it
+4. **No "tech debt" exceptions** - Clean baseline means no pre-existing issues
+
+### The Only Exception: First Phase of a New Project
+
+When implementing Phase 1 on a brand new or inherited codebase that doesn't yet have clean exit conditions:
+
+1. **Document the baseline state** at phase start
+2. **Only block on errors we introduce** beyond that baseline
+3. **Establish clean exit conditions** as part of Phase 1's goals
+
+After Phase 1 completes with passing exit conditions, all subsequent phases follow the standard rule.
+
+### Blocking Issues (always fail review)
+
+- Security vulnerabilities (injection, auth bypass, etc.)
+- Hardcoded secrets or credentials
+- Violation of accepted ADR
+- Missing test coverage for new functionality
+- Build/lint/typecheck failures (in ANY file)
+- Broken single responsibility (god classes/modules)
+- Business logic in wrong layer
 
 ### Warning Issues (review passes with notes)
 
