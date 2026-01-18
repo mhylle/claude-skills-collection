@@ -104,6 +104,56 @@ IMPORTANT ORCHESTRATION REQUIREMENTS:
 [Update implementation plan, completion documentation, context prep, clean state]
 ```
 
+## Integration with implement-plan/implement-phase
+
+Generated prompts are automatically discovered and used by the implementation skills:
+
+### Workflow
+
+```
+1. prompt-generator creates: docs/prompts/phase-2-data-pipeline.md
+                                    ↓
+2. implement-plan discovers prompt via Glob("docs/prompts/phase-*.md")
+                                    ↓
+3. implement-plan passes prompt path to implement-phase
+                                    ↓
+4. implement-phase uses prompt for detailed orchestration instructions
+                                    ↓
+5. On completion, implement-phase archives to: docs/prompts/completed/
+```
+
+### Naming Convention
+
+Prompts must follow this naming pattern for auto-discovery:
+
+```
+docs/prompts/phase-<N>-<name>.md
+
+Examples:
+  docs/prompts/phase-1-foundation.md      → Phase 1
+  docs/prompts/phase-2-data-pipeline.md   → Phase 2
+  docs/prompts/phase-3-agent-system.md    → Phase 3
+```
+
+### Directory Structure
+
+```
+docs/prompts/
+├── phase-1-foundation.md        # Pending - ready for implementation
+├── phase-2-data-pipeline.md     # Pending - ready for implementation
+├── phase-3-agent-system.md      # Pending - ready for implementation
+└── completed/                   # Archived after successful completion
+    ├── phase-1-foundation.md    # Completed
+    └── phase-2-data-pipeline.md # Completed
+```
+
+### Benefits
+
+- **Pre-planning**: Generate all prompts upfront before implementation
+- **Consistency**: Same orchestration patterns across all phases
+- **Tracking**: Completed folder shows implementation progress
+- **Review**: Archived prompts document what instructions were used
+
 ## Resources
 
 ### references/

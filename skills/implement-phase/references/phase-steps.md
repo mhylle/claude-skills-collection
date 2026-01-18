@@ -13,7 +13,8 @@ The default pipeline executes these steps in order:
 | 3 | code_review | Yes | code-review | PASS or PASS_WITH_NOTES |
 | 4 | adr_compliance | Yes | adr | All applicable ADRs followed |
 | 5 | plan_sync | Yes | None | Plan file updated correctly |
-| 6 | completion_report | Yes | None | Report generated |
+| 6 | prompt_archival | No | None | Prompt moved to completed/ (if provided) |
+| 7 | completion_report | Yes | None | Report generated |
 
 ## Step Configuration Schema
 

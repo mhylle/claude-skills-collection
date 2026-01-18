@@ -86,7 +86,34 @@ When given a plan path or asked to implement a plan:
 4. Check for existing progress (checkmarks indicate completed work)
 ```
 
-### 2. Read Related Context
+### 2. Discover Phase Prompts
+
+Check for pre-generated prompts from the `prompt-generator` skill:
+
+```
+# Check common prompt locations
+1. Glob("docs/prompts/phase-*.md")           # Standard location
+2. Glob("prompts/phase-*.md")                # Alternative location
+
+# Match prompts to phases by number
+phase-1-*.md  →  Phase 1
+phase-2-*.md  →  Phase 2
+...
+```
+
+**Prompt Discovery Output:**
+```
+● Prompt Discovery:
+  Found: docs/prompts/phase-1-foundation.md      → Phase 1
+  Found: docs/prompts/phase-2-data-pipeline.md   → Phase 2
+  Found: docs/prompts/phase-3-agent-system.md    → Phase 3
+  Missing: Phase 4 (no prompt found)
+
+  Note: Phases with prompts will use pre-generated instructions.
+        Phases without prompts will use plan file directly.
+```
+
+### 3. Read Related Context
 
 ```
 # Tiered ADR reading (context conservation)
@@ -98,7 +125,7 @@ When given a plan path or asked to implement a plan:
 4. Load all files mentioned in the plan
 ```
 
-### 3. Create Progress Tracker
+### 4. Create Progress Tracker
 
 ```
 TodoWrite: Track plan-level progress
@@ -108,7 +135,7 @@ TodoWrite: Track plan-level progress
 - [ ] Final verification
 ```
 
-### 4. Begin Phase Execution
+### 5. Begin Phase Execution
 
 For each phase, delegate to `implement-phase`:
 
@@ -118,9 +145,37 @@ Skill(skill="implement-phase"): Execute Phase [N] of the implementation plan.
 Context:
 - Plan: [plan file path]
 - Phase: [N] ([Phase Name])
+- Prompt: [prompt file path, if discovered]
 - Previous Phase Status: [Complete/N/A]
 
 Execute all quality gates and return structured result.
+```
+
+**With Prompt (preferred)**:
+```
+Skill(skill="implement-phase"): Execute Phase 2.
+
+Context:
+- Plan: docs/plans/trading-platform.md
+- Phase: 2 (Data Pipeline)
+- Prompt: docs/prompts/phase-2-data-pipeline.md  ← Use this!
+- Previous Phase Status: Complete
+
+The prompt contains detailed orchestration instructions.
+Execute all quality gates and archive prompt on completion.
+```
+
+**Without Prompt (fallback)**:
+```
+Skill(skill="implement-phase"): Execute Phase 4.
+
+Context:
+- Plan: docs/plans/trading-platform.md
+- Phase: 4 (Integration)
+- Prompt: None (use plan directly)
+- Previous Phase Status: Complete
+
+No pre-generated prompt. Use plan file for phase details.
 ```
 
 ## Phase Execution Protocol

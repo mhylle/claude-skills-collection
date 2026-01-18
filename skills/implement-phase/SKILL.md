@@ -19,7 +19,8 @@ implement-plan (orchestrates full plan)
             ├── 3. Code Review (code-review skill)
             ├── 4. ADR Compliance Check
             ├── 5. Plan Synchronization
-            └── 6. Phase Completion Report
+            ├── 6. Prompt Archival (if prompt provided)
+            └── 7. Phase Completion Report
 ```
 
 ## Design Principles
@@ -43,8 +44,31 @@ When invoked, this skill expects:
 ```
 Plan Path: [path to plan file]
 Phase: [number or name]
+Prompt Path: [optional - path to pre-generated prompt from prompt-generator]
 Changed Files: [optional - auto-detected if not provided]
 Skip Steps: [optional - list of steps to skip, e.g., for testing]
+```
+
+### Prompt Integration
+
+If a **Prompt Path** is provided (from `prompt-generator` skill):
+
+1. **Read the prompt file** - Contains detailed orchestration instructions
+2. **Use prompt as primary guidance** - Follows established patterns and conventions
+3. **Plan file as reference** - For exit conditions and verification steps
+4. **Archive on completion** - Move prompt to `completed/` subfolder
+
+```
+# Prompt provides:
+- Detailed orchestration workflow
+- Subagent delegation patterns
+- Specific task breakdowns
+- Error handling guidance
+
+# Plan provides:
+- Exit conditions (source of truth)
+- Success criteria
+- Dependencies
 ```
 
 ## Phase Execution Pipeline
@@ -170,7 +194,40 @@ ADR_REFERENCES_ADDED: [count]
 
 ---
 
-### Step 6: Phase Completion Report
+### Step 6: Prompt Archival
+
+**Responsibility**: Archive the phase prompt to the completed folder (if prompt was provided).
+
+**Process**:
+1. Check if a prompt file was used for this phase
+2. If yes, move to `completed/` subfolder:
+   ```bash
+   # Create completed folder if it doesn't exist
+   mkdir -p docs/prompts/completed
+
+   # Move the prompt file
+   mv docs/prompts/phase-2-data-pipeline.md docs/prompts/completed/
+   ```
+3. Log the archival
+
+**Output**:
+```
+PROMPT_ARCHIVAL_STATUS: PASS | SKIPPED | FAIL
+PROMPT_FILE: [original path]
+ARCHIVED_TO: [new path in completed/]
+```
+
+**Gate**: Non-blocking (failure logged but doesn't stop completion).
+
+**Why Archive?**
+- Prevents re-using the same prompt accidentally
+- Creates a record of completed work
+- Keeps the prompts folder clean for pending work
+- Allows review of what instructions were used
+
+---
+
+### Step 7: Phase Completion Report
 
 **Responsibility**: Generate summary for orchestrator and user.
 
@@ -203,6 +260,10 @@ Plan Updated:
   Tasks Completed: [count]
   Checkboxes Marked: [count]
 
+Prompt:
+  Status: ✅ Archived (or ⏭️ Skipped - no prompt provided)
+  Archived To: docs/prompts/completed/phase-2-data-pipeline.md
+
 Manual Verification Required:
   - [ ] [Manual check 1]
   - [ ] [Manual check 2]
@@ -223,6 +284,7 @@ PHASE_STEPS = [
   { name: "code_review", required: true, skill: "code-review" },
   { name: "adr_compliance", required: true, skill: "adr" },
   { name: "plan_sync", required: true, skill: null },
+  { name: "prompt_archival", required: false, skill: null },
   { name: "completion_report", required: true, skill: null },
 ]
 ```
@@ -298,12 +360,18 @@ PHASE_RESULT:
     code_review: PASS_WITH_NOTES
     adr_compliance: PASS
     plan_sync: PASS
+    prompt_archival: PASS | SKIPPED
 
   files_changed:
     created: [list]
     modified: [list]
 
   new_adrs: [list or empty]
+
+  prompt:
+    used: true | false
+    original_path: "docs/prompts/phase-2-data-pipeline.md"
+    archived_to: "docs/prompts/completed/phase-2-data-pipeline.md"
 
   recommendations: [list]
 
