@@ -324,18 +324,18 @@ Example: We modify src/auth/types.ts
 
 1. **All build/lint/type errors are blocking** - No exceptions
 2. **All test failures are blocking** - No exceptions
-3. **No need to check git blame** - If it's broken, we broke it
-4. **No "tech debt" exceptions** - Clean baseline means no pre-existing issues
+3. **No need to check git blame** - If it's broken, fix it
+4. **No "tech debt" exceptions** - We leave clean, we inherit clean responsibility
 
-### The Only Exception: First Phase of a New Project
+### Inherited Codebases
 
-When implementing Phase 1 on a brand new or inherited codebase that doesn't yet have clean exit conditions:
+When implementing on an existing codebase with pre-existing errors:
 
-1. **Document the baseline state** at phase start
-2. **Only block on errors we introduce** beyond that baseline
-3. **Establish clean exit conditions** as part of Phase 1's goals
+- **Pre-existing errors are still blocking** - We cannot complete a phase with errors
+- **Fixing them becomes part of our work** - Add to the phase tasks if needed
+- **We are responsible for leaving clean** - The next phase deserves a clean baseline
 
-After Phase 1 completes with passing exit conditions, all subsequent phases follow the standard rule.
+The principle is simple: **every phase must end clean**. If we inherit a mess, cleaning it up is our job before we can complete the phase.
 
 ### Blocking Issues (always fail review)
 
