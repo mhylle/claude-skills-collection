@@ -180,6 +180,10 @@ Status: PASS | NEEDS_CHANGES
 
 [Optional improvements that don't block approval]
 
+## Tech Debt Identified (Out of Scope)
+
+[Pre-existing issues noted but NOT blocking this phase, or "None"]
+
 ## Files Reviewed
 
 | File | Status | Notes |
@@ -271,15 +275,77 @@ Detailed checklists are available in references:
 | **WARNING** | Should fix, but doesn't block | Note for follow-up |
 | **INFO** | Suggestion for improvement | Optional enhancement |
 
-### Blocking Issues (always fail review)
+## Critical Rule: Only Review NEW Issues
 
-- Security vulnerabilities (injection, auth bypass, etc.)
-- Hardcoded secrets or credentials
-- Violation of accepted ADR
-- Missing test coverage for new functionality
-- Build/lint/typecheck failures
-- Broken single responsibility (god classes/modules)
-- Business logic in wrong layer
+> **BLOCKING issues must be NEWLY INTRODUCED by the current phase.**
+> Pre-existing issues are OUT OF SCOPE for the phase review.
+
+### Why This Matters
+
+A code review gates a specific phase's implementation. It would be unfair and counterproductive to block a phase due to legacy issues that:
+- Existed before the phase started
+- Were not touched by the current changes
+- Are unrelated to the phase's objectives
+
+### How to Identify New vs Pre-existing Issues
+
+```
+1. CHECK git diff to see what actually changed in this phase
+   - git diff [base]...HEAD -- [files]
+   - Only lines added/modified are in scope
+
+2. USE git blame to verify issue origin
+   - If problematic code predates this phase → OUT OF SCOPE
+   - If problematic code was added/modified in this phase → IN SCOPE
+
+3. COMPARE against baseline
+   - Did build/lint pass BEFORE this phase? → New failures are blocking
+   - Did build/lint already fail? → Pre-existing, not blocking for this phase
+```
+
+### Scope Determination
+
+| Scenario | In Scope? | Action |
+|----------|-----------|--------|
+| New security vulnerability in new code | YES | BLOCKING |
+| Pre-existing security issue in untouched file | NO | Note as tech debt, don't block |
+| Modified file now violates SRP | YES | BLOCKING if change caused it |
+| Existing god class that wasn't modified | NO | Out of scope |
+| New code missing tests | YES | BLOCKING |
+| Old code missing tests (not touched) | NO | Out of scope |
+| Lint error in new code | YES | BLOCKING |
+| Lint error in file not changed | NO | Out of scope |
+
+### Pre-existing Issues Protocol
+
+When you discover pre-existing issues during review:
+
+1. **DO NOT** mark them as blocking for the current phase
+2. **DO** note them in a separate "Tech Debt Identified" section
+3. **DO** suggest creating follow-up tasks or tickets
+4. **DO NOT** let them affect the phase's PASS/FAIL status
+
+```markdown
+## Tech Debt Identified (Out of Scope)
+
+The following pre-existing issues were noted but are NOT blocking this phase:
+
+- `src/legacy/auth.js:45` - SQL injection vulnerability (predates this phase)
+- `src/utils/helpers.ts` - God module with 50+ functions (not modified)
+- Missing tests in `src/services/old-service.ts` (not touched)
+
+Recommend: Create tech debt tickets for these items.
+```
+
+### Blocking Issues (NEW issues only - always fail review)
+
+- Security vulnerabilities (injection, auth bypass, etc.) **introduced by this phase**
+- Hardcoded secrets or credentials **added in this phase**
+- Violation of accepted ADR **by new/modified code**
+- Missing test coverage **for new functionality**
+- Build/lint/typecheck failures **caused by this phase's changes**
+- Broken single responsibility **in new/modified classes**
+- Business logic in wrong layer **in new/modified code**
 
 ### Warning Issues (review passes with notes)
 
