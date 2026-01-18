@@ -21,14 +21,31 @@ Brief description of what this plan accomplishes.
 - Primary goal of this phase
 - Secondary outcomes
 
-### Changes
-- [ ] File: `path/to/file.ts` - Description of change
-- [ ] File: `path/to/another.ts` - Description of change
+### Verification Approach
+[How will we verify this phase works? What tests, commands, or checks will confirm success?]
 
-### Success Criteria
-- [ ] Tests pass: `npm test`
-- [ ] Lint clean: `npm run lint`
-- [ ] Manual verification: [specific steps]
+### Tasks (tests first, then implementation)
+- [ ] Write tests: `path/to/file.spec.ts` - Test cases for [scenarios]
+- [ ] Implement: `path/to/file.ts` - Implementation to make tests pass
+- [ ] Verify: [specific command or check]
+
+### Exit Conditions
+
+> Phase cannot proceed until ALL conditions pass.
+
+Build Verification:
+- [ ] `npm run build` succeeds
+- [ ] `npm run lint` passes
+- [ ] `npm run typecheck` passes
+
+Runtime Verification:
+- [ ] Application starts without errors
+- [ ] [Service/endpoint] accessible
+
+Functional Verification:
+- [ ] `npm test` passes
+- [ ] [Feature-specific check]
+- [ ] [Manual check]: [observable behavior]
 
 ---
 
@@ -69,35 +86,69 @@ Brief description of what this plan accomplishes.
 | Documentation | Update docs | "Document API endpoints" |
 | Cleanup | Remove deprecated code | "Remove legacy auth system" |
 
-## Success Criteria Patterns
+## Exit Condition Patterns
 
-### Automated Checks
+Exit conditions are **blocking gates** - a phase cannot proceed until ALL conditions pass. Each phase must have checks in all three verification categories.
+
+### Standard Exit Condition Structure
 ```markdown
-### Success Criteria
-- [ ] Tests pass: `npm test`
-- [ ] Lint clean: `npm run lint`
-- [ ] Type check: `npm run typecheck`
-- [ ] Build succeeds: `npm run build`
-- [ ] Coverage maintained: `npm run test:cov` (>80%)
+**Exit Conditions**:
+
+> Phase cannot proceed until ALL conditions pass.
+
+Build Verification:
+- [ ] `[build command]` succeeds
+- [ ] `[lint command]` passes
+- [ ] `[typecheck command]` passes
+
+Runtime Verification:
+- [ ] Application starts: `[start command]`
+- [ ] No runtime errors in console
+- [ ] [Service/endpoint] accessible at [URL]
+
+Functional Verification:
+- [ ] `[test command]` passes
+- [ ] [Specific feature test]: `[targeted test command]`
+- [ ] [Manual check]: [Observable behavior]
 ```
 
-### Manual Verification Steps
+### Build Verification Examples
 ```markdown
-### Manual Verification
-- [ ] Feature accessible at `/path/to/feature`
-- [ ] UI renders correctly on desktop and mobile
-- [ ] Form validation displays appropriate errors
-- [ ] Success message appears after submission
-- [ ] Data persists after page refresh
+Build Verification:
+- [ ] `npm run build` succeeds (0 errors)
+- [ ] `npm run lint` passes (0 errors, 0 warnings)
+- [ ] `npm run typecheck` passes
+- [ ] Bundle size under 500KB: `npm run build:analyze`
 ```
 
-### Integration Checks
+### Runtime Verification Examples
 ```markdown
-### Integration Verification
-- [ ] API endpoint responds: `curl http://localhost:3000/api/endpoint`
-- [ ] Database records created correctly
-- [ ] Event bus publishes expected events
-- [ ] Downstream services receive notifications
+Runtime Verification:
+- [ ] `npm run start` starts without errors
+- [ ] Server listens on port 3000
+- [ ] Health endpoint responds: `curl http://localhost:3000/health`
+- [ ] No unhandled promise rejections in console
+- [ ] Database connection established
+```
+
+### Functional Verification Examples
+```markdown
+Functional Verification:
+- [ ] `npm test` passes (all tests green)
+- [ ] `npm run test:e2e` passes
+- [ ] Auth endpoint returns 200 on valid credentials
+- [ ] Auth endpoint returns 401 on invalid credentials
+- [ ] JWT token contains expected claims (sub, exp, iat)
+- [ ] Rate limiting triggers after 100 requests/minute
+```
+
+### Manual Verification (User Confirms)
+```markdown
+Manual Verification (user to confirm):
+- [ ] Login form accepts valid credentials
+- [ ] Error message displays for invalid credentials
+- [ ] Session persists after page refresh
+- [ ] Logout clears session completely
 ```
 
 ## Verification Step Templates
@@ -180,14 +231,31 @@ Implement JWT-based authentication with login, logout, and session management.
 - Create users table with authentication fields
 - Set up password hashing utilities
 
-### Changes
-- [ ] File: `src/migrations/001-create-users.ts` - Create users table migration
-- [ ] File: `src/utils/password.ts` - Add bcrypt hashing utilities
+### Verification Approach
+Unit tests verify password hashing generates valid bcrypt hashes and comparison works correctly.
+Migration test confirms table creation succeeds.
 
-### Success Criteria
-- [ ] Migration runs: `npm run migration:run`
-- [ ] Tests pass: `npm test -- --grep "password"'
-- [ ] Manual: Verify table exists in database
+### Tasks (tests first, then implementation)
+- [ ] Write tests: `src/utils/password.spec.ts` - hash generation, hash comparison, invalid inputs
+- [ ] Implement: `src/migrations/001-create-users.ts` - Create users table migration
+- [ ] Implement: `src/utils/password.ts` - Add bcrypt hashing utilities
+- [ ] Verify: `npm test -- password` passes
+
+### Exit Conditions
+
+> Phase cannot proceed until ALL conditions pass.
+
+Build Verification:
+- [ ] `npm run build` succeeds
+- [ ] `npm run lint` passes
+
+Runtime Verification:
+- [ ] `npm run migration:run` succeeds
+- [ ] Database connection established
+
+Functional Verification:
+- [ ] `npm test -- --grep "password"` passes
+- [ ] Verify users table exists in database
 
 ---
 
@@ -197,15 +265,36 @@ Implement JWT-based authentication with login, logout, and session management.
 - Implement login/logout logic
 - JWT token generation and validation
 
-### Changes
-- [ ] File: `src/auth/auth.service.ts` - Core authentication logic
-- [ ] File: `src/auth/auth.guard.ts` - Route protection guard
-- [ ] File: `src/auth/jwt.strategy.ts` - Passport JWT strategy
+### Verification Approach
+Unit tests verify JWT generation, validation, and expiration handling.
+Integration tests confirm login/logout flows work end-to-end.
 
-### Success Criteria
-- [ ] Tests pass: `npm test -- --grep "auth"'
-- [ ] Lint clean: `npm run lint`
-- [ ] Manual: Test login with valid/invalid credentials
+### Tasks (tests first, then implementation)
+- [ ] Write tests: `src/auth/auth.service.spec.ts` - login, logout, token validation, expiration
+- [ ] Write tests: `src/auth/auth.guard.spec.ts` - route protection, missing token, invalid token
+- [ ] Write tests: `src/auth/jwt.strategy.spec.ts` - JWT parsing, claim extraction
+- [ ] Implement: `src/auth/auth.service.ts` - Core authentication logic
+- [ ] Implement: `src/auth/auth.guard.ts` - Route protection guard
+- [ ] Implement: `src/auth/jwt.strategy.ts` - Passport JWT strategy
+- [ ] Verify: `npm test -- auth` passes
+
+### Exit Conditions
+
+> Phase cannot proceed until ALL conditions pass.
+
+Build Verification:
+- [ ] `npm run build` succeeds
+- [ ] `npm run lint` passes
+- [ ] `npm run typecheck` passes
+
+Runtime Verification:
+- [ ] Application starts with `npm run start`
+- [ ] No auth-related runtime errors
+
+Functional Verification:
+- [ ] `npm test -- --grep "auth"` passes
+- [ ] Login with valid credentials returns token
+- [ ] Login with invalid credentials returns 401
 
 ---
 
@@ -215,18 +304,36 @@ Implement JWT-based authentication with login, logout, and session management.
 - Expose authentication endpoints
 - Add protected route examples
 
-### Changes
-- [ ] File: `src/auth/auth.controller.ts` - Login/logout/refresh endpoints
-- [ ] File: `src/auth/auth.module.ts` - Module configuration
+### Verification Approach
+E2E tests verify all endpoints respond correctly to valid and invalid requests.
+Manual verification confirms the full login flow works in browser/Postman.
 
-### Success Criteria
-- [ ] Tests pass: `npm test`
-- [ ] Build succeeds: `npm run build`
-- [ ] Manual verification:
-  - [ ] POST /auth/login returns token
-  - [ ] POST /auth/logout invalidates session
-  - [ ] GET /auth/profile returns user (with token)
-  - [ ] GET /auth/profile returns 401 (without token)
+### Tasks (tests first, then implementation)
+- [ ] Write tests: `src/auth/auth.controller.spec.ts` - all endpoint scenarios
+- [ ] Write tests: `test/auth.e2e-spec.ts` - full flow integration tests
+- [ ] Implement: `src/auth/auth.controller.ts` - Login/logout/refresh endpoints
+- [ ] Implement: `src/auth/auth.module.ts` - Module configuration
+- [ ] Verify: `npm test && npm run test:e2e` passes
+
+### Exit Conditions
+
+> Phase cannot proceed until ALL conditions pass.
+
+Build Verification:
+- [ ] `npm run build` succeeds
+- [ ] `npm run lint` passes
+
+Runtime Verification:
+- [ ] `npm run start` starts server on port 3000
+- [ ] `curl http://localhost:3000/health` returns 200
+
+Functional Verification:
+- [ ] `npm test` passes
+- [ ] POST /auth/login returns token with valid credentials
+- [ ] POST /auth/login returns 401 with invalid credentials
+- [ ] POST /auth/logout invalidates session
+- [ ] GET /auth/profile returns user (with token)
+- [ ] GET /auth/profile returns 401 (without token)
 
 ---
 
@@ -237,6 +344,118 @@ Implement JWT-based authentication with login, logout, and session management.
 - [ ] Security review checklist complete
 ```
 
+## Exit Condition Templates by Project Type
+
+### Node.js/TypeScript
+```markdown
+**Exit Conditions**:
+
+> Phase cannot proceed until ALL conditions pass.
+
+Build Verification:
+- [ ] `npm run build` succeeds
+- [ ] `npm run lint` passes
+- [ ] `npm run typecheck` passes
+
+Runtime Verification:
+- [ ] `npm run start` starts without errors
+- [ ] Server responds on port 3000
+- [ ] `curl http://localhost:3000/health` returns 200
+
+Functional Verification:
+- [ ] `npm test` passes
+- [ ] `npm run test:e2e` passes (if applicable)
+- [ ] [Feature-specific checks]
+```
+
+### Python
+```markdown
+**Exit Conditions**:
+
+> Phase cannot proceed until ALL conditions pass.
+
+Build Verification:
+- [ ] `pip install -e .` succeeds
+- [ ] `flake8` or `ruff check .` passes
+- [ ] `mypy .` passes (if using type hints)
+
+Runtime Verification:
+- [ ] `python -m [module]` starts without errors
+- [ ] Service responds on expected port
+- [ ] No uncaught exceptions in logs
+
+Functional Verification:
+- [ ] `pytest` passes
+- [ ] `pytest tests/integration` passes (if applicable)
+- [ ] [Feature-specific checks]
+```
+
+### Go
+```markdown
+**Exit Conditions**:
+
+> Phase cannot proceed until ALL conditions pass.
+
+Build Verification:
+- [ ] `go build ./...` succeeds
+- [ ] `golangci-lint run` passes
+- [ ] `go vet ./...` passes
+
+Runtime Verification:
+- [ ] `go run .` or compiled binary starts
+- [ ] Health endpoint responds at /health
+- [ ] No panics in logs
+
+Functional Verification:
+- [ ] `go test ./...` passes
+- [ ] `go test -race ./...` passes (race detection)
+- [ ] [Feature-specific checks]
+```
+
+### Rust
+```markdown
+**Exit Conditions**:
+
+> Phase cannot proceed until ALL conditions pass.
+
+Build Verification:
+- [ ] `cargo build` succeeds
+- [ ] `cargo clippy` passes
+- [ ] `cargo fmt --check` passes
+
+Runtime Verification:
+- [ ] `cargo run` starts without panics
+- [ ] Service binds to expected port
+- [ ] No runtime errors in logs
+
+Functional Verification:
+- [ ] `cargo test` passes
+- [ ] Integration tests pass
+- [ ] [Feature-specific checks]
+```
+
+### Java (Maven)
+```markdown
+**Exit Conditions**:
+
+> Phase cannot proceed until ALL conditions pass.
+
+Build Verification:
+- [ ] `mvn compile` succeeds
+- [ ] `mvn checkstyle:check` passes
+- [ ] No compilation warnings
+
+Runtime Verification:
+- [ ] `mvn exec:java` or jar starts
+- [ ] Application logs "Started" message
+- [ ] Health actuator responds
+
+Functional Verification:
+- [ ] `mvn test` passes
+- [ ] `mvn verify` (integration tests) passes
+- [ ] [Feature-specific checks]
+```
+
 ## Tips for Effective Plans
 
 1. **Be Specific**: Reference exact file paths and line numbers when possible
@@ -245,3 +464,4 @@ Implement JWT-based authentication with login, logout, and session management.
 4. **Plan for Failure**: Include rollback steps for risky changes
 5. **Document Assumptions**: Note any assumptions that might not hold
 6. **Keep Current**: Update the plan if scope changes during implementation
+7. **Exit Conditions are Gates**: Every phase must pass all three verification categories before proceeding

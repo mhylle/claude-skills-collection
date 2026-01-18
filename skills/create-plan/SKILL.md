@@ -100,6 +100,48 @@ Recommendation: [Preferred option with rationale]
 
 Wait for user feedback on approach before detailing phases.
 
+### Phase 4b: Document Decision (ADR)
+
+**Before creating a new ADR**, check for existing related decisions:
+
+```
+# Tiered ADR reading (context conservation)
+1. Read("docs/decisions/INDEX.md")           # Scan all ADRs
+2. Read("docs/decisions/ADR-NNNN.md", limit=10)  # Quick Reference only
+3. Read full ADR only if directly relevant
+```
+
+**After user approves a design option**, invoke the ADR skill to document the decision:
+
+```
+Skill(skill="adr"): Document the design decision just made.
+
+Context: [Why this decision was needed - from research phase]
+Options Considered: [List options from Phase 4]
+Decision: [The chosen option]
+Rationale: [Why this option was selected]
+Consequences: [Expected impacts]
+```
+
+The ADR will be created at `docs/decisions/ADR-NNNN-title.md` and INDEX.md will be updated.
+
+**Update the plan** to reference the ADR in the Design Decision section:
+
+```markdown
+## Design Decision
+
+[Brief description of chosen approach]
+
+See [ADR-NNNN](../decisions/ADR-NNNN-title.md) for full rationale and alternatives considered.
+```
+
+**When to create ADRs during planning:**
+- Choosing between architectural approaches
+- Selecting technologies or libraries
+- Establishing new patterns or conventions
+- Making trade-offs with significant implications
+- Decisions that future developers will question "why?"
+
 ### Phase 5: Phase Structure Review
 
 Before writing detailed plan, present proposed phases:
@@ -136,26 +178,42 @@ Use this structure:
 ## Design Decision
 [Chosen approach and rationale]
 
+**ADR Reference**: [ADR-NNNN](../decisions/ADR-NNNN-title.md)
+
+## Related ADRs
+- [ADR-NNNN](../decisions/ADR-NNNN-title.md): [Brief description of relevance]
+
 ## Implementation Phases
 
 ### Phase 1: [Name]
 
 **Objective**: [What this phase accomplishes]
 
-**Tasks**:
-- [ ] Task 1 with specific file references
-- [ ] Task 2 with specific file references
+**Verification Approach**: [How will we verify this phase works? What tests, commands, or checks will confirm success?]
 
-**Success Criteria**:
+**Tasks** (tests first, then implementation):
+- [ ] Write tests: [test file] covering [scenarios]
+- [ ] Implement: [file] to make tests pass
+- [ ] Verify: [specific check or command]
 
-Automated Verification:
-- [ ] `npm test` passes
-- [ ] `npm run lint` passes
-- [ ] `npm run build` succeeds
+**Exit Conditions**:
 
-Manual Verification:
-- [ ] [Observable behavior to test]
-- [ ] [Edge case to verify]
+> Phase cannot proceed until ALL conditions pass.
+
+Build Verification:
+- [ ] `[build command]` succeeds
+- [ ] `[lint command]` passes
+- [ ] `[typecheck command]` passes (if applicable)
+
+Runtime Verification:
+- [ ] Application starts: `[start command]`
+- [ ] No runtime errors in console
+- [ ] [Service/endpoint] is accessible at [URL]
+
+Functional Verification:
+- [ ] `[test command]` passes
+- [ ] [Specific test]: `[targeted test command]`
+- [ ] [Manual check]: [Observable behavior to verify]
 
 ### Phase 2: [Name]
 [Continue pattern...]
@@ -168,6 +226,27 @@ Manual Verification:
 ```
 
 ## Critical Guidelines
+
+### Verification-First Planning
+
+Every phase in the plan MUST include:
+
+1. **Verification Approach** - A clear statement of how success will be measured
+2. **Tests before implementation** - Task lists must show test creation BEFORE implementation
+3. **Specific test scenarios** - Not just "write tests" but what scenarios to cover
+
+Example:
+```markdown
+**Verification Approach**: Unit tests verify password hashing and comparison.
+Integration test confirms login endpoint accepts valid credentials and rejects invalid ones.
+
+**Tasks** (tests first, then implementation):
+- [ ] Write tests: `auth.service.spec.ts` covering hash generation, hash comparison, invalid inputs
+- [ ] Write tests: `auth.controller.spec.ts` covering login success, login failure, missing credentials
+- [ ] Implement: `auth.service.ts` - password hashing utilities
+- [ ] Implement: `auth.controller.ts` - login endpoint
+- [ ] Verify: `npm test -- auth` passes
+```
 
 ### Be Thorough
 - Read entire files, not partial content
@@ -184,21 +263,29 @@ Manual Verification:
 - Cross-reference multiple sources
 - Challenge assumptions with evidence
 
-### Distinguish Success Criteria
+### Exit Conditions Are Blocking Gates
 
-**Automated Verification** - Testable via commands:
-- Test suites (`npm test`, `make test`)
-- Linting (`npm run lint`)
-- Type checking (`npm run typecheck`)
-- Build success (`npm run build`)
+Exit conditions are **mandatory gates** that must pass before advancing to the next phase. They are not advisory - they are requirements.
 
-**Manual Verification** - Human-observable behaviors:
-- UI/UX behaviors
-- Edge cases requiring manual testing
-- Performance characteristics
-- Integration behaviors
+**Three Verification Categories** (all must pass):
 
-**Never mix these categories** - keep them distinctly separated.
+1. **Build Verification** - Code compiles and passes static analysis:
+   - Build commands (`npm run build`, `cargo build`, `go build`)
+   - Linting (`npm run lint`, `flake8`, `golangci-lint`)
+   - Type checking (`npm run typecheck`, `mypy`, `tsc --noEmit`)
+
+2. **Runtime Verification** - Application actually runs:
+   - Start command executes without error
+   - No runtime exceptions or crashes
+   - Services/endpoints become accessible
+   - Health checks pass
+
+3. **Functional Verification** - Correct behavior:
+   - Test suites pass (`npm test`, `pytest`, `go test`)
+   - Specific feature tests pass
+   - Manual verification steps (for human-observable behaviors)
+
+**Never skip a category** - each phase must have at least one check in each category.
 
 ### No Unresolved Questions
 
@@ -219,6 +306,104 @@ Before finalizing any plan:
 - [ ] File:line references are accurate and specific
 - [ ] Design fits existing codebase patterns
 - [ ] Phases are incrementally implementable
-- [ ] Success criteria are measurable and categorized
+- [ ] Each phase has a Verification Approach section
+- [ ] Tasks list tests BEFORE implementation
+- [ ] Exit conditions cover all three verification categories
 - [ ] No unresolved questions or TBD sections
 - [ ] User has approved structure and approach
+
+## Project Type Detection
+
+Before writing exit conditions, detect the project type and suggest appropriate commands.
+
+### Detection Strategy
+
+Look for these files to identify project type:
+
+| File | Project Type | Build | Test | Start |
+|------|-------------|-------|------|-------|
+| `package.json` | Node.js/TypeScript | `npm run build` | `npm test` | `npm start` |
+| `pyproject.toml` or `setup.py` | Python | `pip install -e .` | `pytest` | `python -m app` |
+| `Cargo.toml` | Rust | `cargo build` | `cargo test` | `cargo run` |
+| `go.mod` | Go | `go build ./...` | `go test ./...` | `go run .` |
+| `pom.xml` | Java/Maven | `mvn compile` | `mvn test` | `mvn exec:java` |
+| `build.gradle` | Java/Gradle | `./gradlew build` | `./gradlew test` | `./gradlew run` |
+| `Makefile` | Generic | `make build` | `make test` | `make run` |
+
+### Exit Condition Templates by Project Type
+
+**Node.js/TypeScript:**
+```markdown
+Build Verification:
+- [ ] `npm run build` succeeds
+- [ ] `npm run lint` passes
+- [ ] `npm run typecheck` passes
+
+Runtime Verification:
+- [ ] `npm run start` or `npm run dev` starts without errors
+- [ ] Server responds on expected port
+
+Functional Verification:
+- [ ] `npm test` passes
+- [ ] `npm run test:e2e` passes (if applicable)
+```
+
+**Python:**
+```markdown
+Build Verification:
+- [ ] `pip install -e .` succeeds
+- [ ] `flake8` or `ruff` passes
+- [ ] `mypy .` passes (if using type hints)
+
+Runtime Verification:
+- [ ] `python -m [module]` starts without errors
+- [ ] Service responds on expected port
+
+Functional Verification:
+- [ ] `pytest` passes
+- [ ] `pytest tests/integration` passes (if applicable)
+```
+
+**Go:**
+```markdown
+Build Verification:
+- [ ] `go build ./...` succeeds
+- [ ] `golangci-lint run` passes
+
+Runtime Verification:
+- [ ] `go run .` or compiled binary starts
+- [ ] Health endpoint responds
+
+Functional Verification:
+- [ ] `go test ./...` passes
+- [ ] `go test -race ./...` passes (race detection)
+```
+
+**Rust:**
+```markdown
+Build Verification:
+- [ ] `cargo build` succeeds
+- [ ] `cargo clippy` passes
+
+Runtime Verification:
+- [ ] `cargo run` starts without panics
+- [ ] Service binds to expected port
+
+Functional Verification:
+- [ ] `cargo test` passes
+- [ ] Integration tests pass
+```
+
+### Custom Exit Conditions
+
+For each phase, also add **custom functional checks** specific to what that phase implements:
+
+```markdown
+Functional Verification:
+- [ ] `npm test` passes
+- [ ] Auth endpoint returns 200 on valid credentials
+- [ ] Auth endpoint returns 401 on invalid credentials
+- [ ] JWT token contains expected claims
+```
+
+These custom checks ensure the specific functionality of the phase works correctly, beyond just "tests pass."

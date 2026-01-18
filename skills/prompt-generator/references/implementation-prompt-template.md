@@ -40,6 +40,8 @@ Read the phase document at {PHASE_DOC_PATH} to understand:
 
    a. **Spawn Subagent** using one of these patterns:
 
+      > **CRITICAL - All subagent prompts MUST include the RESPONSE FORMAT instruction to ensure concise responses. Subagents should write verbose output to disk and return only essential information.**
+
       **Pattern 1: File Creation Tasks**
       ```
       /spawn Create {files} for {feature}
@@ -56,6 +58,12 @@ Read the phase document at {PHASE_DOC_PATH} to understand:
       - Add JSDoc comments for interfaces and classes
 
       Verify: Run lint and type check after creation
+
+      RESPONSE FORMAT: Be concise. Return only:
+      - STATUS: PASS/FAIL
+      - FILES: list of created files
+      - ERRORS: any issues (omit if none)
+      No explanations or commentary.
       ```
 
       **Pattern 2: Testing Tasks**
@@ -69,7 +77,13 @@ Read the phase document at {PHASE_DOC_PATH} to understand:
       3. Verify build: npm run build
       4. Check specific criteria: {criteria}
 
-      Report back: Test results and any failures
+      RESPONSE FORMAT: Be concise. Return only:
+      - STATUS: PASS/FAIL
+      - TESTS: X passed, Y failed
+      - LINT: PASS/FAIL
+      - BUILD: PASS/FAIL
+      - ERRORS: failure details (omit if none)
+      Write full test output to logs/test-{feature}.log
       ```
 
       **Pattern 3: Docker/Infrastructure Tasks**
@@ -84,6 +98,13 @@ Read the phase document at {PHASE_DOC_PATH} to understand:
       - Test connectivity
 
       Success criteria: {specific_criteria}
+
+      RESPONSE FORMAT: Be concise. Return only:
+      - STATUS: PASS/FAIL
+      - SERVICES: list of running services
+      - HEALTH: endpoint status
+      - ERRORS: any issues (omit if none)
+      Write docker logs to logs/docker-{component}.log
       ```
 
       **Pattern 4: Integration Tasks**
@@ -98,6 +119,12 @@ Read the phase document at {PHASE_DOC_PATH} to understand:
       - Write integration tests
 
       Verify: {integration_test_criteria}
+
+      RESPONSE FORMAT: Be concise. Return only:
+      - STATUS: PASS/FAIL
+      - FILES: modified files
+      - TESTS: integration test results
+      - ERRORS: any issues (omit if none)
       ```
 
    b. **Track in Orchestrator**
@@ -128,7 +155,15 @@ Read the phase document at {PHASE_DOC_PATH} to understand:
    4. npm test passes
    5. Specific criteria: {criteria_from_plan}
 
-   Report: Pass/fail status and any issues found
+   RESPONSE FORMAT: Be concise. Return only:
+   - STATUS: PASS/FAIL (overall)
+   - FILES: PASS/FAIL
+   - LINT: PASS/FAIL
+   - BUILD: PASS/FAIL
+   - TESTS: X passed, Y failed
+   - CRITERIA: PASS/FAIL per item
+   - ERRORS: failure details (omit if all pass)
+   Write full validation output to logs/validate-{task_group}.log
    ```
 
 5. **Phase Completion** (Orchestrator Session)
@@ -170,13 +205,19 @@ Read the phase document at {PHASE_DOC_PATH} to understand:
 - Focus on specific implementation task
 - Write code, tests, configs
 - Run build/test/lint commands
-- Report back to orchestrator
+- Report back **concisely** to orchestrator (STATUS, FILES, ERRORS only)
 - Handle errors and edge cases
+- Write verbose output (logs, traces, full test results) to disk
+- Return file paths for large outputs
 
 **DON'T** in Subagent Sessions:
 - Deviate from assigned task scope
 - Make architectural decisions without orchestrator guidance
 - Update TodoWrite (orchestrator's job)
+- Return verbose explanations or step-by-step commentary
+- Include full command output in response (write to disk instead)
+- Restate the original task in the response
+- Suggest next steps (orchestrator decides)
 
 ## Error Handling
 
@@ -229,18 +270,25 @@ Prompt user to verify these and report results.
 
 Once Phase {PHASE_NUMBER} is complete:
 
-1. **Document Completion**
+1. **Update Implementation Plan**
+   - Update the phase document at {PHASE_DOC_PATH} with what was actually implemented
+   - Mark completed tasks with their actual outcomes
+   - Document any deviations from the original plan
+   - Note any tasks that were added, skipped, or modified during implementation
+   - Record lessons learned or insights gained
+
+2. **Document Completion**
    - All success criteria met
    - Any deviations or notes
    - Known issues or technical debt
 
-2. **Prepare Context for Next Phase**
+3. **Prepare Context for Next Phase**
    - What was built and where
    - Configuration changes made
    - Dependencies added
    - Any gotchas or important notes
 
-3. **Clean State**
+4. **Clean State**
    - All TodoWrite tasks completed
    - No lingering blockers
    - Code committed (if using git)
@@ -298,11 +346,69 @@ Phase 1 Complete
 
 ---
 
+## Architectural Decision Records (ADRs)
+
+### Reading Related ADRs (Tiered Approach)
+
+**Use tiered reading to conserve context:**
+
+```
+# Tier 1: Scan index (always do this first)
+Read("{PROJECT_ROOT}/docs/decisions/INDEX.md")
+
+# Tier 2: Quick Reference only for candidates (first 10 lines)
+Read("{PROJECT_ROOT}/docs/decisions/ADR-NNNN.md", limit=10)
+
+# Tier 3: Full content only when implementation details are needed
+Read("{PROJECT_ROOT}/docs/decisions/ADR-NNNN.md")
+```
+
+**For each relevant ADR**, understand from Quick Reference:
+- The decision made (one sentence)
+- Impact areas (what's affected)
+- Only read full ADR if implementation guidance is needed
+
+### Creating ADRs During Implementation
+
+**Before creating**, check INDEX.md for existing related decisions.
+
+**Invoke the ADR skill** when:
+- Discovering the plan needs deviation (with user approval)
+- Making technology or pattern choices not covered in the plan
+- Establishing new conventions during implementation
+- Resolving conflicts between requirements
+
+```
+/spawn Create ADR for implementation decision
+
+Task: Document the architectural decision using the adr skill.
+
+Context: [Situation requiring decision]
+Options: [Alternatives considered]
+Decision: [What was decided]
+Rationale: [Why this choice]
+Consequences: [Impact on implementation]
+
+RESPONSE FORMAT: Return STATUS: CREATED, ADR path, INDEX updated, one-line decision summary.
+```
+
+### Updating Plan with ADR References
+
+After creating an ADR during implementation, update the plan file:
+
+```markdown
+> **Implementation Note**: Deviated from original plan. See [ADR-NNNN](../decisions/ADR-NNNN-title.md).
+```
+
 ## Checklist Before Starting
 
 - [ ] Read phase document: {PHASE_DOC_PATH}
 - [ ] Read general plan: {GENERAL_PLAN_PATH}
 - [ ] Read project guidelines: {PROJECT_ROOT}/CLAUDE.md
+- [ ] **Read ADRs (tiered)**:
+  - [ ] Read INDEX.md first to scan all decisions
+  - [ ] Read Quick Reference (limit=10) of relevant ADRs
+  - [ ] Read full ADR only if implementation details needed
 - [ ] Understand dependencies from previous phases
 - [ ] Create initial TodoWrite task list
 - [ ] Identify which tasks can run in parallel
@@ -324,6 +430,7 @@ Phase 1 Complete
 - [ ] Manual success criteria verified with user
 - [ ] TodoWrite shows all tasks completed
 - [ ] No critical blockers remaining
+- [ ] Implementation plan updated with actual outcomes
 - [ ] Handoff notes prepared for next phase
 - [ ] Code quality verified (lint, build, test)
 
@@ -336,6 +443,9 @@ Phase 1 Complete
 - Subagents handle implementation details
 - Use `--uc` flag if context grows large
 - Delegate validation to subagents rather than running checks directly
+- **Subagent responses must be concise**: STATUS, FILES, ERRORS only
+- **Large outputs go to disk**: logs/, traces/, reports/
+- **No verbose explanations**: subagents return actionable data, not narratives
 
 ### Parallel vs Sequential
 - **Parallel**: Independent file creation, separate services, isolated features
@@ -363,6 +473,7 @@ When using this template, replace these placeholders:
 - `{PHASE_DOC_PATH}`: e.g., "/home/user/project/docs/plans/01-phase-foundation.md"
 - `{GENERAL_PLAN_PATH}`: e.g., "/home/user/project/docs/plans/00-general-plan.md"
 - `{PROJECT_ROOT}`: e.g., "/home/user/project"
+- `{ADR_PATH}`: e.g., "/home/user/project/docs/decisions/" (defaults to `{PROJECT_ROOT}/docs/decisions/`)
 
 Additional placeholders used in examples:
 - `{files}`: List of files to create

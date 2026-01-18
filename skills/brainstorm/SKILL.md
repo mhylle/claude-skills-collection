@@ -177,6 +177,43 @@ Consolidate all findings into actionable insights:
 - List open questions that need user decision
 - Provide options with trade-offs
 
+### Phase 5b: Document Key Decisions (ADR)
+
+**Before creating new ADRs**, check for existing related decisions:
+
+```
+# Tiered ADR reading (context conservation)
+1. Read("docs/decisions/INDEX.md")              # Scan existing decisions
+2. Read("docs/decisions/ADR-NNNN.md", limit=10) # Quick Reference of relevant ones
+3. Only create new ADR if decision is genuinely new or supersedes existing
+```
+
+**When significant architectural decisions emerge** from the brainstorm analysis, invoke the ADR skill to document them:
+
+```
+Skill(skill="adr"): Document key decision from brainstorm.
+
+Title: [Decision title]
+Context: [Why this decision is needed - from brainstorm context]
+Options Considered: [Alternatives from analysis]
+Decision: [The recommended or chosen approach]
+Rationale: [From Six Hats/SCAMPER analysis]
+Consequences: [From premortem and risk assessment]
+Status: Proposed (or Accepted if user confirmed)
+```
+
+The ADR skill will create the ADR file and update INDEX.md.
+
+**Triggers for creating ADRs during brainstorming:**
+- Clear winner emerges from option analysis
+- User makes a definitive choice between approaches
+- Technology or architecture decision crystallizes
+- Pattern or convention is established for the project
+
+**Multiple ADRs**: If the brainstorm identifies several distinct decisions, create separate ADRs for each. Reference them in the output's "Key Decisions" section.
+
+**ADR Status**: Set to "Proposed" unless the user has explicitly confirmed the decision, in which case set to "Accepted".
+
 ### Phase 6: Structure & Output
 
 Structure the concept into logical components and write results.
@@ -265,6 +302,17 @@ Structure the concept into logical components and write results.
 - Relevant files: [file:line references]
 - Existing patterns to follow: [patterns]
 - Integration points: [components]
+
+## Architectural Decisions
+
+### Documented ADRs
+| ADR | Title | Status |
+|-----|-------|--------|
+| [ADR-NNNN](../decisions/ADR-NNNN-title.md) | [Title] | Proposed/Accepted |
+
+### Pending Decisions (not yet documented)
+- [Decision 1]: [Options being considered]
+- [Decision 2]: [Options being considered]
 
 ## Recommended Next Steps
 1. [Immediate next step]

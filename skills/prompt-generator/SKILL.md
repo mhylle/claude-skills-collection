@@ -18,6 +18,12 @@ When triggered, gather these inputs from the user:
 | `PHASE_DOC_PATH` | Path to phase plan document | `/project/docs/plans/01-foundation.md` |
 | `PROJECT_ROOT` | Project root directory | `/home/user/myproject` |
 | `GENERAL_PLAN_PATH` | Path to general plan (optional) | `/project/docs/plans/00-general-plan.md` |
+| `ADR_PATH` | Path to ADR directory (optional) | `/project/docs/decisions/` |
+
+**ADR Integration**: The generated prompt will instruct the orchestrator to:
+- Read any ADRs referenced in the plan before implementation
+- Create new ADRs when architectural decisions arise during implementation
+- Update the plan with ADR references when deviating from the original design
 
 ## Workflow
 
@@ -59,6 +65,7 @@ The generated prompt includes:
 - **Validation workflow**: Group validation and final success criteria checks
 - **Error handling**: Failure analysis, rollback procedures, escalation guidance
 - **Handoff preparation**: Documentation for next phase transition
+- **Plan updates**: Update implementation plan with actual outcomes upon completion
 
 ### Subagent Patterns Reference
 
@@ -94,7 +101,7 @@ IMPORTANT ORCHESTRATION REQUIREMENTS:
 [Automated and manual checks]
 
 ## Handoff to Next Phase
-[Completion documentation, context prep, clean state]
+[Update implementation plan, completion documentation, context prep, clean state]
 ```
 
 ## Resources

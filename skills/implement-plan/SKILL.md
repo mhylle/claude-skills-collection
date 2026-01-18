@@ -1,327 +1,336 @@
 ---
 name: implement-plan
-description: Execute approved technical implementation plans with verification checkpoints. This skill should be used when implementing pre-approved development plans, feature implementations, or technical specifications that have defined phases, success criteria, and verification steps. Triggers on requests like "implement the plan", "execute the implementation plan", or when given a path to a plan file.
+description: Orchestrate the execution of complete implementation plans, delegating each phase to implement-phase skill. This skill manages the full plan lifecycle including phase sequencing, user confirmation between phases, and overall progress tracking. Triggers on "implement the plan", "execute the implementation plan", or when given a path to a plan file.
 ---
 
 # Implement Plan
 
-Execute approved technical implementation plans using an **orchestrator model** with subagent delegation, built-in verification checkpoints, progress tracking, and human-in-the-loop validation.
+Orchestrate the execution of **complete implementation plans** by delegating each phase to the `implement-phase` skill. This skill manages the full plan lifecycle.
 
-## Orchestration Model
+## Architecture
 
-**This session serves as the orchestrator.** Do NOT implement code directly in this session. Instead:
+```
+implement-plan (this skill - plan orchestrator)
+    │
+    ├── Phase 1 → implement-phase → [implementation, verification, review, ADR, sync]
+    │                    ↓
+    │              [user confirmation]
+    │                    ↓
+    ├── Phase 2 → implement-phase → [implementation, verification, review, ADR, sync]
+    │                    ↓
+    │              [user confirmation]
+    │                    ↓
+    ├── Phase N → implement-phase → [...]
+    │                    ↓
+    └── Final Verification & Summary
+```
 
-1. **Use subagents for ALL implementation work** - Spawn Task agents for each discrete piece of work (creating files, writing tests, running verifications)
-2. **Parallelize where possible** - Launch multiple subagents concurrently when tasks have no dependencies
-3. **This session coordinates** - Track progress, handle blockers, make decisions, but delegate actual coding
+## Responsibilities
 
-### Why Orchestration?
+### This Skill (implement-plan)
+- Read and understand the full plan
+- Sequence phases correctly
+- Delegate each phase to `implement-phase`
+- Handle user confirmation between phases
+- Track overall plan progress
+- Generate final completion report
 
-- **Context preservation**: Main session retains full plan context while subagents handle discrete tasks
-- **Parallelization**: Independent tasks execute concurrently, dramatically reducing implementation time
-- **Clean separation**: Orchestration logic stays separate from implementation details
-- **Better error handling**: Failures in one subagent don't pollute the main context
+### Delegated to implement-phase
+- All implementation work
+- Exit condition verification
+- Code review
+- ADR compliance
+- Plan file synchronization
 
-## When to Use This Skill
+## When to Use
 
 - Implementing pre-approved technical plans or specifications
 - Executing phased development work with defined success criteria
 - Following structured implementation guides with verification steps
 - Resuming partially-completed implementation work
 
+## Execution Modes
+
+### Current Mode: Guided Execution
+
+Each phase requires user confirmation before proceeding to the next. This is the default, safe mode.
+
+```
+Phase 1 → implement-phase → ✅ Complete → [USER CONFIRMS] → Phase 2 → ...
+```
+
+### Future Mode: Autonomous Execution
+
+> **Note**: This mode is planned but not yet implemented. When enabled, the entire plan will execute without pauses between phases.
+
+```
+Phase 1 → Phase 2 → Phase 3 → ... → Final Report
+```
+
+Autonomous mode will require:
+- Explicit user opt-in: "implement the entire plan autonomously"
+- Stricter quality gates
+- Comprehensive rollback capability
+- Detailed execution log
+
 ## Getting Started
 
 When given a plan path or asked to implement a plan:
 
-1. **Locate the Plan**: Find the plan file (typically in `docs/plans/`, `thoughts/plans/`, or specified path)
-2. **Read Completely**: Read the entire plan without pagination - full context is essential
-3. **Check Progress**: Look for existing checkmarks (`- [x]`) indicating completed work
-4. **Read Referenced Files**: Load all files mentioned in the plan fully
-5. **Understand Interconnections**: Analyze how components fit together
-6. **Create Progress Tracker**: Use TodoWrite to track implementation progress
-7. **Begin Orchestration**: Start delegating to subagents only when requirements are clearly understood
-
-If no plan path is provided, ask: "Which plan should I implement? Please provide the path or name?"
-
-## Implementation Workflow
-
-### Phase Execution Protocol
-
-For each phase in the plan:
+### 1. Locate and Read Plan
 
 ```
-1. READ phase requirements and success criteria
-2. IDENTIFY independent tasks that can be parallelized
-3. SPAWN subagents for implementation work
-4. MONITOR subagent progress and handle blockers
-5. VERIFY against success criteria via verification subagent
-6. FIX any issues (spawn fix subagents as needed)
-7. UPDATE checkboxes in plan file using Edit tool
-8. PAUSE for human verification (unless executing consecutive phases)
+1. Find the plan file (docs/plans/, thoughts/plans/, or specified path)
+2. Read the ENTIRE plan - full context is essential
+3. Identify total number of phases
+4. Check for existing progress (checkmarks indicate completed work)
 ```
 
-### Subagent Usage Guidelines
-
-**Always run in background**: Use `run_in_background: true` for all Task agents to enable parallel execution. Use `AgentOutputTool` to check on progress.
-
-**File Creation**: Spawn one subagent per file or logical group of related files
-```
-Task (run_in_background: true): "Create the authentication service at src/auth/auth.service.ts implementing JWT token generation and validation. Include methods for login(), logout(), and validateToken()."
-```
-
-**Testing**: Spawn dedicated subagent for writing and running tests
-```
-Task (run_in_background: true): "Write unit tests for src/auth/auth.service.ts covering login success, login failure, token validation, and logout scenarios. Run tests and report results."
-```
-
-**Verification**: Spawn subagent to run build/lint/test commands
-```
-Task (run_in_background: true): "Run full verification suite: npm run lint && npm run typecheck && npm test && npm run build. Report any failures with details."
-```
-
-**Research**: If implementation questions arise, spawn Explore agent to investigate codebase
-```
-Task (subagent_type: Explore, run_in_background: true): "Find how error handling is implemented in existing services. Look for patterns in src/services/ for consistent error response formats."
-```
-
-**Plan Updates**: Spawn subagent to update plan file checkboxes
-```
-Task (run_in_background: true): "Update the plan file at docs/plans/auth.md. Mark all Phase 2 tasks as complete by changing [ ] to [x] for the items listed."
-```
-
-### Parallelization Strategy
-
-**Within a phase**, identify independent tasks and launch them concurrently:
+### 2. Read Related Context
 
 ```
-Phase 2: Authentication Service
-├── [PARALLEL] Subagent A: Create auth.service.ts
-├── [PARALLEL] Subagent B: Create auth.guard.ts
-├── [PARALLEL] Subagent C: Create jwt.strategy.ts
-└── [SEQUENTIAL - after above complete] Subagent D: Write tests for all three
+# Tiered ADR reading (context conservation)
+1. Read("docs/decisions/INDEX.md")              # Scan all ADRs first
+2. Read("docs/decisions/ADR-NNNN.md", limit=10) # Quick Reference of relevant ones
+3. Read full ADR only if needed for implementation details
+
+# Read files referenced in plan
+4. Load all files mentioned in the plan
 ```
 
-**Rules for parallelization**:
-- Files with no dependencies on each other → parallel
-- Files that import from each other → sequential (create dependency first)
-- Tests → after implementation files exist
-- Verification → after all phase files complete
-
-### Progress Tracking
-
-Maintain **triple tracking** in the orchestrator session:
-
-1. **Plan File**: Update checkboxes (`- [ ]` → `- [x]`) as sections complete (spawn subagent for this)
-2. **TodoWrite**: Track phase-level progress within current session
-3. **Inline Status**: Provide brief status updates as subagents complete
-
-#### Inline Status Format
-
-Use concise status updates that flow naturally:
+### 3. Create Progress Tracker
 
 ```
-● Phase 2 Status:
-  - 🔄 Subagent abc123: Creating auth.service.ts (running)
-  - 🔄 Subagent def456: Creating auth.guard.ts (running)
-  - 🔄 Subagent ghi789: Creating jwt.strategy.ts (running)
-
-● Good progress:
-  - ✅ auth.service.ts created
-  - ✅ auth.guard.ts created
-  - 🔄 jwt.strategy.ts (still running)
+TodoWrite: Track plan-level progress
+- [ ] Phase 1: [Phase Name]
+- [ ] Phase 2: [Phase Name]
+- [ ] Phase N: [Phase Name]
+- [ ] Final verification
 ```
 
-After all tasks in a phase complete:
+### 4. Begin Phase Execution
+
+For each phase, delegate to `implement-phase`:
 
 ```
-● Phase 2 Complete!
+Skill(skill="implement-phase"): Execute Phase [N] of the implementation plan.
 
-  All verifications passed:
-  - ✅ Build passes
-  - ✅ Lint passes
-  - ✅ Tests pass (47 passing)
+Context:
+- Plan: [plan file path]
+- Phase: [N] ([Phase Name])
+- Previous Phase Status: [Complete/N/A]
 
-  Now moving to Phase 3: [Phase Name]
+Execute all quality gates and return structured result.
 ```
 
-### Phase Completion Protocol
+## Phase Execution Protocol
 
-After all implementation subagents complete for a phase:
+### Before Each Phase
 
-1. **Spawn verification subagent** to run build/lint/test
-2. **Spawn plan update subagent** to mark checkboxes complete
-3. **Report phase completion** with verification results
-4. **List manual verification steps** if any in plan
-5. **Await confirmation** before proceeding (unless executing consecutive phases)
+1. **Announce** the phase about to start
+2. **Summarize** what will be implemented
+3. **Note** any dependencies on previous phases
 
 ```
-● Phase 2 Complete!
+═══════════════════════════════════════════════════════════════
+● STARTING PHASE 2: Authentication Service
+═══════════════════════════════════════════════════════════════
 
-  All verifications passed:
-  - ✅ Build passes
-  - ✅ Lint passes
-  - ✅ Tests pass (47 passing)
+Objectives:
+- Implement login/logout logic
+- JWT token generation and validation
 
-  Manual verification steps:
-  - [ ] POST /auth/login returns token
+Dependencies:
+- Phase 1 (Database Schema) must be complete ✅
+
+Delegating to implement-phase...
+```
+
+### During Phase Execution
+
+The `implement-phase` skill handles all details:
+- Subagent delegation for implementation
+- Exit condition verification
+- Code review via `code-review` skill
+- ADR compliance checking
+- Plan file synchronization
+
+### After Each Phase
+
+Receive structured result from `implement-phase`:
+
+```yaml
+PHASE_RESULT:
+  status: COMPLETE | FAILED | BLOCKED
+  steps:
+    implementation: PASS
+    exit_conditions: PASS
+    code_review: PASS_WITH_NOTES
+    adr_compliance: PASS
+    plan_sync: PASS
+  manual_verification:
+    - "Check login flow in browser"
+  ready_for_next: true
+```
+
+### User Confirmation Point
+
+After each phase completes, pause for user confirmation:
+
+```
+═══════════════════════════════════════════════════════════════
+● PHASE 2 COMPLETE: Authentication Service
+═══════════════════════════════════════════════════════════════
+
+Results:
+  ✅ Implementation: 3 files created, 2 modified
+  ✅ Exit Conditions: All passed
+  ✅ Code Review: Passed with 2 recommendations
+  ✅ ADR Compliance: Passed
+  ✅ Plan Updated: 8 tasks marked complete
+
+Manual Verification Required:
+  - [ ] POST /auth/login returns token with expected claims
   - [ ] POST /auth/logout invalidates session
-  - [ ] GET /auth/profile returns user (with token)
 
-  Confirm to proceed to Phase 3.
+Recommendations (non-blocking):
+  1. Consider using project's CustomLogger
+  2. Add ADR-0012 reference to plan
+
+───────────────────────────────────────────────────────────────
+Please confirm manual verification steps, then respond to
+proceed to Phase 3: API Endpoints
+═══════════════════════════════════════════════════════════════
 ```
 
-**Note**: Skip pauses between consecutive phases if instructed to execute multiple phases. Pause only after the final phase.
+## Handling Blockers
 
-### Handling Blockers and Decisions
+When `implement-phase` returns a blocker:
 
-When a subagent reports an issue or the orchestrator identifies a blocker:
+### From implement-phase
 
-1. **STOP** spawning new dependent subagents
-2. **SURFACE** the blocker immediately to the user
-3. **AWAIT** user decision before proceeding
-
-```
-● ⚠️ BLOCKER in Phase 2 - Decision Required
-
-  Task: Creating jwt.strategy.ts
-
-  Issue: Subagent reports existing JWT implementation in src/legacy/auth.js.
-  The plan specifies creating new jwt.strategy.ts but doesn't mention legacy code.
-
-  Options:
-  A) Proceed with new implementation, mark legacy for removal
-  B) Refactor legacy code instead of creating new file
-  C) Create new file but import shared utilities from legacy
-
-  Recommendation: Option A - cleaner separation
-
-  How should I proceed?
+```yaml
+PHASE_RESULT:
+  status: BLOCKED
+  blocker: "Existing JWT implementation found in src/legacy/auth.js"
+  options:
+    - "Proceed with new implementation"
+    - "Refactor legacy code"
+    - "Abort and revise plan"
 ```
 
-## Handling Mismatches
+### Orchestrator Response
 
-When a subagent reports that reality diverges from the plan:
+1. **STOP** further phase execution
+2. **PRESENT** the blocker to user with options
+3. **AWAIT** user decision
+4. **RESUME** or **ABORT** based on decision
 
-1. **STOP** - Do not spawn additional dependent subagents
-2. **ANALYZE** - Review subagent findings and assess impact
-3. **PRESENT** - Surface to user using blocker format (see above)
+```
+⛔ PHASE 2 BLOCKED
 
-Common mismatch causes:
-- Codebase evolved since plan creation
-- Plan assumptions were incorrect
-- Dependencies changed
-- Better approaches discovered during implementation
+Issue: Existing JWT implementation found in src/legacy/auth.js.
+The plan specifies creating new jwt.strategy.ts but doesn't
+mention legacy code.
 
-**Orchestrator response**: Do not attempt to resolve mismatches autonomously. Surface them immediately—the orchestrator's job is to coordinate, not to make architectural decisions without user input.
+Options:
+A) Proceed with new implementation, mark legacy for removal
+B) Refactor legacy code instead of creating new file
+C) Abort and revise the plan
+
+Recommendation: Option A - cleaner separation
+
+How should I proceed?
+```
 
 ## Resuming Interrupted Work
 
 When a plan has existing checkmarks:
 
-1. **Trust Completion**: Assume checked items are done correctly
-2. **Find Resume Point**: Locate first unchecked item
-3. **Verify Context**: Read surrounding completed work for context
-4. **Continue Forward**: Pick up implementation from unchecked items
-
-Only verify previous work if something seems inconsistent or broken.
-
-## Implementation Philosophy
-
-Plans are carefully designed guides, but judgment matters:
-
-- **Follow Intent**: Adapt to what you find while honoring the plan's goals
-- **Complete Phases**: Finish each phase fully before advancing
-- **Maintain Context**: Verify changes fit the broader codebase
-- **Communicate Issues**: Surface problems early rather than working around them
-- **Forward Momentum**: Focus on implementing solutions, not just checking boxes
-
-## Quality Gates
-
-Before marking any phase complete:
-
-| Check | Command/Action | Required |
-|-------|----------------|----------|
-| Tests Pass | `npm test` / `pytest` / project test command | Yes |
-| Lint Clean | `npm run lint` / project lint command | Yes |
-| Types Valid | `npm run typecheck` / type checking | Yes |
-| Build Succeeds | `npm run build` / project build command | Yes |
-| Manual Steps | As specified in plan | If listed |
-
-## Example Orchestration Session
-
-Here's how a typical implementation session flows:
+1. **Identify completed phases** - Trust checked items are done
+2. **Find resume point** - First phase with unchecked items
+3. **Verify state** - Quick sanity check that previous work exists
+4. **Continue** - Resume from unchecked phase
 
 ```
-USER: Implement the plan at docs/plans/auth-implementation.md
+● Plan Status: Resuming interrupted work
 
-ORCHESTRATOR: [Reads plan, analyzes phases]
+Completed Phases:
+  ✅ Phase 1: Database Schema
+  ✅ Phase 2: Authentication Service (partial)
 
-Phase 1: Database Schema
+Resume Point: Phase 2, Task 4 (jwt.strategy.ts)
 
-Now I'll spawn subagents for Phase 1 tasks in parallel:
-1. Create migration file
-2. Create password utilities
-
-● 2 Task agents launched (ctrl+o to expand)
-   ├─ Create users migration · Running in background
-   │  ⎿  Launched
-   └─ Create password utilities · Running in background
-      ⎿  Launched
-
-● Phase 1 Status:
-  - 🔄 Subagent abc123: Creating migration (running)
-  - 🔄 Subagent def456: Creating password utils (running)
-
-● Agent Output abc123
-  ⎿  Create users migration (24 lines)
-     (ctrl+o to expand)
-
-● Agent Output def456
-  ⎿  Create password utilities (18 lines)
-     (ctrl+o to expand)
-
-● Good progress:
-  - ✅ Migration file created
-  - ✅ Password utilities created
-
-  Now running verification:
-
-● 2 Task agents launched (ctrl+o to expand)
-   ├─ Phase 1 build/lint verify · Running in background
-   │  ⎿  Launched
-   └─ Update plan Phase 1 tasks · Running in background
-      ⎿  Launched
-
-● Agent Output verify123
-  ⎿  Phase 1 build/lint verify (15 lines)
-     (ctrl+o to expand)
-
-● Phase 1 Complete!
-
-  All verifications passed:
-  - ✅ Build passes
-  - ✅ Lint passes
-  - ✅ Tests pass (12 passing)
-
-  Manual verification steps:
-  - [ ] Verify users table exists in database
-
-  Confirm to proceed to Phase 2.
+Continuing from Phase 2...
 ```
+
+## Final Completion
+
+After all phases complete:
+
+```
+═══════════════════════════════════════════════════════════════
+● PLAN COMPLETE: User Authentication Implementation
+═══════════════════════════════════════════════════════════════
+
+Summary:
+  Phases Completed: 3/3
+  Files Created: 12
+  Files Modified: 5
+  Tests Added: 47
+  ADRs Created: 1 (ADR-0015)
+
+Quality Gates (all phases):
+  ✅ All exit conditions passed
+  ✅ All code reviews passed
+  ✅ All ADR compliance checks passed
+  ✅ Plan fully synchronized
+
+Final Verification:
+  - [ ] E2E tests pass: `npm run test:e2e`
+  - [ ] API documentation updated
+  - [ ] Security review checklist complete
+
+═══════════════════════════════════════════════════════════════
+Implementation complete. Ready for final review.
+═══════════════════════════════════════════════════════════════
+```
+
+## Progress Tracking
+
+Maintain awareness at the **plan level**:
+
+| Tracking Method | Scope | Purpose |
+|-----------------|-------|---------|
+| TodoWrite | Session | Track phase-level progress |
+| Plan File | Persistent | Record completed tasks/phases |
+| Status Updates | User | Communicate current state |
+
+Phase-level tracking is handled by `implement-phase`.
 
 ## Reference Materials
 
 See `references/plan-format.md` for:
 - Standard plan structure and formatting
 - Phase organization guidelines
-- Success criteria patterns
+- Exit condition patterns
 - Verification step templates
 
-## Key Principles Summary
+## Key Principles
 
-1. **Never implement directly** - Always delegate to subagents
-2. **Parallelize aggressively** - Independent tasks run concurrently
-3. **Track everything** - Plan file updates, TodoWrite, and status updates
-4. **Surface blockers immediately** - Don't make decisions autonomously
-5. **Verify before advancing** - Each phase gets full verification
-6. **Preserve context** - Orchestrator maintains the big picture
+1. **Delegate phase execution** - Use `implement-phase` for all phase work
+2. **Orchestrate, don't implement** - This skill coordinates, not codes
+3. **User confirmation between phases** - Pause for human validation (current mode)
+4. **Trust implement-phase results** - Act on structured return values
+5. **Surface blockers immediately** - Don't hide problems from the user
+6. **Track at plan level** - Let implement-phase handle phase-level tracking
+7. **Prepare for automation** - Structure supports future autonomous mode
+
+## Skill Dependencies
+
+```
+implement-plan
+    └── implement-phase (required)
+            ├── code-review (required)
+            └── adr (required for compliance)
+```
