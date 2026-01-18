@@ -7,6 +7,63 @@ description: Execute a single phase from an implementation plan with all quality
 
 Execute a **single phase** from an implementation plan with comprehensive quality gates. This skill is designed to be called by `implement-plan` but can also be invoked directly.
 
+---
+
+## CRITICAL: Orchestrator Pattern (MANDATORY)
+
+> **THIS SESSION IS AN ORCHESTRATOR. YOU MUST NEVER IMPLEMENT CODE DIRECTLY.**
+
+### What This Means
+
+| DO (Orchestrator) | DO NOT (Direct Implementation) |
+|-------------------|--------------------------------|
+| Spawn subagents to write code | Write code yourself |
+| Spawn subagents to create files | Use Write/Edit tools directly |
+| Spawn subagents to run tests | Run tests yourself |
+| Spawn subagents to fix issues | Fix code yourself |
+| Read files to understand context | Read files to copy/paste code |
+| Track progress with TodoWrite | Implement while tracking |
+| Coordinate and delegate | Do the work yourself |
+
+### Enforcement
+
+```
+⛔ VIOLATION: Using Write/Edit/NotebookEdit tools directly
+⛔ VIOLATION: Creating files without spawning a subagent
+⛔ VIOLATION: Fixing code without spawning a subagent
+⛔ VIOLATION: Running implementation commands directly
+
+✅ CORRECT: Task(subagent): "Create the AuthService at src/auth/..."
+✅ CORRECT: Task(subagent): "Fix the lint errors in src/auth/..."
+✅ CORRECT: Task(subagent): "Run npm test and report results..."
+```
+
+### Why Orchestration?
+
+1. **Context preservation** - Main session retains full plan context
+2. **Parallelization** - Independent tasks run concurrently
+3. **Clean separation** - Orchestration logic separate from implementation
+4. **Better error handling** - Failures don't pollute main context
+
+### Subagent Spawning Pattern
+
+```
+Task (run_in_background: true): "Create [file] implementing [feature].
+
+Context: Phase [N] - [Name]
+Requirements:
+- [Requirement 1]
+- [Requirement 2]
+
+RESPONSE FORMAT: Be concise. Return only:
+- STATUS: PASS/FAIL
+- FILES: created/modified files
+- ERRORS: any issues (omit if none)
+Write verbose output to logs/[task].log"
+```
+
+---
+
 ## Architecture
 
 ```
@@ -77,13 +134,59 @@ If a **Prompt Path** is provided (from `prompt-generator` skill):
 
 **Responsibility**: Execute all tasks in the phase using subagent delegation.
 
+> **REMINDER: You are an orchestrator. Spawn subagents for ALL implementation work.**
+
 **Process**:
-1. Read phase requirements and tasks from plan
+1. Read phase requirements and tasks from plan (orchestrator reads)
 2. Identify independent tasks for parallelization
-3. Spawn test subagents FIRST (verification-first)
-4. Spawn implementation subagents
-5. Monitor and handle blockers
-6. Collect results and changed files list
+3. **SPAWN** test subagents FIRST (verification-first)
+4. **SPAWN** implementation subagents
+5. Monitor subagent progress and handle blockers
+6. Collect results and changed files list from subagent responses
+
+**Subagent Spawning Examples**:
+
+```
+# Writing tests (FIRST - verification-first pattern)
+Task (run_in_background: true): "Write unit tests for SummaryAgentService.
+
+Context: Phase 5b-ii - SummaryAgent Service
+Location: agentic-core/src/agents/implementations/summary-agent/
+
+Test scenarios:
+- Successful summarization
+- Retry with feedback
+- Error handling
+
+RESPONSE FORMAT: STATUS, FILES created, test count. Write output to logs/."
+
+# Implementation (AFTER tests exist)
+Task (run_in_background: true): "Implement SummaryAgentService.
+
+Context: Phase 5b-ii - SummaryAgent Service
+Requirements from plan: [list requirements]
+Must pass the tests at: [test file path]
+
+RESPONSE FORMAT: STATUS, FILES created/modified, ERRORS if any."
+
+# Verification
+Task (run_in_background: true): "Run build and test verification.
+
+Commands: npm run build && npm run lint && npm test
+Report: PASS/FAIL per command, error details if any.
+Write full output to logs/verify-phase-5b-ii.log"
+```
+
+**What You Do vs What Subagents Do**:
+
+| Orchestrator (You) | Subagents |
+|--------------------|-----------|
+| Read plan/prompt | Write code |
+| Identify tasks | Create files |
+| Spawn subagents | Run tests |
+| Track progress | Fix issues |
+| Handle blockers | Build/lint |
+| Collect results | Report back |
 
 **Output**:
 ```
@@ -92,6 +195,7 @@ FILES_CREATED: [list]
 FILES_MODIFIED: [list]
 TEST_RESULTS: [summary]
 ERRORS: [if any]
+SUBAGENTS_SPAWNED: [count]
 ```
 
 **Gate**: Implementation must PASS to proceed.

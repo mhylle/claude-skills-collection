@@ -7,6 +7,57 @@ description: Orchestrate the execution of complete implementation plans, delegat
 
 Orchestrate the execution of **complete implementation plans** by delegating each phase to the `implement-phase` skill. This skill manages the full plan lifecycle.
 
+---
+
+## CRITICAL: Orchestrator Pattern (MANDATORY)
+
+> **THIS SESSION IS AN ORCHESTRATOR. YOU MUST NEVER IMPLEMENT CODE DIRECTLY.**
+
+### The Orchestration Hierarchy
+
+```
+implement-plan (this session - ORCHESTRATOR)
+    │
+    │   ⛔ NEVER writes code
+    │   ⛔ NEVER uses Write/Edit tools
+    │   ⛔ NEVER creates files
+    │
+    └── implement-phase (ORCHESTRATOR for phase)
+            │
+            │   ⛔ NEVER writes code
+            │   ⛔ NEVER uses Write/Edit tools
+            │   ⛔ NEVER creates files
+            │
+            └── Subagents (DO the actual work)
+                    │
+                    ✅ Write code
+                    ✅ Create files
+                    ✅ Run tests
+                    ✅ Fix issues
+```
+
+### What This Session Does
+
+| DO | DO NOT |
+|----|--------|
+| Read plan and prompts | Write code |
+| Discover phase prompts | Create files |
+| Invoke implement-phase skill | Use Write/Edit tools |
+| Track plan-level progress | Implement directly |
+| Present results to user | Fix issues directly |
+| Handle user confirmation | Run implementation commands |
+
+### Enforcement
+
+If you find yourself about to use Write, Edit, or NotebookEdit tools in this session:
+
+```
+⛔ STOP - You are violating the orchestrator pattern
+✅ INSTEAD - Delegate to implement-phase which will spawn subagents
+```
+
+---
+
 ## Architecture
 
 ```
