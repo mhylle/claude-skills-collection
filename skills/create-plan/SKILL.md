@@ -15,6 +15,28 @@ Create detailed, well-researched implementation plans through interactive collab
 - Structuring complex refactoring work
 - Any task requiring upfront planning and design
 
+## Orchestration Model
+
+This skill operates as an **orchestrator**, not a direct executor.
+
+**Core Principle**: The orchestrator coordinates work but delegates execution to specialized subagents.
+
+| Activity | Delegation |
+|----------|------------|
+| Codebase research | Delegate to: `codebase-locator`, `codebase-analyzer`, `Explore` |
+| Pattern analysis | Delegate to: `codebase-analyzer` |
+| Plan writing | Delegate to: plan-writer subagent |
+| Decision making | Orchestrator retains this responsibility |
+| User interaction | Orchestrator retains this responsibility |
+
+**Subagent Expectations**:
+- Subagents return concise findings with `file:line` references
+- Extensive findings are written to files (subagent returns path + summary)
+- Subagents do NOT make architectural decisions
+- Subagents do NOT update TodoWrite
+
+See `docs/references/subagent-guidelines.md` for complete subagent protocols.
+
 ## Initial Input Handling
 
 Parse the user's request to identify:
@@ -48,6 +70,11 @@ For each research task, provide:
 - Specific directories to examine
 - Exact patterns or code to find
 - Required output: file:line references
+
+**Subagent Output Requirements**:
+- Return concise findings with `file:line` references
+- If findings exceed ~50 lines, write to `docs/findings/{topic}.md` and return path + summary
+- Do NOT include verbose explanations the orchestrator already has
 
 **Read all identified files completely** - no partial reads or summaries.
 
@@ -118,9 +145,26 @@ Get explicit approval before writing the full plan.
 
 ### Phase 6: Write the Plan
 
-Write the implementation plan to the designated location:
+**Delegate plan writing to a subagent** - the orchestrator does not write directly.
 
-**Default path**: `docs/plans/YYYY-MM-DD-description.md`
+**Orchestrator prepares**:
+1. Complete plan content (all sections filled out)
+2. Target file path: `docs/plans/YYYY-MM-DD-description.md`
+3. Writing instructions for subagent
+
+**Spawn plan-writer subagent with**:
+```
+Task: Write implementation plan to file
+
+File path: docs/plans/YYYY-MM-DD-description.md
+
+Content to write:
+[Full plan content prepared by orchestrator]
+
+Return: File path written + confirmation
+```
+
+**Subagent returns**: file path + write confirmation
 
 Use this structure:
 

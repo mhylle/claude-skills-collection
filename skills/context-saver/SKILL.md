@@ -9,6 +9,33 @@ description: Save session context to disk for seamless continuation in new chat 
 
 This skill enables structured preservation of working context to disk, allowing seamless continuation of complex tasks across chat sessions. It extracts signal from noise, capturing essential state while discarding ephemeral details.
 
+## Orchestration Model
+
+Context-saver uses the orchestrator pattern to minimize context consumption during extraction:
+
+- **Orchestrator** prepares a minimal context packet containing only essential metadata
+- **Subagent** performs the heavy lifting: reading files, extracting code sections, documenting state
+- This separation keeps orchestrator context lean while subagent handles verbose file operations
+
+Reference: `docs/references/subagent-guidelines.md`
+
+## Minimal Context Transfer Pattern
+
+When spawning the extraction subagent, the orchestrator provides ONLY:
+
+- **Goal**: 1-2 sentences describing what the user is trying to achieve
+- **Key decisions made**: Bullet list of choices, not full explanations
+- **Active file paths**: Paths only, NOT file contents
+- **Current phase/status**: Where in the journey (planning, implementing, debugging, etc.)
+- **Blockers**: Brief list of impediments
+
+The subagent discovers:
+
+- File contents by reading them directly
+- Code excerpts and relevant line numbers
+- Detailed state by inspecting the actual files
+- Relationships between components through exploration
+
 ## When to Use
 
 - User explicitly requests context saving ("save context", "checkpoint this")
@@ -128,52 +155,79 @@ Create context files in `docs/context/` or project root as `CONTEXT-{topic}.md`:
 
 ## Extraction Process
 
-### Step 1: Identify Trajectory
+The extraction process is split between orchestrator and subagent to minimize context consumption.
+
+### Orchestrator Steps (Lightweight)
+
+#### Step 1: Identify Trajectory
 
 Before extracting anything, answer:
 - What transformation is the user trying to achieve?
 - What would "done" look like?
 - What constraints exist?
 
-### Step 2: Map Active Code
+#### Step 2: Map Active Code
 
 Scan recent tool calls to identify:
 - Files with Write/Edit operations → primary focus
 - Files with multiple Read operations → secondary context
 - Grep/Glob patterns → areas of exploration
 
-For each active file, capture:
-- Specific line ranges being modified
-- The "why" behind modifications
-- Relationships to other files
+Capture file paths and brief reasons, NOT file contents.
 
-### Step 3: Extract Decisions
+### Spawn Extraction Subagent
 
-Review conversation for:
+Orchestrator spawns subagent with minimal context packet:
+
+```
+Task: "Extract and save session context.
+
+Context packet:
+- Goal: {1-2 sentence goal}
+- Decisions: {bullet list}
+- Active files: {paths only}
+- Phase: {current phase}
+
+Read the active files, extract key code sections, document decisions and approaches.
+Write to docs/context/CONTEXT-{topic}.md following the template in this skill.
+Return: file path + summary."
+```
+
+### Subagent Steps (Heavy Lifting)
+
+#### Step 3: Extract Decisions
+
+Review conversation context and active files for:
 - Explicit choices ("let's use X instead of Y")
 - Implicit preferences (user accepted one approach, rejected another)
 - Constraints stated or discovered
 
-### Step 4: Capture Approaches
+#### Step 4: Capture Approaches
 
 Document what was tried:
 - **Succeeded**: Brief note on what worked
 - **Failed**: Crucially, why it failed (prevents re-trying)
 - **In Progress**: Current state and remaining work
 
-### Step 5: Preserve User Requirements
+#### Step 5: Preserve User Requirements
 
 Search conversation for:
 - Direct quotes of user requirements
 - Specific asks even if mentioned once
 - Preferences and style guidance
 
-### Step 6: Define Next Steps
+#### Step 6: Define Next Steps
 
 Convert remaining work into actionable items:
 - Each step should reference specific files/functions
 - Order by logical dependency
 - Include enough context to start without re-reading everything
+
+### Subagent Returns
+
+Subagent writes the CONTEXT file and returns:
+- File path to the saved context
+- 3-line summary of what was captured
 
 ## Quality Checklist
 

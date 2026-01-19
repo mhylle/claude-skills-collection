@@ -14,6 +14,41 @@ A comprehensive E2E testing skill using Playwright MCP for systematic testing of
 - **Tracks history** - Identifies flaky areas and suggests variations
 - **Produces dual reports** - Human-readable and machine-readable formats
 
+## Orchestration Model
+
+This skill operates as an **orchestrator** for test execution. Playwright MCP interactions are extremely context-heavy and will exhaust orchestrator context if run directly.
+
+### Architecture
+
+| Role | Responsibility |
+|------|----------------|
+| **Orchestrator** | Reads regime, plans execution, tracks progress, synthesizes results |
+| **Subagents** | Execute Playwright MCP tests, write results to files, return concise summaries |
+
+### Key Principles
+
+1. **ALL Playwright MCP interactions go through subagents** - The orchestrator never directly invokes Playwright tools
+2. **Subagents write detailed output to files** - Only return summaries in chat
+3. **Orchestrator coordinates and synthesizes** - Reads result files, generates reports, updates history
+4. **Parallel execution where possible** - Group independent scenarios for concurrent subagent execution
+
+### Subagent Communication Pattern
+
+```
+Orchestrator                          Subagent
+    |                                     |
+    |-- Spawn with scenario list -------->|
+    |                                     |-- Run Playwright MCP
+    |                                     |-- Capture evidence
+    |                                     |-- Write to results file
+    |<-- Return: pass/fail + file path ---|
+    |
+    |-- Read result file
+    |-- Update tracking
+```
+
+Reference: `docs/references/subagent-guidelines.md`
+
 ## Prerequisites
 
 Before using this skill, verify Playwright MCP is available:
@@ -51,6 +86,8 @@ If unclear, ask: "Would you like to set up a test regime, run existing tests, or
 
 **Purpose**: Create or update test regime through interactive discovery.
 
+**Note on Orchestration**: While Setup Mode involves interactive user dialogue, heavy Playwright exploration (Step 2) should use subagents. The orchestrator handles user interaction and regime creation; subagents perform browser automation and return discovered elements.
+
 ### Entry Points
 
 Determine entry point from user context:
@@ -72,17 +109,28 @@ Ask for any missing information:
 - **Key workflows**: What are the critical user journeys?
 - **Existing docs**: Any README, user stories, or specs?
 
-#### Step 2: Explore Application
+#### Step 2: Explore Application (via Subagent)
 
-Use Playwright MCP to explore:
+Spawn an exploration subagent with instructions:
 
 ```
-Navigate to base URL
-Capture accessibility snapshot
-Identify:
-  - Navigation elements (menus, links)
-  - Interactive elements (buttons, forms)
-  - Key pages and sections
+Task: Explore application at [base_url]
+
+Instructions:
+1. Navigate to base URL
+2. Capture accessibility snapshot
+3. Identify all navigation elements, interactive elements, key pages
+4. Write discoveries to: tests/e2e/discovery/exploration-{timestamp}.json
+5. Return: Summary of pages found + file path
+
+Output format for file:
+{
+  "pages": [...],
+  "navigation_elements": [...],
+  "interactive_elements": [...],
+  "forms": [...],
+  "requires_auth": [...]
+}
 ```
 
 For each discovered element, note:
@@ -220,7 +268,9 @@ Notes: "SKIPPED: Payment gateway sandbox unavailable. Ticket: PAY-123"
 
 ---
 
-### Pre-Run Checks
+### Pre-Run (Orchestrator)
+
+The orchestrator performs these steps directly (no Playwright):
 
 1. **Verify regime exists**: Check for `tests/e2e/test_regime.yml`
    - If missing: "No test regime found. Would you like to run Setup mode first?"
@@ -228,60 +278,167 @@ Notes: "SKIPPED: Payment gateway sandbox unavailable. Ticket: PAY-123"
 2. **Load history**: Check for `tests/e2e/test_history.json`
    - If exists: Note previously flaky scenarios for extra attention
 
-3. **Verify Playwright MCP**: Confirm browser automation is available
+3. **Group scenarios for execution**:
+   - Identify independent scenarios that can run in parallel
+   - Respect blocking dependencies (run blockers first)
+   - Create scenario groups for subagent distribution
 
-### Execution Protocol
+4. **Create TodoWrite tracking**:
+   - Add todo item for each scenario group
+   - Track overall test run progress
 
-#### Rule 1: Always Start from Beginning
+5. **Verify Playwright MCP**: Confirm browser automation is available for subagents
 
-Every test run starts fresh from Step 1 of Scenario 1. Never skip steps or use cached state.
+### Execution (Subagents)
 
-#### Rule 2: Sequential Execution
-
-Execute scenarios in order. For each scenario:
+For each scenario group, spawn a test execution subagent:
 
 ```
-1. Check preconditions
-2. Execute each step:
-   a. Perform action via Playwright MCP
-   b. Capture screenshot
-   c. Capture DOM state
-   d. Capture network activity
-   e. Capture console logs
-   f. Evaluate success using flexibility criteria
-3. Record result (pass/fail/blocked/skipped)
-   - PASS: Step completed successfully
-   - FAIL: Step failed OR element not found OR feature missing
-   - BLOCKED: Dependent on a failed blocking scenario
-   - SKIPPED: Only for valid environmental reasons (see Test Status Integrity)
-4. If failed: Try alternatives if defined
-5. If blocking failure: Stop dependent scenarios
+Task: Execute E2E test scenarios
+
+Scenarios: [list of scenario definitions from regime]
+Base URL: [from regime metadata]
+Credentials: [if needed]
+
+Instructions:
+1. Start fresh - no cached state
+2. For each scenario:
+   a. Check preconditions
+   b. Execute each step via Playwright MCP
+   c. Capture evidence (screenshots, DOM, network, console)
+   d. Evaluate success using flexibility criteria
+   e. Try alternatives if primary path fails
+3. Write detailed results to: tests/e2e/results/{scenario-name}.json
+4. Return ONLY: scenario name, pass/fail, result file path
+
+Result file format:
+{
+  "scenario": "name",
+  "result": "pass|fail|blocked",
+  "duration_ms": 1234,
+  "steps": [...],
+  "evidence_paths": [...],
+  "discoveries": [...],
+  "error": null | { "step": N, "message": "..." }
+}
 ```
 
-#### Rule 3: Failure Handling
+#### Execution Rules for Subagents
 
-When a step fails:
+**Rule 1: Always Start Fresh**
+Every test run starts from Step 1 of Scenario 1. Never skip steps or use cached state.
 
-1. **Mark as failed** - Record failure with evidence
-2. **Try alternatives** - If alternatives defined, attempt them
-3. **Assess blocking impact**:
-   - Check if this scenario blocks others
-   - If blocking: Mark dependent scenarios as "blocked"
-   - If non-blocking: Continue to next scenario
-4. **Never fix** - Document the issue, do not attempt repairs
+**Rule 2: Result Status**
+- PASS: Step completed successfully
+- FAIL: Step failed OR element not found OR feature missing
+- BLOCKED: Dependent on a failed blocking scenario
+- SKIPPED: Only for valid environmental reasons (see Test Status Integrity)
 
-#### Rule 4: Runtime Discovery
+**Rule 3: Failure Handling**
+1. Mark as failed with full evidence
+2. Try alternatives if defined in scenario
+3. Continue to next scenario (let orchestrator handle blocking logic)
+4. Never fix - document only
 
-While executing, watch for undocumented paths:
-
+**Rule 4: Runtime Discovery**
+Note any undocumented paths discovered during execution:
 - New navigation options not in regime
 - Alternative ways to complete actions
 - Unexpected UI states
 
-For discoveries:
-1. Queue for testing (up to `discovery_cap` limit)
-2. Execute after all defined scenarios complete
-3. Document findings in report
+Include discoveries in result file for orchestrator review.
+
+### Post-Run (Orchestrator)
+
+After all test subagents complete:
+
+1. **Read result files** from `tests/e2e/results/`
+   - Aggregate pass/fail counts
+   - Identify regressions vs. history
+   - Flag flaky scenarios
+
+2. **Spawn report subagent**:
+   ```
+   Task: Generate test reports
+
+   Input: tests/e2e/results/*.json
+   Output:
+     - tests/e2e/reports/YYYY-MM-DD-HHmmss-report.md
+     - tests/e2e/reports/YYYY-MM-DD-HHmmss-report.json
+
+   Return: Report file paths + summary stats
+   ```
+
+3. **Spawn history update subagent**:
+   ```
+   Task: Update test history
+
+   Input:
+     - Current results: tests/e2e/results/*.json
+     - History file: tests/e2e/test_history.json
+
+   Instructions:
+     - Append current run to history
+     - Recalculate flaky scenarios
+     - Generate suggested variations for flaky areas
+
+   Return: Updated flaky count + new suggestions count
+   ```
+
+4. **Present summary to user**:
+   - Overall pass/fail counts
+   - Critical failures (blocking scenarios)
+   - Regressions (newly failing)
+   - Offer next steps
+
+### Subagent Instructions for Test Execution
+
+Each test subagent receives specific instructions. Use this template:
+
+```markdown
+## Test Execution Subagent
+
+You are executing E2E tests via Playwright MCP. Follow these instructions exactly.
+
+### Input
+- **Scenarios**: [YAML scenario definitions]
+- **Base URL**: [URL]
+- **Credentials**: [if applicable]
+
+### Execution Protocol
+1. Navigate to base URL
+2. For each scenario in order:
+   - Verify preconditions
+   - Execute each step using Playwright MCP tools
+   - Capture screenshot after each action
+   - Log network requests and console output
+   - Evaluate success criteria per step
+
+### Evidence Capture
+For each step, save:
+- Screenshot: `tests/e2e/evidence/{scenario}/step-{N}/screenshot.png`
+- DOM snapshot: `tests/e2e/evidence/{scenario}/step-{N}/dom.html`
+- Network log: `tests/e2e/evidence/{scenario}/step-{N}/network.json`
+- Console log: `tests/e2e/evidence/{scenario}/step-{N}/console.txt`
+
+### Output Requirements
+Write detailed results to: `tests/e2e/results/{scenario}.json`
+
+Return to orchestrator (chat response):
+```
+Scenario: {name}
+Result: {PASS|FAIL|BLOCKED}
+File: tests/e2e/results/{scenario}.json
+```
+
+Keep response under 10 lines per scenario. All details go in the file.
+
+### What NOT to Do
+- Do NOT update TodoWrite (orchestrator's job)
+- Do NOT fix failing tests
+- Do NOT make architectural decisions
+- Do NOT explore beyond assigned scenarios
+```
 
 ### Flexibility Criteria Evaluation
 
@@ -300,29 +457,34 @@ For `ai_judgment`, provide confidence level:
 
 ### Evidence Bundle
 
-For each step, capture and store:
+Evidence is captured and written by test execution subagents. The orchestrator only references file paths from result files.
+
+**Directory Structure** (written by subagents):
 
 ```
-evidence/
+tests/e2e/evidence/
   scenario-name/
     step-01/
       screenshot.png
-      dom-snapshot.html
-      network-log.json
-      console-log.txt
-      accessibility-snapshot.yaml
+      dom.html
+      network.json
+      console.txt
+    step-02/
+      ...
 ```
+
+**Orchestrator Access**: Read evidence paths from `tests/e2e/results/{scenario}.json` to include in reports. Do not read evidence files directly unless user requests specific details.
 
 ### History Integration
 
-After run completes:
+History updates are performed by a dedicated subagent (see Post-Run Orchestrator section). The subagent:
 
-1. **Compare to previous runs**:
+1. **Compares to previous runs**:
    - Same scenario passed before but failed now? Flag regression
    - Same scenario failed before? Note persistent issue
    - Intermittent pass/fail? Mark as flaky
 
-2. **Update history file**:
+2. **Updates history file**:
 ```json
 {
   "runs": [
@@ -357,9 +519,10 @@ After run completes:
 - `blocked`: Depends on failed blocking scenario
 - `skipped`: ONLY for valid environmental reasons (with ticket reference)
 
-3. **Generate variations for flaky areas**:
+3. **Generates variations for flaky areas**:
    - If scenario failed 3+ times in last 10 runs: Auto-suggest new test variations
    - Add to `suggested_variations` in history
+   - Return summary to orchestrator: flaky count + new suggestions count
 
 ---
 
@@ -367,9 +530,11 @@ After run completes:
 
 **Purpose**: Generate actionable reports from test results.
 
+**Note on Orchestration**: Report generation is handled by a dedicated report subagent (spawned in Post-Run). The orchestrator reads the generated reports and presents summaries to the user. For standalone report requests (not after a run), spawn a report subagent to read result files and generate reports.
+
 ### Report Types
 
-Generate both reports after every run:
+Generate both reports after every run (via report subagent):
 
 #### Human-Readable Report
 
@@ -539,18 +704,21 @@ Before completing any mode, verify:
 
 ### Setup Mode
 - [ ] All entry points explored (URL, description, docs)
+- [ ] Exploration subagent used for Playwright discovery
 - [ ] Alternative paths documented
 - [ ] Blocking dependencies identified
 - [ ] Flexibility criteria defined for dynamic content
 - [ ] Test regime file created and valid YAML
 
 ### Run Mode
-- [ ] Started from beginning (no skipped steps)
-- [ ] Every step has evidence captured
-- [ ] Failures have alternatives attempted
-- [ ] Blocking impacts assessed
-- [ ] Discoveries queued and tested
-- [ ] History updated
+- [ ] Test regime loaded and parsed
+- [ ] Scenarios grouped for parallel execution
+- [ ] TodoWrite tracking created
+- [ ] Test subagents spawned (not running Playwright directly)
+- [ ] Result files collected from all subagents
+- [ ] Report subagent generated both report formats
+- [ ] History subagent updated test history
+- [ ] Summary presented to user
 
 ### Report Mode
 - [ ] Both human and machine reports generated

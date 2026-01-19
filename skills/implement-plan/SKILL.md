@@ -84,10 +84,22 @@ Task (run_in_background: true): "Run full verification suite: npm run lint && np
 Task (subagent_type: Explore, run_in_background: true): "Find how error handling is implemented in existing services. Look for patterns in src/services/ for consistent error response formats."
 ```
 
-**Plan Updates**: Spawn subagent to update plan file checkboxes
+**Plan Updates**: Spawn subagent to update plan file checkboxes. **The orchestrator MUST NEVER edit plan files directly**—even marking a single checkbox complete must go through a subagent.
 ```
 Task (run_in_background: true): "Update the plan file at docs/plans/auth.md. Mark all Phase 2 tasks as complete by changing [ ] to [x] for the items listed."
 ```
+
+### Subagent Response Requirements
+
+Subagents must return **concise results only**. Reference `docs/references/subagent-guidelines.md` for complete guidelines.
+
+**Critical rules**:
+- Subagents return brief summaries, not full file contents or verbose logs
+- Large outputs (generated code, test results, logs) go to files on disk, not chat
+- Return only: status, file paths created/modified, key findings, and errors
+- If a subagent needs to share substantial data, it writes to a file and returns the path
+
+**Why this matters**: The orchestrator's context must remain clean for coordination. Verbose subagent responses pollute context and reduce the orchestrator's effectiveness across long implementation sessions.
 
 ### Parallelization Strategy
 
@@ -325,3 +337,5 @@ See `references/plan-format.md` for:
 4. **Surface blockers immediately** - Don't make decisions autonomously
 5. **Verify before advancing** - Each phase gets full verification
 6. **Preserve context** - Orchestrator maintains the big picture
+7. **Subagents return concise results only** - Brief summaries, not verbose output
+8. **Large outputs go to files, not chat** - Keep orchestrator context clean

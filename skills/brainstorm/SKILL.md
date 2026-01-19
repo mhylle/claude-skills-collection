@@ -9,6 +9,17 @@ description: Interactive idea refinement using Socratic questioning methodology.
 
 This skill provides structured brainstorming through Socratic questioning, multi-perspective analysis (Six Thinking Hats, SCAMPER), and proactive research. It helps users refine raw ideas into well-structured concepts ready for implementation planning.
 
+## Orchestration Context
+
+This skill uses a hybrid orchestration pattern. See `docs/references/subagent-guidelines.md` for subagent protocols.
+
+| Phase | Execution Mode | Notes |
+|-------|----------------|-------|
+| **Phase 1-2** (Capture, Socratic) | Direct interaction with user | Acceptable - requires conversational flow |
+| **Phase 3** (Context Gathering) | Orchestrator spawns research subagents | Parallel research agents for web and codebase |
+| **Phase 4-5** (Analysis, Synthesis) | Orchestrator synthesizes subagent findings | Apply frameworks to consolidated research |
+| **Phase 6** (Output) | Delegate file writing to subagent | Subagent writes brainstorm file |
+
 ## Initial Response
 
 When this skill is invoked, respond:
@@ -111,6 +122,11 @@ Task(subagent_type="codebase-pattern-finder",
              - Testing approaches used")
 ```
 
+**Subagent Requirements**:
+- All subagents should follow `docs/references/subagent-guidelines.md`
+- Subagents return concise findings (key insights, not raw data)
+- Large research results should be written to files (e.g., `docs/research/`)
+
 Wait for all agents to complete using AgentOutputTool before proceeding.
 
 ### Phase 4: Multi-Perspective Analysis
@@ -179,7 +195,21 @@ Consolidate all findings into actionable insights:
 
 ### Phase 6: Structure & Output
 
-Structure the concept into logical components and write results.
+Structure the concept into logical components and delegate file writing.
+
+**Orchestrator Responsibilities**:
+1. Prepare complete content structure from synthesis
+2. Determine output location
+3. Spawn subagent to write the brainstorm file
+4. Subagent returns: file path + confirmation
+
+**Delegate File Writing**:
+```
+Task(subagent_type="file-writer",
+     prompt="Write brainstorm document to [path].
+             Content: [structured content from synthesis]
+             Return: file path and confirmation of successful write.")
+```
 
 **Determine Output Location**:
 - Default: `docs/brainstorms/YYYY-MM-DD-{topic-slug}.md`

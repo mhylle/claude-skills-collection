@@ -77,31 +77,39 @@ Use the Task tool to spawn parallel sub-agents. Match agents to research needs:
 
 **For "Where is X?** questions:
 ```
-Task(subagent_type="codebase-locator", prompt="Find all files related to [topic]...")
+Task(subagent_type="codebase-locator", prompt="Find all files related to [topic]... Be concise. Write extensive findings to docs/findings/. Return summary + file path.")
 ```
 
 **For "How does X work?"** questions:
 ```
-Task(subagent_type="codebase-analyzer", prompt="Trace the implementation of [feature]...")
+Task(subagent_type="codebase-analyzer", prompt="Trace the implementation of [feature]... Be concise. Write extensive findings to docs/findings/. Return summary + file path.")
 ```
 
 **For "How should I implement X?"** questions:
 ```
-Task(subagent_type="codebase-pattern-finder", prompt="Find patterns for [type] including examples...")
+Task(subagent_type="codebase-pattern-finder", prompt="Find patterns for [type] including examples... Be concise. Write extensive findings to docs/findings/. Return summary + file path.")
 ```
 
 **For "Why was X done this way?"** questions:
 ```
-Task(subagent_type="docs-locator", prompt="Find design docs and ADRs related to [topic]...")
-Task(subagent_type="docs-analyzer", prompt="Extract decisions and rationale for [topic]...")
+Task(subagent_type="docs-locator", prompt="Find design docs and ADRs related to [topic]... Be concise. Write extensive findings to docs/findings/. Return summary + file path.")
+Task(subagent_type="docs-analyzer", prompt="Extract decisions and rationale for [topic]... Be concise. Write extensive findings to docs/findings/. Return summary + file path.")
 ```
 
 **For external documentation needs** (only if explicitly requested):
 ```
-Task(subagent_type="web-search-researcher", prompt="Research [library/API] documentation for [topic]...")
+Task(subagent_type="web-search-researcher", prompt="Research [library/API] documentation for [topic]... Be concise. Write extensive findings to docs/findings/. Return summary + file path.")
 ```
 
 **Spawn multiple agents in parallel** (single message with multiple Task tool calls) for efficiency.
+
+### Subagent Response Requirements
+
+All sub-agents must follow the guidelines in `docs/references/subagent-guidelines.md`:
+
+- Subagents must return concise results focused on the assigned task
+- Findings exceeding ~50 lines should be written to file
+- Return format: brief summary + file path (if written to file)
 
 ### Step 4: Await and Compile Results
 
@@ -191,10 +199,10 @@ For complex questions that span multiple concerns, spawn multiple specialized ag
 
 **Example: "How does authentication work and why was JWT chosen?"**
 ```
-Task(subagent_type="codebase-locator", prompt="Find all auth-related files...")
-Task(subagent_type="codebase-analyzer", prompt="Trace auth flow implementation...")
-Task(subagent_type="docs-locator", prompt="Find auth design docs and ADRs...")
-Task(subagent_type="docs-analyzer", prompt="Extract auth decisions and rationale...")
+Task(subagent_type="codebase-locator", prompt="Find all auth-related files... Be concise. Write extensive findings to docs/findings/. Return summary + file path.")
+Task(subagent_type="codebase-analyzer", prompt="Trace auth flow implementation... Be concise. Write extensive findings to docs/findings/. Return summary + file path.")
+Task(subagent_type="docs-locator", prompt="Find auth design docs and ADRs... Be concise. Write extensive findings to docs/findings/. Return summary + file path.")
+Task(subagent_type="docs-analyzer", prompt="Extract auth decisions and rationale... Be concise. Write extensive findings to docs/findings/. Return summary + file path.")
 ```
 
 ## Best Practices
@@ -230,6 +238,15 @@ When relevant, include findings from documentation:
 - ADR decisions that explain "why"
 - Design documents that provide context
 - Specifications that define constraints
+
+### Output Size Management
+Manage subagent output size to maintain orchestrator efficiency:
+
+- **Return inline** (<50 lines): Direct answers, short lists, simple findings
+- **Write to file** (>50 lines): Detailed traces, large code excerpts, comprehensive analyses
+- **Standard file location**: `docs/findings/{topic}-{date}.md`
+
+When subagents write to file, they should return only a brief summary and the file path to the orchestrator.
 
 ## Example Research Questions
 

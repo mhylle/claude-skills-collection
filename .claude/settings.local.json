@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(bash:*)",
+      "Bash(ls:*)",
+      "Bash(dir /b \"C:\\\\projects\\\\claude-skills-collection\\\\skills\")",
+      "Bash(git pull:*)",
+      "Bash(git checkout:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/context-check.cmd",
+            "statusMessage": "Checking for saved context..."
+          }
+        ]
+      }
+    ]
+  }
+}

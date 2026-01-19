@@ -9,6 +9,15 @@ description: Update existing implementation plans through user feedback with tho
 
 This skill enables intelligent iteration on existing implementation plans. Rather than rewriting plans from scratch, it makes surgical, well-researched updates while preserving the plan's existing structure and quality standards.
 
+## Orchestration Note
+
+This skill operates as an **orchestrator** - it coordinates work but delegates execution to specialized subagents.
+
+- **All edits to plan files go through subagents** - the orchestrator never directly modifies plan content
+- **Coordination flow**: research → edit → validate
+- Subagents receive focused instructions and return concise results
+- See `docs/references/subagent-guidelines.md` for subagent patterns and best practices
+
 ## Initial Input Handling
 
 Parse the user's request to identify two required elements:
@@ -57,6 +66,11 @@ Research scenarios that warrant sub-agent spawning:
 - Technical feasibility of proposed changes is uncertain
 - Alternative approaches need evaluation
 
+**Subagent Conciseness Requirements**:
+- Subagents must return concise, actionable findings
+- Large outputs (code samples, extensive analysis) go to files rather than inline responses
+- Research subagents provide file:line references, not full code excerpts
+
 **Do NOT research when**:
 - Changes are cosmetic or structural (reordering, rewording)
 - The modification is already well-understood
@@ -83,7 +97,18 @@ Wait for user confirmation before proceeding to Step 4.
 
 ### Step 4: Make Surgical Edits
 
-Update the plan using Edit tool with these principles:
+**Delegate edits to a subagent** - the orchestrator does not directly modify plan files.
+
+**Subagent Delegation Pattern**:
+1. **Orchestrator prepares edit instructions** - Compile specific changes needed with exact locations
+2. **Spawn edit subagent** - Provide the subagent with:
+   - Path to the plan file
+   - Precise edit instructions (what to change and where)
+   - The principles below as editing guidelines
+3. **Subagent makes edits** - Executes surgical edits using the Edit tool
+4. **Subagent returns confirmation** - Reports what was changed with before/after summaries
+
+**Instructions for the Edit Subagent**:
 
 **Structural Integrity**
 - Maintain existing heading hierarchy
