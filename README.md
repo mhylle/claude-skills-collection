@@ -206,13 +206,59 @@ Each phase passes through these gates:
 │           │ PASS                                        │
 │           ▼                                             │
 │  ┌──────────────────┐                                   │
-│  │ 6. Complete       │ ─── Report to orchestrator       │
+│  │ 6. Prompt Archive │ ─── Move prompt to completed/    │
+│  └────────┬─────────┘                                   │
+│           │ PASS                                        │
+│           ▼                                             │
+│  ┌──────────────────┐                                   │
+│  │ 7. Complete       │ ─── Report to orchestrator       │
 │  └──────────────────┘                                   │
 │                                                          │
 └─────────────────────────────────────────────────────────┘
 ```
 
 **Extensible**: New steps can be added (security-scan, performance-check, etc.)
+
+## Prompt Integration
+
+The `prompt-generator` skill creates phase prompts that are automatically discovered:
+
+```
+prompt-generator → docs/prompts/phase-N-name.md
+                          ↓
+implement-plan discovers prompts automatically
+                          ↓
+implement-phase uses prompt for orchestration
+                          ↓
+On completion → docs/prompts/completed/
+```
+
+## Orchestrator Pattern
+
+**Critical**: implement-plan and implement-phase are ORCHESTRATORS. They never write code directly.
+
+```
+implement-plan (ORCHESTRATOR)
+    │   ⛔ NEVER writes code
+    │   ⛔ NEVER uses Write/Edit tools
+    │
+    └── implement-phase (ORCHESTRATOR)
+            │   ⛔ NEVER writes code
+            │
+            └── Subagents (DO the work)
+                    ✅ Write code
+                    ✅ Create files
+                    ✅ Run tests
+```
+
+Subagents must be **concise** - return only STATUS, FILES, ERRORS. Large outputs go to disk.
+
+## Code Review: Clean Baseline Principle
+
+Every phase must end clean. Therefore:
+- **All errors at review time were introduced by this phase**
+- **All errors are blocking** - no exceptions
+- **Inherited codebase errors = our job to fix**
 
 ## Directory Structure
 
@@ -265,12 +311,13 @@ claude-skills-collection/
 
 ## Design Principles
 
-1. **Orchestration over Implementation**: Skills coordinate, subagents execute
-2. **Quality Gates**: Every phase must pass verification before proceeding
-3. **Extensibility**: Pipeline steps can be added without core changes
-4. **Document, Don't Critique**: Analyzers explain what exists without unsolicited suggestions
-5. **Parallel Execution**: Independent tasks run concurrently
-6. **Precise References**: All analysis includes file:line references
+1. **Orchestration over Implementation**: Skills coordinate, subagents execute - never write code directly
+2. **Quality Gates**: Every phase must pass ALL verification steps before proceeding
+3. **Clean Baseline**: Every phase ends clean; all errors are blocking, no exceptions
+4. **Context Preservation**: Subagents return concise responses; large outputs go to disk
+5. **Extensibility**: Pipeline steps can be added without core changes
+6. **Parallel Execution**: Independent tasks run concurrently via background subagents
+7. **Precise References**: All analysis includes file:line references
 
 ## License
 
