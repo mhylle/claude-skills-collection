@@ -186,6 +186,77 @@ If a **Prompt Path** is provided (from `prompt-generator` skill):
 
 ## Phase Execution Pipeline
 
+### CRITICAL: Continuous Execution (MANDATORY)
+
+> **The entire pipeline (Steps 1-7) MUST execute as one continuous flow.**
+
+After EACH step completes (including skill invocations), **IMMEDIATELY proceed to the next step** WITHOUT waiting for user input.
+
+**Pause Points (ONLY these):**
+
+| Scenario | Action |
+|----------|--------|
+| Step returns BLOCKED status | Stop and present blocker to user |
+| Step 7 (Completion Report) done | Await user confirmation before next phase |
+| Maximum retries exhausted | Present failure and options to user |
+
+**DO NOT PAUSE after:**
+- Code review returns PASS or PASS_WITH_NOTES → Continue to Step 4
+- ADR compliance returns PASS → Continue to Step 5
+- Any successful step completion → Continue to next step
+- Skill invocation completes successfully → Process result and continue
+
+**Continuous Flow Example:**
+```
+Step 1: Implementation → PASS
+        ↓ (immediately)
+Step 2: Exit Conditions → PASS
+        ↓ (immediately)
+Step 3: Code Review Skill → PASS_WITH_NOTES
+        ↓ (immediately, DO NOT WAIT)
+Step 4: ADR Compliance → PASS
+        ↓ (immediately)
+Step 5: Plan Sync → PASS
+        ↓ (immediately)
+Step 6: Prompt Archival → PASS
+        ↓ (immediately)
+Step 7: Completion Report → Present to user
+        ↓ (NOW wait for user confirmation)
+```
+
+---
+
+### Step Completion Checklist (MANDATORY)
+
+> **Before reporting phase complete, ALL steps must be executed.**
+
+Use this checklist internally. If any step is missing, execute it before completing:
+
+```
+PHASE COMPLETION VERIFICATION:
+- [ ] Step 1: Implementation - Subagents spawned, work completed
+- [ ] Step 2: Exit Conditions - Build, runtime, functional all verified
+- [ ] Step 3: Code Review - Skill invoked AND result processed
+- [ ] Step 4: ADR Compliance - Checked against relevant ADRs
+- [ ] Step 5: Plan Sync - Tasks and exit conditions marked in plan file
+- [ ] Step 6: Prompt Archival - Archived or explicitly skipped (no prompt)
+- [ ] Step 7: Completion Report - Generated and presented
+
+⛔ VIOLATION: Stopping before Step 7
+⛔ VIOLATION: Waiting for user input between Steps 1-6
+⛔ VIOLATION: Reporting "phase complete" with unchecked steps
+```
+
+**Self-Check Protocol:**
+
+After invoking a skill (like code-review), ask yourself:
+1. Did the skill complete? → Check the result status
+2. Did it PASS or PASS_WITH_NOTES? → CONTINUE to next step
+3. Did it FAIL or NEED_CHANGES? → Handle failure, then continue
+4. Am I at Step 7? → If no, execute next step immediately
+
+---
+
 ### Step 1: Implementation
 
 **Responsibility**: Execute all tasks in the phase using subagent delegation.
