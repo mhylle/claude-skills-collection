@@ -201,10 +201,15 @@ After EACH step completes (including skill invocations), **IMMEDIATELY proceed t
 | Maximum retries exhausted | Present failure and options to user |
 
 **DO NOT PAUSE after:**
-- Code review returns PASS or PASS_WITH_NOTES → Continue to Step 4
+- Code review returns PASS → Continue to Step 4
 - ADR compliance returns PASS → Continue to Step 5
 - Any successful step completion → Continue to next step
-- Skill invocation completes successfully → Process result and continue
+- Fix loop completes with PASS → Continue to next step
+
+**Fix Loops (internal, no user pause):**
+- Code review returns PASS_WITH_NOTES → Fix notes, re-run Step 3, expect PASS
+- Code review returns NEEDS_CHANGES → Fix issues, re-run Step 3, expect PASS
+- Any step has fixable issues → Spawn fix subagents, re-run step
 
 **Continuous Flow Example:**
 ```
@@ -213,7 +218,9 @@ Step 1: Implementation → PASS
 Step 2: Exit Conditions → PASS
         ↓ (immediately)
 Step 3: Code Review Skill → PASS_WITH_NOTES
-        ↓ (immediately, DO NOT WAIT)
+        ↓ (fix loop - spawn subagents to fix notes)
+        → Re-run Code Review → PASS
+        ↓ (now continue)
 Step 4: ADR Compliance → PASS
         ↓ (immediately)
 Step 5: Plan Sync → PASS
@@ -223,6 +230,8 @@ Step 6: Prompt Archival → PASS
 Step 7: Completion Report → Present to user
         ↓ (NOW wait for user confirmation)
 ```
+
+**Goal: Clean PASS on all steps.** PASS_WITH_NOTES means there's work to do.
 
 ---
 
@@ -236,7 +245,7 @@ Use this checklist internally. If any step is missing, execute it before complet
 PHASE COMPLETION VERIFICATION:
 - [ ] Step 1: Implementation - Subagents spawned, work completed
 - [ ] Step 2: Exit Conditions - Build, runtime, functional all verified
-- [ ] Step 3: Code Review - Skill invoked AND result processed
+- [ ] Step 3: Code Review - Achieved PASS (not PASS_WITH_NOTES)
 - [ ] Step 4: ADR Compliance - Checked against relevant ADRs
 - [ ] Step 5: Plan Sync - Tasks and exit conditions marked in plan file
 - [ ] Step 6: Prompt Archival - Archived or explicitly skipped (no prompt)
@@ -245,15 +254,19 @@ PHASE COMPLETION VERIFICATION:
 ⛔ VIOLATION: Stopping before Step 7
 ⛔ VIOLATION: Waiting for user input between Steps 1-6
 ⛔ VIOLATION: Reporting "phase complete" with unchecked steps
+⛔ VIOLATION: Proceeding with PASS_WITH_NOTES without fixing notes
 ```
 
 **Self-Check Protocol:**
 
 After invoking a skill (like code-review), ask yourself:
 1. Did the skill complete? → Check the result status
-2. Did it PASS or PASS_WITH_NOTES? → CONTINUE to next step
-3. Did it FAIL or NEED_CHANGES? → Handle failure, then continue
-4. Am I at Step 7? → If no, execute next step immediately
+2. Did it return PASS? → CONTINUE to next step immediately
+3. Did it return PASS_WITH_NOTES? → Spawn fix subagents, re-run step, expect PASS
+4. Did it return NEEDS_CHANGES? → Spawn fix subagents, re-run step, expect PASS
+5. Am I at Step 7? → If no, execute next step immediately
+
+**The goal is always a clean PASS.** PASS_WITH_NOTES is not "good enough" - fix the notes.
 
 ---
 
@@ -372,9 +385,15 @@ BLOCKING_ISSUES: [count]
 RECOMMENDATIONS: [list]
 ```
 
-**Gate**: Code review must be PASS or PASS_WITH_NOTES to proceed.
+**Gate**: Code review must be PASS to proceed.
 
-**On NEEDS_CHANGES**: Present blocking issues, spawn fix subagents, re-run code review.
+**On PASS_WITH_NOTES or NEEDS_CHANGES**:
+1. Spawn fix subagents to address all issues (blocking AND recommendations)
+2. Re-run code review
+3. Repeat until PASS (max 3 retries)
+4. Escalate to user only if max retries exhausted
+
+**Why fix notes too?** Recommendations often indicate pattern violations, missing tests, or technical debt. Fixing them now prevents accumulation and maintains code quality standards.
 
 ---
 
