@@ -523,23 +523,25 @@ FAILED_CONDITIONS: [list if any]
 
 > **YOU are the tester.** Do not ask the user to manually verify. Use tools to test the system yourself.
 
+> **For UI Testing**: Use the `browser-verification-agent` - spawn ONE agent per test scenario for context preservation. The agent wraps Playwright MCP and returns structured evidence.
+
 **Process**:
 1. Determine the testing approach based on implementation type:
    - **Backend/API**: Use curl, httpie, or spawn subagent to make API calls
-   - **Frontend/UI**: Use Playwright MCP to interact with the UI
+   - **Frontend/UI**: Spawn `browser-verification-agent` for each test scenario
    - **CLI tools**: Execute commands and verify output
    - **Libraries**: Write and run integration test scripts
-2. Spawn testing subagents for each verification scenario
+2. Spawn testing subagents for each verification scenario (ONE test per agent for UI)
 3. Capture results and any failures
 4. On failure: spawn fix subagents, re-test
 
 **Testing by Implementation Type**:
 
-| Type | Testing Method | Tools |
-|------|----------------|-------|
+| Type | Testing Method | Tools/Agents |
+|------|----------------|--------------|
 | REST API | Make HTTP requests, verify responses | curl, httpie, fetch |
 | GraphQL | Execute queries/mutations | curl with GraphQL payload |
-| Web UI | Navigate, interact, assert | Playwright MCP |
+| Web UI | Navigate, interact, assert | `browser-verification-agent` |
 | Database | Query and verify data | psql, mysql, prisma |
 | Background jobs | Trigger and verify completion | API calls + polling |
 | File processing | Provide input, check output | Bash, Read tool |
@@ -547,7 +549,7 @@ FAILED_CONDITIONS: [list if any]
 **Subagent Examples**:
 
 ```
-# API Testing
+# API Testing (general-purpose subagent)
 Task: "Test the new /api/users endpoint.
 
 Make these API calls and report results:
@@ -558,19 +560,34 @@ Make these API calls and report results:
 
 RESPONSE FORMAT: STATUS, test results summary, ERRORS if any."
 
-# UI Testing (Playwright MCP)
-Task: "Test the new login flow using Playwright MCP.
+# UI Testing (browser-verification-agent) - ONE test per agent spawn
+Task(subagent_type="browser-verification-agent"): "Verify login with valid credentials.
 
-Test scenarios:
-1. Navigate to /login
-2. Enter valid credentials, submit - expect redirect to /dashboard
-3. Navigate to /login
-4. Enter invalid credentials - expect error message displayed
+base_url: http://localhost:3000
+test_description: Navigate to /login, enter 'test@example.com' in email field,
+                  enter 'password123' in password field, click Login button
+expected_outcome: URL changes to /dashboard, welcome message visible
+session_context: fresh"
 
-RESPONSE FORMAT: STATUS, screenshots saved to logs/, ERRORS if any."
+Task(subagent_type="browser-verification-agent"): "Verify login with invalid credentials.
+
+base_url: http://localhost:3000
+test_description: Navigate to /login, enter 'test@example.com' in email field,
+                  enter 'wrongpassword' in password field, click Login button
+expected_outcome: Error message 'Invalid credentials' is displayed, URL stays on /login
+session_context: fresh"
 ```
 
-**Output**:
+**UI Testing Response Format** (from browser-verification-agent):
+```
+STATUS: PASS | FAIL | FLAKY | BLOCKED
+SCREENSHOT: logs/screenshots/2026-01-23-143022-login-test.png
+OBSERVED: [what actually happened]
+EXPECTED: [echo of expected_outcome]
+ERRORS: [if any]
+```
+
+**Aggregated Output** (for Step 3 completion):
 ```
 INTEGRATION_TEST_STATUS: PASS | FAIL
 TESTS_RUN: [count]
