@@ -128,12 +128,13 @@ implement-plan (orchestrates full plan)
     └── implement-phase (this skill - one phase at a time)
             │
             ├── 1. Implementation (subagents)
-            ├── 2. Exit Condition Verification
-            ├── 3. Code Review (code-review skill)
-            ├── 4. ADR Compliance Check
-            ├── 5. Plan Synchronization
-            ├── 6. Prompt Archival (if prompt provided)
-            └── 7. Phase Completion Report
+            ├── 2. Exit Condition Verification (build, lint, unit tests)
+            ├── 3. Automated Integration Testing (Claude tests via API/Playwright)
+            ├── 4. Code Review (code-review skill)
+            ├── 5. ADR Compliance Check
+            ├── 6. Plan Synchronization
+            ├── 7. Prompt Archival (if prompt provided)
+            └── 8. Phase Completion Report
 ```
 
 ## Design Principles
@@ -188,7 +189,7 @@ If a **Prompt Path** is provided (from `prompt-generator` skill):
 
 ### CRITICAL: Continuous Execution (MANDATORY)
 
-> **The entire pipeline (Steps 1-7) MUST execute as one continuous flow.**
+> **The entire pipeline (Steps 1-8) MUST execute as one continuous flow.**
 
 After EACH step completes (including skill invocations), **IMMEDIATELY proceed to the next step** WITHOUT waiting for user input.
 
@@ -197,18 +198,20 @@ After EACH step completes (including skill invocations), **IMMEDIATELY proceed t
 | Scenario | Action |
 |----------|--------|
 | Step returns BLOCKED status | Stop and present blocker to user |
-| Step 7 (Completion Report) done | Await user confirmation before next phase |
+| Step 8 (Completion Report) done | Await user confirmation before next phase |
 | Maximum retries exhausted | Present failure and options to user |
 
 **DO NOT PAUSE after:**
-- Code review returns PASS → Continue to Step 4
-- ADR compliance returns PASS → Continue to Step 5
+- Integration tests pass → Continue to Step 4
+- Code review returns PASS → Continue to Step 5
+- ADR compliance returns PASS → Continue to Step 6
 - Any successful step completion → Continue to next step
 - Fix loop completes with PASS → Continue to next step
 
 **Fix Loops (internal, no user pause):**
-- Code review returns PASS_WITH_NOTES → Fix notes, re-run Step 3, expect PASS
-- Code review returns NEEDS_CHANGES → Fix issues, re-run Step 3, expect PASS
+- Integration tests fail → Fix code, re-run tests, expect PASS
+- Code review returns PASS_WITH_NOTES → Fix notes, re-run Step 4, expect PASS
+- Code review returns NEEDS_CHANGES → Fix issues, re-run Step 4, expect PASS
 - Any step has fixable issues → Spawn fix subagents, re-run step
 
 **Continuous Flow Example:**
@@ -217,21 +220,81 @@ Step 1: Implementation → PASS
         ↓ (immediately)
 Step 2: Exit Conditions → PASS
         ↓ (immediately)
-Step 3: Code Review Skill → PASS_WITH_NOTES
+Step 3: Automated Integration Testing → PASS
+        ↓ (immediately)
+Step 4: Code Review Skill → PASS_WITH_NOTES
         ↓ (fix loop - spawn subagents to fix notes)
         → Re-run Code Review → PASS
         ↓ (now continue)
-Step 4: ADR Compliance → PASS
+Step 5: ADR Compliance → PASS
         ↓ (immediately)
-Step 5: Plan Sync → PASS
+Step 6: Plan Sync → PASS
         ↓ (immediately)
-Step 6: Prompt Archival → PASS
+Step 7: Prompt Archival → PASS
         ↓ (immediately)
-Step 7: Completion Report → Present to user
+Step 8: Completion Report → Present to user
         ↓ (NOW wait for user confirmation)
 ```
 
 **Goal: Clean PASS on all steps.** PASS_WITH_NOTES means there's work to do.
+
+---
+
+### Blocking Elements (ONLY Valid Reasons to Stop)
+
+> **A blocking element is something YOU cannot fix autonomously.**
+
+Do NOT stop for fixable issues. Only stop when you genuinely cannot proceed without user intervention.
+
+**Valid Blocking Elements:**
+
+| Blocker | Example | Action |
+|---------|---------|--------|
+| **Permission denied** | Subagent cannot write to protected directory | Ask user to adjust permissions or run in correct mode |
+| **Infrastructure unavailable** | Cannot reach required LLM inference server | Report the connectivity issue, ask user to verify infrastructure |
+| **Missing credentials** | API key not configured, auth token expired | Ask user to provide/refresh credentials |
+| **External service down** | Third-party API returning 503 | Report the outage, ask if user wants to wait or skip |
+| **Ambiguous requirements** | Plan says "integrate with payment system" but doesn't specify which | Ask user to clarify before proceeding |
+| **Destructive operation** | Phase requires dropping production database | Confirm with user before executing |
+
+**NOT Blocking (fix these yourself):**
+
+| Issue | Action |
+|-------|--------|
+| Test fails | Fix the code, re-run test |
+| Lint errors | Fix the code, re-run lint |
+| Build errors | Fix the code, re-build |
+| Type errors | Fix the types, re-check |
+| Code review feedback | Fix the issues, re-run review |
+| API returns error | Debug and fix the implementation |
+| UI element not found | Fix selector or implementation |
+
+**Blocker Protocol:**
+
+When you hit a genuine blocker:
+
+```
+⛔ BLOCKED: [Brief description]
+
+Phase: [N] - [Name]
+Step: [Current step]
+Blocker Type: [Permission | Infrastructure | Credentials | External | Ambiguous | Destructive]
+
+Details:
+[Specific details about what failed and why]
+
+What I Need:
+[Specific action required from user]
+
+Options:
+A) [Resolve the blocker and continue]
+B) [Skip this verification and proceed with risk]
+C) [Abort phase]
+```
+
+**Resume After Blocker:**
+
+Once the user resolves the blocker, resume from the blocked step (not from Step 1).
 
 ---
 
@@ -244,17 +307,19 @@ Use this checklist internally. If any step is missing, execute it before complet
 ```
 PHASE COMPLETION VERIFICATION:
 - [ ] Step 1: Implementation - Subagents spawned, work completed
-- [ ] Step 2: Exit Conditions - Build, runtime, functional all verified
-- [ ] Step 3: Code Review - Achieved PASS (not PASS_WITH_NOTES)
-- [ ] Step 4: ADR Compliance - Checked against relevant ADRs
-- [ ] Step 5: Plan Sync - Tasks and exit conditions marked in plan file
-- [ ] Step 6: Prompt Archival - Archived or explicitly skipped (no prompt)
-- [ ] Step 7: Completion Report - Generated and presented
+- [ ] Step 2: Exit Conditions - Build, runtime, unit tests all verified
+- [ ] Step 3: Integration Testing - YOU tested via API calls or Playwright
+- [ ] Step 4: Code Review - Achieved PASS (not PASS_WITH_NOTES)
+- [ ] Step 5: ADR Compliance - Checked against relevant ADRs
+- [ ] Step 6: Plan Sync - Tasks and exit conditions marked in plan file
+- [ ] Step 7: Prompt Archival - Archived or explicitly skipped (no prompt)
+- [ ] Step 8: Completion Report - Generated and presented
 
-⛔ VIOLATION: Stopping before Step 7
-⛔ VIOLATION: Waiting for user input between Steps 1-6
+⛔ VIOLATION: Stopping before Step 8
+⛔ VIOLATION: Waiting for user input between Steps 1-7
 ⛔ VIOLATION: Reporting "phase complete" with unchecked steps
 ⛔ VIOLATION: Proceeding with PASS_WITH_NOTES without fixing notes
+⛔ VIOLATION: Asking user to "manually test" instead of testing yourself
 ```
 
 **Self-Check Protocol:**
@@ -264,9 +329,88 @@ After invoking a skill (like code-review), ask yourself:
 2. Did it return PASS? → CONTINUE to next step immediately
 3. Did it return PASS_WITH_NOTES? → Spawn fix subagents, re-run step, expect PASS
 4. Did it return NEEDS_CHANGES? → Spawn fix subagents, re-run step, expect PASS
-5. Am I at Step 7? → If no, execute next step immediately
+5. Am I at Step 8? → If no, execute next step immediately
+6. Did I test the feature myself? → If no, go back to Step 3
 
 **The goal is always a clean PASS.** PASS_WITH_NOTES is not "good enough" - fix the notes.
+
+---
+
+### Progress Tracker (MANDATORY OUTPUT)
+
+> **After EVERY step, you MUST output a Progress Tracker before doing ANYTHING else.**
+
+This is not optional. The Progress Tracker forces explicit acknowledgment of state and next action.
+
+**Format (output after each step completes):**
+
+```
+┌─────────────────────────────────────────┐
+│ PROGRESS: Step [N] → Step [N+1]         │
+├─────────────────────────────────────────┤
+│ ✅ Step 1: Implementation    [DONE/SKIP]│
+│ ✅ Step 2: Exit Conditions   [DONE/SKIP]│
+│ ✅ Step 3: Integration Test  [DONE/SKIP]│
+│ ✅ Step 4: Code Review       [DONE/SKIP]│
+│ ⏳ Step 5: ADR Compliance    [CURRENT]  │
+│ ⬚ Step 6: Plan Sync         [PENDING]  │
+│ ⬚ Step 7: Prompt Archival   [PENDING]  │
+│ ⬚ Step 8: Completion Report [PENDING]  │
+├─────────────────────────────────────────┤
+│ NEXT ACTION: [Describe what you do next]│
+└─────────────────────────────────────────┘
+```
+
+**Rules:**
+1. Output this tracker IMMEDIATELY after each step completes
+2. Mark the CURRENT step you are about to execute
+3. The NEXT ACTION must describe executing the next step (not waiting for user)
+4. If NEXT ACTION says anything other than executing a step, you are VIOLATING the protocol
+
+**Example - After Step 4 Code Review Returns PASS:**
+
+```
+┌─────────────────────────────────────────┐
+│ PROGRESS: Step 4 → Step 5               │
+├─────────────────────────────────────────┤
+│ ✅ Step 1: Implementation    [DONE]     │
+│ ✅ Step 2: Exit Conditions   [DONE]     │
+│ ✅ Step 3: Integration Test  [DONE]     │
+│ ✅ Step 4: Code Review       [DONE]     │
+│ ⏳ Step 5: ADR Compliance    [CURRENT]  │
+│ ⬚ Step 6: Plan Sync         [PENDING]  │
+│ ⬚ Step 7: Prompt Archival   [PENDING]  │
+│ ⬚ Step 8: Completion Report [PENDING]  │
+├─────────────────────────────────────────┤
+│ NEXT ACTION: Check ADR compliance now   │
+└─────────────────────────────────────────┘
+```
+
+**⛔ VIOLATION Examples:**
+- Not outputting the Progress Tracker after a step
+- NEXT ACTION: "Waiting for user confirmation" (before Step 8)
+- NEXT ACTION: "Let me know if you want me to continue"
+- NEXT ACTION: "Please manually verify the feature works"
+- Skipping to Step 8 without completing Steps 5-7
+
+---
+
+## Execution Contract (READ BEFORE STARTING)
+
+Before executing ANY step, acknowledge this contract:
+
+```
+I WILL execute Steps 1-8 as ONE continuous operation.
+I WILL output a Progress Tracker after EVERY step.
+I WILL test the feature MYSELF in Step 3 (not ask the user).
+I WILL NOT stop after Step 4 (code review) - there are 4 more steps.
+I WILL NOT ask the user if they want me to continue.
+I WILL NOT ask the user to manually verify anything.
+I WILL only stop at Step 8 after presenting the Completion Report.
+I WILL only stop early for genuine BLOCKING elements I cannot fix.
+```
+
+If you find yourself about to stop before Step 8, RE-READ this contract.
 
 ---
 
@@ -340,6 +484,8 @@ SUBAGENTS_SPAWNED: [count]
 
 **Gate**: Implementation must PASS to proceed.
 
+**→ NEXT STEP**: Output Progress Tracker, then IMMEDIATELY execute Step 2 (Exit Condition Verification). Do NOT wait for user input.
+
 ---
 
 ### Step 2: Exit Condition Verification
@@ -367,9 +513,86 @@ FAILED_CONDITIONS: [list if any]
 
 **On Failure**: Spawn fix subagents, re-verify, repeat until pass or escalate.
 
+**→ NEXT STEP**: Output Progress Tracker, then IMMEDIATELY execute Step 3 (Automated Integration Testing). Do NOT wait for user input.
+
 ---
 
-### Step 3: Code Review
+### Step 3: Automated Integration Testing
+
+**Responsibility**: Verify the implementation works end-to-end through automated testing performed by YOU, not the user.
+
+> **YOU are the tester.** Do not ask the user to manually verify. Use tools to test the system yourself.
+
+**Process**:
+1. Determine the testing approach based on implementation type:
+   - **Backend/API**: Use curl, httpie, or spawn subagent to make API calls
+   - **Frontend/UI**: Use Playwright MCP to interact with the UI
+   - **CLI tools**: Execute commands and verify output
+   - **Libraries**: Write and run integration test scripts
+2. Spawn testing subagents for each verification scenario
+3. Capture results and any failures
+4. On failure: spawn fix subagents, re-test
+
+**Testing by Implementation Type**:
+
+| Type | Testing Method | Tools |
+|------|----------------|-------|
+| REST API | Make HTTP requests, verify responses | curl, httpie, fetch |
+| GraphQL | Execute queries/mutations | curl with GraphQL payload |
+| Web UI | Navigate, interact, assert | Playwright MCP |
+| Database | Query and verify data | psql, mysql, prisma |
+| Background jobs | Trigger and verify completion | API calls + polling |
+| File processing | Provide input, check output | Bash, Read tool |
+
+**Subagent Examples**:
+
+```
+# API Testing
+Task: "Test the new /api/users endpoint.
+
+Make these API calls and report results:
+1. POST /api/users with valid payload - expect 201
+2. POST /api/users with invalid email - expect 400
+3. GET /api/users/:id - expect 200 with user data
+4. GET /api/users/nonexistent - expect 404
+
+RESPONSE FORMAT: STATUS, test results summary, ERRORS if any."
+
+# UI Testing (Playwright MCP)
+Task: "Test the new login flow using Playwright MCP.
+
+Test scenarios:
+1. Navigate to /login
+2. Enter valid credentials, submit - expect redirect to /dashboard
+3. Navigate to /login
+4. Enter invalid credentials - expect error message displayed
+
+RESPONSE FORMAT: STATUS, screenshots saved to logs/, ERRORS if any."
+```
+
+**Output**:
+```
+INTEGRATION_TEST_STATUS: PASS | FAIL
+TESTS_RUN: [count]
+TESTS_PASSED: [count]
+TESTS_FAILED: [count]
+FAILURE_DETAILS: [if any]
+EVIDENCE: [log files, screenshots]
+```
+
+**Gate**: Integration tests must PASS to proceed.
+
+**On Failure**:
+1. Analyze failure root cause
+2. Spawn fix subagents
+3. Re-run failed tests
+4. Repeat until pass or hit blocking element
+
+**→ NEXT STEP**: Output Progress Tracker, then IMMEDIATELY execute Step 4 (Code Review). Do NOT wait for user input.
+
+---
+
+### Step 4: Code Review
 
 **Responsibility**: Validate implementation quality across all dimensions.
 
@@ -397,7 +620,19 @@ RECOMMENDATIONS: [list]
 
 ---
 
-### Step 4: ADR Compliance Check
+> ⚠️ **CRITICAL TRANSITION POINT - DO NOT STOP HERE** ⚠️
+>
+> After code-review skill returns, you MUST continue. This is the #1 failure point.
+> - Code review returned PASS? → Output Progress Tracker → Execute Step 5 NOW
+> - Code review returned PASS_WITH_NOTES? → Fix issues → Re-run → Get PASS → Execute Step 5
+> - DO NOT report to user and wait. DO NOT ask if they want to continue.
+> - The phase is NOT complete. You have 4 more steps to execute.
+
+**→ NEXT STEP**: Output Progress Tracker, then IMMEDIATELY execute Step 5 (ADR Compliance). Do NOT wait for user input. Do NOT report "code review complete" and stop.
+
+---
+
+### Step 5: ADR Compliance Check
 
 **Responsibility**: Ensure architectural decisions are followed and documented.
 
@@ -419,9 +654,11 @@ NEW_DECISIONS_DOCUMENTED: [list of new ADR numbers, if any]
 
 **On NEEDS_DOCUMENTATION**: Invoke `adr` skill for each undocumented decision.
 
+**→ NEXT STEP**: Output Progress Tracker, then IMMEDIATELY execute Step 6 (Plan Synchronization). Do NOT wait for user input.
+
 ---
 
-### Step 5: Plan Synchronization
+### Step 6: Plan Synchronization
 
 **Responsibility**: Update the plan file to reflect completed work.
 
@@ -442,9 +679,11 @@ ADR_REFERENCES_ADDED: [count]
 
 **Gate**: Plan must sync successfully.
 
+**→ NEXT STEP**: Output Progress Tracker, then IMMEDIATELY execute Step 7 (Prompt Archival). Do NOT wait for user input.
+
 ---
 
-### Step 6: Prompt Archival
+### Step 7: Prompt Archival
 
 **Responsibility**: Archive the phase prompt to the completed folder (if prompt was provided).
 
@@ -475,9 +714,11 @@ ARCHIVED_TO: [new path in completed/]
 - Keeps the prompts folder clean for pending work
 - Allows review of what instructions were used
 
+**→ NEXT STEP**: Output Progress Tracker, then IMMEDIATELY execute Step 8 (Completion Report). Do NOT wait for user input.
+
 ---
 
-### Step 7: Phase Completion Report
+### Step 8: Phase Completion Report
 
 **Responsibility**: Generate summary for orchestrator and user.
 
@@ -495,7 +736,12 @@ Implementation:
 Exit Conditions:
   Build: ✅ PASS
   Runtime: ✅ PASS
-  Functional: ✅ PASS
+  Unit Tests: ✅ PASS
+
+Integration Testing (performed by Claude):
+  API Tests: ✅ [X/Y passed] (or N/A)
+  UI Tests: ✅ [X/Y passed] (or N/A)
+  Evidence: logs/integration-test-phase-N.log
 
 Code Review:
   Status: ✅ PASS (or ⚠️ PASS_WITH_NOTES)
@@ -514,14 +760,25 @@ Prompt:
   Status: ✅ Archived (or ⏭️ Skipped - no prompt provided)
   Archived To: docs/prompts/completed/phase-2-data-pipeline.md
 
-Manual Verification Required:
-  - [ ] [Manual check 1]
-  - [ ] [Manual check 2]
+User Verification (only if truly not automatable):
+  [None - all verification automated]
+  OR
+  - [ ] [Physical hardware check]
+  - [ ] [Third-party dashboard verification]
 
 ═══════════════════════════════════════════════════════════════
 PHASE STATUS: ✅ COMPLETE - Ready for next phase
 ═══════════════════════════════════════════════════════════════
 ```
+
+> **Note on User Verification**: This section should almost always be empty. Claude performs integration testing in Step 3. Only include items here that genuinely require human eyes (e.g., "verify email arrived in inbox", "check physical device display").
+
+**→ STOP POINT**: This is the ONLY valid stopping point. After outputting the Completion Report:
+1. Output final Progress Tracker showing all steps ✅ DONE
+2. Present the report to the user
+3. NOW (and ONLY now) await user confirmation before proceeding to next phase
+
+---
 
 ## Phase Steps (Extensible)
 
@@ -531,6 +788,7 @@ The execution pipeline is defined as an ordered list of steps. This design allow
 PHASE_STEPS = [
   { name: "implementation", required: true, skill: null },
   { name: "exit_conditions", required: true, skill: null },
+  { name: "integration_testing", required: true, skill: null },  // Claude tests via API/Playwright
   { name: "code_review", required: true, skill: "code-review" },
   { name: "adr_compliance", required: true, skill: "adr" },
   { name: "plan_sync", required: true, skill: null },
@@ -607,7 +865,8 @@ PHASE_RESULT:
   steps:
     implementation: PASS
     exit_conditions: PASS
-    code_review: PASS_WITH_NOTES
+    integration_testing: PASS
+    code_review: PASS
     adr_compliance: PASS
     plan_sync: PASS
     prompt_archival: PASS | SKIPPED
@@ -615,6 +874,11 @@ PHASE_RESULT:
   files_changed:
     created: [list]
     modified: [list]
+
+  integration_tests:
+    api_tests: { passed: X, failed: 0 }
+    ui_tests: { passed: Y, failed: 0 }
+    evidence: "logs/integration-test-phase-2.log"
 
   new_adrs: [list or empty]
 
@@ -625,9 +889,11 @@ PHASE_RESULT:
 
   recommendations: [list]
 
-  manual_verification:
-    - "Check login flow in browser"
-    - "Verify JWT token claims"
+  user_verification:  # Should usually be empty
+    []
+    # Only include items that truly cannot be automated, e.g.:
+    # - "Verify physical device display"
+    # - "Check email arrived in inbox"
 
   ready_for_next: true | false
   blocker: null | "description of blocker"
