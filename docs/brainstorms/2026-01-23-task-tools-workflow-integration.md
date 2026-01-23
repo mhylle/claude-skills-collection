@@ -1,11 +1,14 @@
 # Brainstorm: Task Tools Workflow Integration
 
 **Date**: 2026-01-23
-**Status**: Needs More Exploration (awaiting documentation)
+**Status**: Research Complete - Ready for Implementation Planning
+**Last Updated**: 2026-01-23
 
 ## Executive Summary
 
 Claude Code v2.1.16 (January 22, 2026) introduced a new task management system with dependency tracking. This analysis explores how to integrate these new Task tools (TaskCreate, TaskUpdate, TaskList, TaskGet) with our existing plan workflow, reducing redundancy by separating specification (plans) from execution tracking (tasks).
+
+**Key Finding**: Through hands-on testing, we have confirmed Task tools persist to filesystem, support dependency tracking via `blocks`/`blockedBy`, and can be shared across sessions via the `CLAUDE_CODE_TASK_LIST_ID` environment variable.
 
 ## Idea Evolution
 
@@ -30,9 +33,10 @@ The Task tools can handle #2, allowing plans to focus purely on #1.
 ### Key Clarifications Made
 
 - Task tools are brand new (v2.1.16, released January 22, 2026)
-- Documentation is not yet available
-- Tool descriptions suggest filesystem persistence but this is unconfirmed
-- Dependency tracking via blocks/blockedBy aligns with our phase ordering needs
+- Official documentation is sparse, but behavior has been **confirmed via testing**
+- Filesystem persistence is **confirmed** at `~/.claude/tasks/{task-list-id}/`
+- Dependency tracking via blocks/blockedBy is **confirmed and working**
+- Cross-session sharing via `CLAUDE_CODE_TASK_LIST_ID` environment variable **confirmed**
 
 ## Analysis Results
 
@@ -54,13 +58,13 @@ The Task tools can handle #2, allowing plans to focus purely on #1.
 | Task ID format not predictable | Medium | Low | Use metadata for plan linkage |
 | Breaking change in future versions | Low | High | Abstract task usage behind skill layer |
 
-### Gaps Identified
+### Gaps Identified (Updated with Research)
 
-- [ ] **Task storage location** - Need to confirm where tasks persist
-- [ ] **Task ID format** - Can we use meaningful IDs or are they auto-generated?
-- [ ] **Cross-session behavior** - Verify tasks survive session restart
-- [ ] **Team visibility** - Do spawned agents see the same task list?
-- [ ] **Task limits** - Max count, metadata size, description length
+- [x] **Task storage location** - CONFIRMED: `~/.claude/tasks/{task-list-uuid}/{id}.json`
+- [x] **Task ID format** - CONFIRMED: Auto-generated integers (1, 2, 3...)
+- [x] **Cross-session behavior** - CONFIRMED: Use `CLAUDE_CODE_TASK_LIST_ID` env var
+- [x] **Team visibility** - CONFIRMED: Same task list ID = shared tasks across agents
+- [ ] **Task limits** - Still unknown: Max count, metadata size, description length
 
 ### Enhancement Opportunities (SCAMPER)
 
@@ -133,6 +137,73 @@ implement-plan:
 
 ## Research Findings
 
+### Confirmed Task Tool Behavior (Tested 2026-01-23)
+
+#### Task JSON Structure
+```json
+{
+  "id": "1",
+  "subject": "Task title",
+  "description": "Detailed description of the task",
+  "activeForm": "Present tense action (shown in spinner)",
+  "status": "pending | in_progress | completed",
+  "blocks": ["task-ids-that-wait-for-this"],
+  "blockedBy": ["task-ids-this-waits-for"]
+}
+```
+
+#### Storage Location
+- **Path**: `~/.claude/tasks/{task-list-uuid}/{id}.json`
+- **Task List ID**: UUID format (e.g., `eb6c2d0d-7dc7-485a-8d21-204456be20f5`)
+- **Task Files**: Named by ID number (`1.json`, `2.json`, etc.)
+- **Persistence**: Immediate write to filesystem
+
+#### Tool Capabilities
+
+| Tool | Purpose | Key Parameters |
+|------|---------|----------------|
+| **TaskCreate** | Create new task | `subject`, `description`, `activeForm` |
+| **TaskGet** | Retrieve task details | `taskId` |
+| **TaskUpdate** | Modify task | `taskId`, `status`, `addBlocks`, `addBlockedBy` |
+| **TaskList** | List all tasks | (none) |
+
+#### Dependency Tracking
+- `blocks`: Array of task IDs that cannot start until this completes
+- `blockedBy`: Array of task IDs that must complete before this starts
+- TaskList output shows: `#2 [pending] Task name [blocked by #1]`
+
+#### Cross-Session Sharing
+```bash
+# Share task list across sessions/subagents
+CLAUDE_CODE_TASK_LIST_ID=my-project-tasks claude
+
+# Also works with programmatic usage
+claude -p "Continue the work"
+# (with CLAUDE_CODE_TASK_LIST_ID set)
+```
+
+#### What's Different from TodoWrite
+
+| Feature | TodoWrite | Tasks |
+|---------|-----------|-------|
+| Persistence | Session only | Filesystem |
+| Dependencies | None | blocks/blockedBy |
+| Cross-session | No | Yes (via env var) |
+| Multi-agent | No | Yes (shared task list) |
+| Status tracking | Checkbox only | pending/in_progress/completed |
+
+### Design Inspiration: Beads (Steve Yegge)
+
+The Task system took inspiration from [Beads](https://paddo.dev/blog/beads-memory-for-coding-agents/):
+
+| Beads Principle | Task Implementation |
+|-----------------|---------------------|
+| Cross-session persistence | Filesystem storage at `~/.claude/tasks/` |
+| Dependency tracking | `blocks`/`blockedBy` arrays |
+| Scoped work windows | Task list per project/session |
+| "Land the Plane" pattern | Status progression + completion tracking |
+| Version-controlled truth | JSON files (could be git-tracked) |
+
 ### External Best Practices
 
 - Claude Code's TodoWrite was session-only, causing workflow disruption ([GitHub Issue #2954](https://github.com/anthropics/claude-code/issues/2954))
@@ -176,33 +247,57 @@ ADRs will be created once documentation confirms Task tool behavior.
 
 ## Recommended Next Steps
 
-1. **Wait for documentation** - Official docs should clarify persistence and usage
-2. **Test persistence** - Create task, close session, verify it persists
+1. ~~**Wait for documentation**~~ - Behavior confirmed via testing
+2. ~~**Test persistence**~~ - DONE: Tasks persist to `~/.claude/tasks/`
 3. **Create ADR** - Document decision to separate spec from tracking
 4. **Update skills** - Modify implement-plan, implement-phase, create-plan
 5. **Update plan-format.md** - Remove checkbox patterns from reference
+6. **Test cross-session** - Verify `CLAUDE_CODE_TASK_LIST_ID` in real workflow
 
 ## Ready for Create-Plan
 
-**No** - Awaiting documentation to confirm:
-- Task persistence behavior
-- Task storage location
-- Task ID format and limits
+**Yes** - Core behavior confirmed:
+- [x] Task persistence behavior - Immediate filesystem write
+- [x] Task storage location - `~/.claude/tasks/{uuid}/{id}.json`
+- [x] Task ID format - Auto-incremented integers
+- [x] Dependency tracking - `blocks`/`blockedBy` working
+- [x] Cross-session sharing - `CLAUDE_CODE_TASK_LIST_ID` env var
+- [ ] Task limits - Unknown but likely reasonable
 
-### Suggested Plan Scope (Once Ready)
+### Suggested Plan Scope
 
 - Primary deliverables: Updated skill files with Task integration
 - Key phases:
-  1. Confirm Task behavior via testing
-  2. Update plan-format.md (remove checkboxes)
-  3. Update create-plan (new template)
-  4. Update implement-plan (TaskCreate/TaskUpdate)
-  5. Update implement-phase (remove plan sync checkboxes)
-- Critical success factors: Tasks must persist across sessions
+  1. ~~Confirm Task behavior via testing~~ DONE
+  2. Create ADR for spec/tracking separation
+  3. Update plan-format.md (remove checkboxes, add task integration notes)
+  4. Update create-plan (new template without progress checkboxes)
+  5. Update implement-plan (TaskCreate/TaskUpdate instead of TodoWrite)
+  6. Update implement-phase (use Task status, simplify plan sync)
+- Critical success factors:
+  - Tasks persist across sessions ✓
+  - Dependency ordering works ✓
+  - Multi-agent coordination via shared task list ✓
 
 ## Sources
 
+### Official
 - [Claude Code v2.1.16 Release](https://github.com/anthropics/claude-code/releases/tag/v2.1.16)
-- [Piebald-AI System Prompts](https://github.com/Piebald-AI/claude-code-system-prompts)
+- [Claude Code Subagents Documentation](https://code.claude.com/docs/en/sub-agents)
+
+### Community Resources
+- [Piebald-AI System Prompts](https://github.com/Piebald-AI/claude-code-system-prompts) - Tool descriptions
+- [cc-mirror Task Tools](https://github.com/numman-ali/cc-mirror) - Task tool documentation
+- [ClaudeLog Task/Agent Tools](https://claudelog.com/mechanics/task-agent-tools/)
 - [Claude Code Changelog](https://claudelog.com/claude-code-changelog/)
+
+### Background/Inspiration
+- [Beads: Memory for Coding Agents](https://paddo.dev/blog/beads-memory-for-coding-agents/) - Design inspiration
+- [GitHub Issue #6760](https://github.com/anthropics/claude-code/issues/6760) - TodoWrite configuration request
 - [Context persistence issue #2954](https://github.com/anthropics/claude-code/issues/2954)
+
+### Hands-On Testing (2026-01-23)
+- Created tasks via TaskCreate, verified JSON structure
+- Tested dependency tracking via TaskUpdate with `addBlockedBy`
+- Confirmed filesystem persistence at `~/.claude/tasks/`
+- Verified TaskList shows blocked status
