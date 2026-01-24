@@ -1,0 +1,46 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "name": "strategic-compact-monitor",
+        "description": "Monitor session complexity and suggest compaction at logical boundaries",
+        "skill": "strategic-compact",
+        "enabled": true,
+        "priority": 10,
+        "config": {
+          "threshold": 50,
+          "mode": "suggest",
+          "integrate_context_saver": true,
+          "suppress_during": [
+            "debugging",
+            "active_implementation",
+            "rollback"
+          ],
+          "boundary_events": [
+            "task_completion",
+            "git_commit",
+            "phase_transition",
+            "feature_boundary"
+          ],
+          "min_interval": 600,
+          "dynamic_threshold": true
+        }
+      }
+    ],
+    "Stop": [
+      {
+        "name": "continuous-learning",
+        "description": "Extract valuable patterns from session before exit",
+        "enabled": true,
+        "command": "skill:continuous-learning",
+        "config": {
+          "threshold": 0.7,
+          "interactive": false,
+          "summary": true,
+          "max_patterns": 10,
+          "auto_merge": true
+        }
+      }
+    ]
+  }
+}

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Claude Code Skills Collection Installer
-# Installs skills and agents to ~/.claude/
+# Installs skills, agents, and hooks to ~/.claude/
 
 set -e
 
@@ -13,6 +13,7 @@ echo "Installing Claude Code Skills Collection..."
 # Create directories if they don't exist
 mkdir -p "$CLAUDE_DIR/skills"
 mkdir -p "$CLAUDE_DIR/agents"
+mkdir -p "$CLAUDE_DIR/skills/learned"
 
 # Install skills
 echo "Installing skills..."
@@ -34,10 +35,26 @@ for agent_file in "$SCRIPT_DIR/agents"/*.md; do
     fi
 done
 
+# Install hooks
+echo "Installing hooks..."
+if [ -f "$SCRIPT_DIR/hooks.json" ]; then
+    if [ -f "$CLAUDE_DIR/hooks.json" ]; then
+        echo "  - Backing up existing hooks.json to hooks.json.backup"
+        cp "$CLAUDE_DIR/hooks.json" "$CLAUDE_DIR/hooks.json.backup"
+    fi
+    cp "$SCRIPT_DIR/hooks.json" "$CLAUDE_DIR/hooks.json"
+    echo "  - hooks.json (strategic-compact, continuous-learning)"
+fi
+
 echo ""
 echo "Installation complete!"
 echo ""
 echo "Skills installed to: $CLAUDE_DIR/skills/"
 echo "Agents installed to: $CLAUDE_DIR/agents/"
+echo "Hooks installed to:  $CLAUDE_DIR/hooks.json"
 echo ""
-echo "Restart Claude Code to activate the new skills and agents."
+echo "Hooks configured:"
+echo "  - PreToolUse: strategic-compact (monitors session complexity)"
+echo "  - Stop: continuous-learning (extracts patterns on exit)"
+echo ""
+echo "Restart Claude Code to activate the new skills, agents, and hooks."

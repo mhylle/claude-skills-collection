@@ -177,12 +177,30 @@ Agents are specialized sub-agents launched via the `Task` tool for parallel exec
 Installs to:
 - Skills: `~/.claude/skills/`
 - Agents: `~/.claude/agents/`
+- Hooks: `~/.claude/hooks.json`
+
+### What Gets Installed
+
+**Hooks** (automatic behaviors):
+| Hook | Skill | Trigger | Purpose |
+|------|-------|---------|---------|
+| PreToolUse | `strategic-compact` | Before each tool call | Monitor session complexity, suggest `/compact` at logical boundaries |
+| Stop | `continuous-learning` | Session end | Extract valuable patterns and save to `~/.claude/skills/learned/` |
 
 ### Manual Install
 
 ```bash
 cp -r skills/* ~/.claude/skills/
 cp agents/*.md ~/.claude/agents/
+cp hooks.json ~/.claude/hooks.json
+```
+
+### Hooks Only
+
+If you only want to update hooks without reinstalling skills:
+
+```bash
+cp hooks.json ~/.claude/hooks.json
 ```
 
 **Restart Claude Code after installation.**
