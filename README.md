@@ -32,28 +32,27 @@ The core workflow for implementing features follows this hierarchy:
 │   │                    implement-phase (per phase)                       │    │
 │   │  ┌────────────────────────────────────────────────────────────┐     │    │
 │   │  │ Step 1: Implementation (subagents) [TDD mode: tests first] │     │    │
-│   │  │ Step 2: Exit Conditions ─────────────────────────────────┐ │     │    │
-│   │  │         ├─► verification-loop (optional 6-phase)         │ │     │    │
-│   │  │ Step 3: Integration Testing (API/UI via Playwright)      │ │     │    │
-│   │  │ Step 4: code-review ─────────────────────────────────────┼─┼──┐  │    │
-│   │  │         ├─► security-review (optional OWASP audit) ──────┼─┼──┼─┐│    │
-│   │  │ Step 5: ADR Compliance ──────────────────────────────────┼─┼──┼─┼┤    │
-│   │  │ Step 6: Plan Sync                                        │ │  │ ││    │
-│   │  │ Step 7: Prompt Archival                                  │ │  │ ││    │
-│   │  │ Step 8: Completion Report                                │ │  │ ││    │
-│   │  └──────────────────────────────────────────────────────────┼─┼──┼─┼┘    │
-│   └─────────────────────────────────────────────────────────────┼─┼──┼─┼─────┘
-│                                                                 │ │  │ │      │
-│         ┌───────────────────────────────────────────────────────┘ │  │ │      │
-│         │              ┌──────────────────────────────────────────┘  │ │      │
-│         │              │              ┌───────────────────────────────┘ │      │
-│         │              │              │              ┌──────────────────┘      │
-│         ▼              ▼              ▼              ▼                         │
+│   │  │ Step 2: verification-loop (6-phase exit conditions) ─────┐│     │    │
+│   │  │ Step 3: Integration Testing (API/UI via Playwright)      ││     │    │
+│   │  │ Step 4: code-review ─────────────────────────────────────┼┼──┐  │    │
+│   │  │         ├─► security-review (optional OWASP audit) ──────┼┼──┼─┐│    │
+│   │  │ Step 5: ADR Compliance ──────────────────────────────────┼┼──┼─┼┤    │
+│   │  │ Step 6: Plan Sync                                        ││  │ ││    │
+│   │  │ Step 7: Prompt Archival                                  ││  │ ││    │
+│   │  │ Step 8: Completion Report                                ││  │ ││    │
+│   │  └──────────────────────────────────────────────────────────┼┼──┼─┼┘    │
+│   └─────────────────────────────────────────────────────────────┼┼──┼─┼─────┘
+│                                                                 ││  │ │      │
+│         ┌───────────────────────────────────────────────────────┘│  │ │      │
+│         │              ┌─────────────────────────────────────────┘  │ │      │
+│         │              │              ┌──────────────────────────────┘ │      │
+│         │              │              │              ┌─────────────────┘      │
+│         ▼              ▼              ▼              ▼                        │
 │   ┌───────────┐  ┌───────────┐  ┌───────────┐  ┌─────────────────┐           │
 │   │verification│  │code-review│  │security-  │  │      adr        │           │
 │   │   -loop   │  │           │  │  review   │  │                 │           │
 │   └───────────┘  └───────────┘  └───────────┘  └─────────────────┘           │
-│    (optional)                     (optional)                                  │
+│    (default)                      (optional)                                  │
 └───────────────────────────────────────────────────────────────────────────────┘
                                        │
                                        ▼
@@ -217,11 +216,13 @@ Each phase passes through these gates:
 │  └─────────┬──────────┘                                         │
 │            │ PASS                                                │
 │            ▼                                                     │
-│  ┌────────────────────┐     ┌───────────────────┐               │
-│  │ 2. Exit Conditions  │────▶│ verification-loop │ (optional)   │
-│  │    Build, Runtime   │     │ 6-phase check     │               │
-│  └─────────┬──────────┘     └───────────────────┘               │
-│            │ ALL PASS                                            │
+│  ┌────────────────────┐                                         │
+│  │ 2. verification-loop│ ─── 6-phase exit conditions (default)  │
+│  │    Build,Type,Lint, │     Build → Type → Lint → Test →       │
+│  │    Test,Security,   │     Security → Diff                    │
+│  │    Diff             │                                         │
+│  └─────────┬──────────┘                                         │
+│            │ ALL 6 PASS                                          │
 │            ▼                                                     │
 │  ┌────────────────────┐                                         │
 │  │ 3. Integration Test │ ─── Claude tests via API/Playwright    │
@@ -257,9 +258,10 @@ Each phase passes through these gates:
 ```
 
 **Extensible**: Optional steps can be enabled via plan metadata:
-- `security_review: true` - Adds security audit step
-- `verification_loop: true` - Adds 6-phase verification
+- `security_review: true` - Adds OWASP security audit step after code review
 - `tdd_mode: true` - Enforces RED → GREEN → REFACTOR cycle with 80% coverage
+
+> **Note**: `verification-loop` is the **default** exit condition in Step 2, not optional.
 
 ## Prompt Integration
 

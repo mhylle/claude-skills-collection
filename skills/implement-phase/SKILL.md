@@ -491,30 +491,61 @@ SUBAGENTS_SPAWNED: [count]
 
 ---
 
-### Step 2: Exit Condition Verification
+### Step 2: Exit Condition Verification (verification-loop)
 
-**Responsibility**: Verify all exit conditions defined in the plan pass.
+**Responsibility**: Verify all exit conditions using the comprehensive 6-phase verification-loop.
+
+> **verification-loop is the DEFAULT exit condition verification.** It provides comprehensive validation that goes beyond basic build/test checks.
 
 **Process**:
 1. Read exit conditions from plan
-2. Spawn parallel verification subagents:
-   - Build verification (build, lint, typecheck)
-   - Runtime verification (app starts, no errors)
-   - Functional verification (tests pass, feature works)
-3. Aggregate results
+2. Invoke `verification-loop` skill with phase context
+3. verification-loop executes 6 phases:
+   - **Phase 1: Build** - Compilation, bundling, artifact generation
+   - **Phase 2: Type** - Type checking, interface compliance
+   - **Phase 3: Lint** - Code style, static analysis
+   - **Phase 4: Test** - Unit tests, integration tests, coverage
+   - **Phase 5: Security** - Dependency audit, secret scanning
+   - **Phase 6: Diff** - Review changes, detect unintended modifications
+4. Aggregate results and report
+
+**Invocation**:
+```
+Skill(skill="verification-loop"): Verify Phase [N] implementation.
+
+Context:
+- Plan: [plan file path]
+- Phase: [N] ([Phase Name])
+- Changed Files: [list of files modified in this phase]
+
+Execute all 6 verification phases and return structured result.
+```
 
 **Output**:
 ```
-EXIT_CONDITIONS_STATUS: PASS | FAIL
-BUILD_VERIFICATION: PASS | FAIL
-RUNTIME_VERIFICATION: PASS | FAIL
-FUNCTIONAL_VERIFICATION: PASS | FAIL
-FAILED_CONDITIONS: [list if any]
+VERIFICATION_LOOP_STATUS: PASS | FAIL
+PHASES_COMPLETED: 6/6
+PHASE_RESULTS:
+  BUILD: PASS | FAIL
+  TYPE: PASS | FAIL
+  LINT: PASS | FAIL
+  TEST: PASS | FAIL
+  SECURITY: PASS | FAIL
+  DIFF: PASS | FAIL
+FAILED_PHASES: [list if any]
+EVIDENCE: logs/verification-loop-phase-N.log
 ```
 
-**Gate**: ALL exit conditions must PASS to proceed.
+**Gate**: ALL 6 verification phases must PASS to proceed.
 
-**On Failure**: Spawn fix subagents, re-verify, repeat until pass or escalate.
+**On Failure**: Spawn fix subagents for failed phases, re-run verification-loop, repeat until all pass or escalate.
+
+**Disabling verification-loop** (not recommended):
+```yaml
+# In plan metadata - only for special cases
+phase_config:
+  verification_loop: false  # Falls back to basic exit conditions
+```
 
 **→ NEXT STEP**: Output Progress Tracker, then IMMEDIATELY execute Step 3 (Automated Integration Testing). Do NOT wait for user input.
 
@@ -863,8 +894,9 @@ Optional steps can be added to the phase execution pipeline when needed. These s
 
 | Step | Skill | Purpose | Default |
 |------|-------|---------|---------|
-| Security Review | `security-review` | Comprehensive security audit | Disabled |
-| Verification Loop | `verification-loop` | Extended 6-phase verification | Disabled |
+| Security Review | `security-review` | Comprehensive OWASP security audit | Disabled |
+
+> **Note**: `verification-loop` is NOT optional - it is the default exit condition verification in Step 2.
 
 **Key characteristics:**
 - Not included in standard pipeline execution
@@ -926,72 +958,9 @@ COMPLIANCE_CHECKS: [list of standards checked, e.g., OWASP Top 10]
 
 **Gate behavior**: Security review must PASS to proceed. NEEDS_REMEDIATION triggers fix subagents, then re-review.
 
-### Verification Loop Step
+### Enabling Security Review
 
-**Skill**: `verification-loop`
-
-**Purpose**: Extended 6-phase verification cycle that goes beyond basic exit conditions. Provides comprehensive validation for complex implementations or production-critical deployments.
-
-**When to enable:**
-- Complex implementations with multiple integration points
-- Production deployments requiring extra confidence
-- Mission-critical features where failures have high impact
-- Implementations involving data migrations
-- Features with complex state management
-
-**How to enable:**
-```yaml
-# In plan metadata
-phase_config:
-  optional_steps:
-    verification_loop: true
-```
-
-**Integration point**: Can replace or supplement Step 2 (Exit Conditions)
-
-```
-# Replace mode (verification_loop_mode: replace)
-Step 1: Implementation
-Step 2: Verification Loop (replaces basic Exit Conditions)
-Step 3: Integration Testing
-...
-
-# Supplement mode (verification_loop_mode: supplement)
-Step 1: Implementation
-Step 2: Exit Conditions (basic checks)
-Step 2.5: Verification Loop ← ADDITIONAL VERIFICATION
-Step 3: Integration Testing
-...
-```
-
-**Configuration options:**
-```yaml
-phase_config:
-  optional_steps:
-    verification_loop: true
-  verification_loop_mode: replace | supplement  # Default: supplement
-```
-
-**Expected output format:**
-```
-VERIFICATION_LOOP_STATUS: PASS | FAIL | PARTIAL
-PHASES_COMPLETED: [X/6]
-PHASE_RESULTS:
-  1_static_analysis: PASS | FAIL
-  2_unit_verification: PASS | FAIL
-  3_integration_verification: PASS | FAIL
-  4_contract_verification: PASS | FAIL
-  5_performance_verification: PASS | FAIL
-  6_chaos_verification: PASS | FAIL
-FAILURES: [list of failed checks with details]
-EVIDENCE: logs/verification-loop-phase-N.log
-```
-
-**Gate behavior**: Verification loop must achieve PASS on all 6 phases to proceed. Individual phase failures trigger targeted fixes.
-
-### Enabling Multiple Optional Steps
-
-Multiple optional steps can be enabled simultaneously. They execute in a defined order within the pipeline.
+Security review can be enabled for phases that handle sensitive operations.
 
 **Example configuration:**
 ```yaml
@@ -999,15 +968,12 @@ Multiple optional steps can be enabled simultaneously. They execute in a defined
 phase_config:
   optional_steps:
     security_review: true
-    verification_loop: true
-  verification_loop_mode: supplement
 ```
 
-**Execution order when multiple steps enabled:**
+**Execution order with security review enabled:**
 ```
 Step 1: Implementation
-Step 2: Exit Conditions
-Step 2.5: Verification Loop (if enabled, supplement mode)
+Step 2: Exit Conditions (verification-loop - always runs)
 Step 3: Integration Testing
 Step 4: Code Review
 Step 4.5: Security Review (if enabled)
