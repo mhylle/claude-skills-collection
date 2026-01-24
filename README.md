@@ -308,11 +308,15 @@ Each phase passes through these gates:
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-**Extensible**: Optional steps can be enabled via plan metadata:
+**Mandatory Exit Conditions** (non-negotiable):
+- `verification-loop` must PASS (all 6 phases: Build, Type, Lint, Test, Security, Diff)
+- Code review must be clean **PASS** (not PASS_WITH_NOTES)
+- **All recommendations must be fixed** - recommendations are blocking, not optional
+- ADR compliance must PASS
+
+**Optional steps** can be enabled via plan metadata:
 - `security_review: true` - Adds OWASP security audit step after code review
 - `tdd_mode: true` - Enforces RED → GREEN → REFACTOR cycle with 80% coverage
-
-> **Note**: `verification-loop` is the **default** exit condition in Step 2, not optional.
 
 ## Prompt Integration
 

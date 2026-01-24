@@ -151,6 +151,37 @@ Each step is a gate. If any gate fails, the phase cannot complete.
 ### Composability
 This skill orchestrates other skills (code-review, adr) and can be extended to include more.
 
+## Mandatory Exit Conditions
+
+> **These conditions are NON-NEGOTIABLE. A phase cannot complete until ALL are satisfied.**
+
+| Condition | Requirement | Rationale |
+|-----------|-------------|-----------|
+| **verification-loop PASS** | All 6 phases pass (Build, Type, Lint, Test, Security, Diff) | Code must compile, type-check, pass linting, tests, and security checks |
+| **Integration tests PASS** | All API/UI tests pass | Feature must work end-to-end |
+| **Code review PASS** | Clean PASS status (not PASS_WITH_NOTES) | No outstanding issues |
+| **All recommendations fixed** | Every recommendation addressed | Recommendations are blocking, not optional |
+| **ADR compliance PASS** | Follows existing ADRs, new decisions documented | Architectural consistency |
+| **Plan verified** | All work items confirmed complete | Specification fulfilled |
+
+### Why Recommendations Are Mandatory
+
+```
+❌ WRONG: "It's just a recommendation, we can fix it later"
+❌ WRONG: "PASS_WITH_NOTES is good enough"
+❌ WRONG: "We'll address it in the next phase"
+
+✅ CORRECT: "Recommendations are blocking issues"
+✅ CORRECT: "Only clean PASS allows phase completion"
+✅ CORRECT: "Fix it now or the phase cannot complete"
+```
+
+**The Clean Baseline Principle requires:**
+- Each phase ends with zero outstanding issues
+- The next phase inherits a clean codebase
+- Technical debt is not accumulated across phases
+- Recommendations, if worth noting, are worth fixing
+
 ## Input Context
 
 When invoked, this skill expects:
@@ -659,15 +690,29 @@ BLOCKING_ISSUES: [count]
 RECOMMENDATIONS: [list]
 ```
 
-**Gate**: Code review must be PASS to proceed.
+**Gate**: Code review must be **PASS** to proceed. PASS_WITH_NOTES is NOT acceptable.
+
+> ⚠️ **MANDATORY: All Recommendations Must Be Fixed**
+>
+> This is a **non-negotiable exit condition**. PASS_WITH_NOTES means there are recommendations that MUST be addressed before the phase can complete.
+>
+> - Recommendations are NOT optional suggestions
+> - Recommendations are NOT "nice to have"
+> - Recommendations are **blocking issues** that must be resolved
+> - The only acceptable code review status is **PASS**
 
 **On PASS_WITH_NOTES or NEEDS_CHANGES**:
-1. Spawn fix subagents to address all issues (blocking AND recommendations)
+1. Spawn fix subagents to address ALL issues (blocking issues AND recommendations)
 2. Re-run code review
-3. Repeat until PASS (max 3 retries)
+3. Repeat until clean **PASS** (max 3 retries)
 4. Escalate to user only if max retries exhausted
 
-**Why fix notes too?** Recommendations often indicate pattern violations, missing tests, or technical debt. Fixing them now prevents accumulation and maintains code quality standards.
+**Why are recommendations mandatory?**
+- Recommendations indicate pattern violations, missing tests, or technical debt
+- Leaving them unfixed accumulates debt that compounds across phases
+- The "Clean Baseline Principle" requires each phase to end clean
+- Future phases inherit our mess if we don't fix it now
+- Consistency: if it's worth noting, it's worth fixing
 
 ---
 
@@ -796,8 +841,9 @@ Integration Testing (performed by Claude):
   Evidence: logs/integration-test-phase-N.log
 
 Code Review:
-  Status: ✅ PASS (or ⚠️ PASS_WITH_NOTES)
-  Recommendations: [count] (see details below)
+  Status: ✅ PASS (all recommendations addressed)
+  Blocking Issues: 0
+  Recommendations Fixed: [count]
 
 ADR Compliance:
   Status: ✅ PASS
@@ -1065,7 +1111,11 @@ PHASE_RESULT:
     original_path: "docs/prompts/phase-2-data-pipeline.md"
     archived_to: "docs/prompts/completed/phase-2-data-pipeline.md"
 
-  recommendations: [list]
+  code_review_details:
+    blocking_issues_found: [count]
+    blocking_issues_fixed: [count]
+    recommendations_found: [count]
+    recommendations_fixed: [count]  # Must equal recommendations_found
 
   user_verification:  # Should usually be empty
     []
