@@ -225,6 +225,72 @@ Functional Verification:
 [Potential issues and how to handle them]
 ```
 
+### Phase 7: Bootstrap Tasks
+
+After writing the plan file, create Tasks for progress tracking:
+
+**Process:**
+1. Generate a task list ID from plan filename: `plan-{filename-without-extension}`
+   - Example: `2026-01-24-user-auth.md` → `plan-2026-01-24-user-auth`
+
+2. Create a Task for each phase:
+   ```
+   TaskCreate:
+     subject: "Phase N: [Phase Name]"
+     description: "[Phase objective] - Plan: [plan file path]"
+     activeForm: "Implementing Phase N: [Name]"
+   ```
+
+3. Set sequential dependencies:
+   ```
+   TaskUpdate:
+     taskId: [phase-N]
+     addBlockedBy: [phase-(N-1)]  # Each phase blocked by previous
+   ```
+
+4. Add task list ID to plan metadata (top of file):
+   ```markdown
+   ---
+   task_list_id: plan-2026-01-24-user-auth
+   ---
+   ```
+
+**Completion Message:**
+```
+Plan created: [path]
+Tasks created: [count] phases with sequential dependencies
+Task List ID: [task_list_id]
+
+To work on this plan:
+  Single session:  /implement-plan [path]
+  Multi-session:   CLAUDE_CODE_TASK_LIST_ID=[task_list_id] claude
+
+Use the same task_list_id across sessions to share progress.
+```
+
+## Multi-Session Support
+
+Tasks persist on the filesystem and can be shared across Claude Code sessions.
+
+**Starting a shared session:**
+```bash
+CLAUDE_CODE_TASK_LIST_ID=plan-2026-01-24-user-auth claude
+```
+
+**Benefits:**
+- Multiple developers can work on the same plan
+- Progress syncs automatically via shared task list
+- Dependency tracking prevents conflicts (blocked tasks visible)
+- Resume from any session with the same task_list_id
+
+**Task States:**
+```
+◻ #1 Phase 1: Setup
+◻ #2 Phase 2: Core Logic › blocked by #1
+◻ #3 Phase 3: Integration › blocked by #2
+◻ #4 Phase 4: Testing › blocked by #3
+```
+
 ## Critical Guidelines
 
 ### Verification-First Planning
@@ -311,6 +377,26 @@ Before finalizing any plan:
 - [ ] Exit conditions cover all three verification categories
 - [ ] No unresolved questions or TBD sections
 - [ ] User has approved structure and approach
+- [ ] Tasks bootstrapped with dependencies set
+- [ ] task_list_id added to plan metadata
+
+## Progress Tracking
+
+Progress is tracked via **Task tools** which persist across sessions. See [ADR-0001](../../docs/decisions/ADR-0001-separate-plan-spec-from-progress-tracking.md).
+
+**Task Persistence:**
+- Tasks persist on filesystem between sessions
+- Dependencies ensure correct execution order
+- Multiple sessions can share the same task list via `CLAUDE_CODE_TASK_LIST_ID`
+
+**Workflow:**
+```
+create-plan → TaskCreate (all phases) → Outputs task_list_id
+                    ↓
+implement-plan → TaskUpdate(in_progress) → implement-phase → TaskUpdate(completed)
+                    ↓
+Resume (any session) → CLAUDE_CODE_TASK_LIST_ID=xxx claude → TaskList shows progress
+```
 
 ## Project Type Detection
 

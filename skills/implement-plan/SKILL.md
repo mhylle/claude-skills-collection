@@ -134,8 +134,16 @@ When given a plan path or asked to implement a plan:
 1. Find the plan file (docs/plans/, thoughts/plans/, or specified path)
 2. Read the ENTIRE plan - full context is essential
 3. Identify total number of phases
-4. Check for existing progress (checkmarks indicate completed work)
+4. Extract task_list_id from plan metadata (for multi-session support)
+5. Check for existing Tasks (TaskList shows progress from previous sessions)
 ```
+
+**Multi-Session Support:**
+If the plan has a `task_list_id` in its metadata, ensure you're using the same task list:
+```bash
+CLAUDE_CODE_TASK_LIST_ID=plan-2026-01-24-feature-name claude
+```
+This enables multiple sessions to share progress on the same plan.
 
 ### 2. Discover Phase Prompts
 
@@ -176,19 +184,38 @@ phase-2-*.md  →  Phase 2
 4. Load all files mentioned in the plan
 ```
 
-### 4. Create Progress Tracker
+### 4. Check Progress via Tasks
 
 ```
-TodoWrite: Track plan-level progress
-- [ ] Phase 1: [Phase Name]
-- [ ] Phase 2: [Phase Name]
-- [ ] Phase N: [Phase Name]
-- [ ] Final verification
+# Check for existing tasks for this plan
+TaskList: Check for tasks matching "Phase N:" pattern
+
+If tasks exist:
+  - Resume from first non-completed task
+  - Skip already-completed phases
+  - Display current progress
+
+If no tasks exist:
+  - Tasks should have been created by create-plan
+  - If missing, create them now (see create-plan Phase 7)
+```
+
+**Task Status Display:**
+```
+Tasks (2 done, 3 open):
+  ✓ #1 Phase 1: Setup
+  ✓ #2 Phase 2: Core Logic
+  ◻ #3 Phase 3: Integration › blocked by #2
+  ◻ #4 Phase 4: Testing › blocked by #3
+  ◻ #5 Phase 5: Documentation › blocked by #4
 ```
 
 ### 5. Begin Phase Execution
 
-For each phase, delegate to `implement-phase`:
+For each phase:
+1. Mark task as in_progress: `TaskUpdate(task_id, status: "in_progress")`
+2. Delegate to `implement-phase`
+3. On completion: `TaskUpdate(task_id, status: "completed")`
 
 ```
 Skill(skill="implement-phase"): Execute Phase [N] of the implementation plan.
@@ -196,6 +223,7 @@ Skill(skill="implement-phase"): Execute Phase [N] of the implementation plan.
 Context:
 - Plan: [plan file path]
 - Phase: [N] ([Phase Name])
+- Task ID: [task_id from TaskList]
 - Prompt: [prompt file path, if discovered]
 - Previous Phase Status: [Complete/N/A]
 
@@ -209,7 +237,8 @@ Skill(skill="implement-phase"): Execute Phase 2.
 Context:
 - Plan: docs/plans/trading-platform.md
 - Phase: 2 (Data Pipeline)
-- Prompt: docs/prompts/phase-2-data-pipeline.md  ← Use this!
+- Task ID: 2
+- Prompt: docs/prompts/phase-2-data-pipeline.md
 - Previous Phase Status: Complete
 
 The prompt contains detailed orchestration instructions.
@@ -223,6 +252,7 @@ Skill(skill="implement-phase"): Execute Phase 4.
 Context:
 - Plan: docs/plans/trading-platform.md
 - Phase: 4 (Integration)
+- Task ID: 4
 - Prompt: None (use plan directly)
 - Previous Phase Status: Complete
 
@@ -351,24 +381,41 @@ How should I proceed?
 
 ## Resuming Interrupted Work
 
-When a plan has existing checkmarks:
+Tasks persist across sessions, enabling seamless resume:
 
-1. **Identify completed phases** - Trust checked items are done
-2. **Find resume point** - First phase with unchecked items
+1. **Call TaskList** - Get all tasks for the plan
+2. **Find first non-completed task** - This is the resume point
 3. **Verify state** - Quick sanity check that previous work exists
-4. **Continue** - Resume from unchecked phase
+4. **Continue** - Resume from the pending task
 
 ```
 ● Plan Status: Resuming interrupted work
 
-Completed Phases:
-  ✅ Phase 1: Database Schema
-  ✅ Phase 2: Authentication Service (partial)
+Task Status (from TaskList):
+  ✓ #1 Phase 1: Database Schema - completed
+  ✓ #2 Phase 2: Authentication Service - completed
+  ◻ #3 Phase 3: API Endpoints - in_progress  ← Resume here
+  ◻ #4 Phase 4: Testing - pending (blocked by #3)
 
-Resume Point: Phase 2, Task 4 (jwt.strategy.ts)
+Resume Point: Phase 3 (API Endpoints)
 
-Continuing from Phase 2...
+Continuing from Phase 3...
 ```
+
+**Multi-Session Resume:**
+```bash
+# Start new session with same task list
+CLAUDE_CODE_TASK_LIST_ID=plan-2026-01-24-user-auth claude
+
+# Tasks automatically show current progress
+# Resume from where any session left off
+```
+
+**Benefits of Task-based resume:**
+- Cross-session persistence (tasks survive session restart)
+- Multi-session support (share progress across terminals)
+- Dependency tracking (blocked tasks visible)
+- Clear audit trail of progress
 
 ## Final Completion
 
@@ -404,15 +451,37 @@ Implementation complete. Ready for final review.
 
 ## Progress Tracking
 
-Maintain awareness at the **plan level**:
+Progress is tracked via **Task tools** with cross-session persistence. See [ADR-0001](../../docs/decisions/ADR-0001-separate-plan-spec-from-progress-tracking.md).
 
 | Tracking Method | Scope | Purpose |
 |-----------------|-------|---------|
-| TodoWrite | Session | Track phase-level progress |
-| Plan File | Persistent | Record completed tasks/phases |
+| TaskList/TaskUpdate | Persistent | Track phase-level progress across sessions |
+| Plan File | Persistent | Specification document (updated with ✅ on completion) |
 | Status Updates | User | Communicate current state |
 
-Phase-level tracking is handled by `implement-phase`.
+**Task Lifecycle:**
+```
+create-plan → TaskCreate (all phases with dependencies)
+                  ↓
+implement-plan → TaskUpdate(in_progress) → implement-phase → TaskUpdate(completed)
+                  ↓
+Resume (any session) → TaskList (find first pending task)
+```
+
+**Multi-Session Workflow:**
+```bash
+# Session 1: Start implementation
+CLAUDE_CODE_TASK_LIST_ID=plan-my-feature claude
+> /implement-plan docs/plans/my-feature.md
+# ... complete Phase 1, 2 ...
+
+# Session 2: Resume from another terminal
+CLAUDE_CODE_TASK_LIST_ID=plan-my-feature claude
+> /implement-plan docs/plans/my-feature.md
+# Automatically resumes from Phase 3
+```
+
+Phase-level tracking is handled by `implement-phase` using Task tools.
 
 ## Reference Materials
 

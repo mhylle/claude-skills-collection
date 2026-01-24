@@ -1,0 +1,55 @@
+{
+  "enabled": true,
+  "extraction_threshold": 7,
+  "pattern_types": {
+    "error_resolution": {
+      "enabled": true,
+      "description": "Patterns for resolving errors and exceptions"
+    },
+    "user_corrections": {
+      "enabled": true,
+      "description": "Learning from user feedback and corrections"
+    },
+    "workarounds": {
+      "enabled": true,
+      "description": "Alternative approaches when standard solutions fail"
+    },
+    "debugging_techniques": {
+      "enabled": true,
+      "description": "Effective debugging strategies and tools"
+    },
+    "project_specific": {
+      "enabled": true,
+      "description": "Patterns unique to the current project or codebase"
+    }
+  },
+  "output_directory": "~/.claude/skills/learned/",
+  "max_patterns_per_session": 25,
+  "deduplication": {
+    "enabled": true,
+    "similarity_threshold": 0.85,
+    "check_existing_patterns": true,
+    "merge_similar_patterns": false
+  },
+  "exclusions": {
+    "patterns": [
+      "credentials",
+      "api_keys",
+      "secrets",
+      "passwords",
+      "tokens",
+      "private_keys"
+    ],
+    "topics": [
+      "authentication_secrets",
+      "personal_data",
+      "proprietary_algorithms"
+    ],
+    "file_patterns": [
+      "*.env",
+      "*.pem",
+      "*.key",
+      "*credentials*"
+    ]
+  }
+}

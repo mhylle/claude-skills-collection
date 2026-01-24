@@ -22,7 +22,7 @@ Execute a **single phase** from an implementation plan with comprehensive qualit
 | Spawn subagents to run tests | Run tests yourself |
 | Spawn subagents to fix issues | Fix code yourself |
 | Read files to understand context | Read files to copy/paste code |
-| Track progress with TodoWrite | Implement while tracking |
+| Track progress with Task tools | Implement while tracking |
 | Coordinate and delegate | Do the work yourself |
 
 ### Enforcement
@@ -158,9 +158,12 @@ When invoked, this skill expects:
 ```
 Plan Path: [path to plan file]
 Phase: [number or name]
+Task ID: [task_id from implement-plan's TaskList]
 Prompt Path: [optional - path to pre-generated prompt from prompt-generator]
 Changed Files: [optional - auto-detected if not provided]
 Skip Steps: [optional - list of steps to skip, e.g., for testing]
+TDD Mode: [enabled/disabled - from plan metadata, CLI flag, or global settings]
+Coverage Threshold: [percentage - default 80%, applies when TDD mode enabled]
 ```
 
 ### Prompt Integration
@@ -311,7 +314,7 @@ PHASE COMPLETION VERIFICATION:
 - [ ] Step 3: Integration Testing - YOU tested via API calls or Playwright
 - [ ] Step 4: Code Review - Achieved PASS (not PASS_WITH_NOTES)
 - [ ] Step 5: ADR Compliance - Checked against relevant ADRs
-- [ ] Step 6: Plan Sync - Tasks and exit conditions marked in plan file
+- [ ] Step 6: Plan Sync - Work items verified, phase status updated
 - [ ] Step 7: Prompt Archival - Archived or explicitly skipped (no prompt)
 - [ ] Step 8: Completion Report - Generated and presented
 
@@ -677,24 +680,25 @@ NEW_DECISIONS_DOCUMENTED: [list of new ADR numbers, if any]
 
 ### Step 6: Plan Synchronization
 
-**Responsibility**: Update the plan file to reflect completed work.
+**Responsibility**: Verify work items completed and update plan status.
 
 **Process**:
-1. Mark completed tasks with `[x]`
-2. Update exit condition checkboxes
-3. Add ADR references if new ADRs were created
-4. Note any deviations from original plan
-5. Update phase status
+1. Verify all work items for this phase were completed
+2. Add ADR references if new ADRs were created
+3. Note any deviations from original plan
+4. Mark phase status as complete (add ✅ to phase header)
+
+**Note**: Per ADR-0001, plans are specification documents. Progress is tracked via Task tools, not by modifying checkboxes in the plan file.
 
 **Output**:
 ```
 PLAN_SYNC_STATUS: PASS | FAIL
-TASKS_MARKED_COMPLETE: [count]
+WORK_ITEMS_VERIFIED: [count]
 DEVIATIONS_NOTED: [count]
 ADR_REFERENCES_ADDED: [count]
 ```
 
-**Gate**: Plan must sync successfully.
+**Gate**: Plan sync must complete successfully.
 
 **→ NEXT STEP**: Output Progress Tracker, then IMMEDIATELY execute Step 7 (Prompt Archival). Do NOT wait for user input.
 
@@ -770,8 +774,9 @@ ADR Compliance:
   New ADRs Created: [list or "None"]
 
 Plan Updated:
-  Tasks Completed: [count]
-  Checkboxes Marked: [count]
+  Work Items Verified: [count]
+  Phase Status: ✅ Complete
+  Task Status: completed (via TaskUpdate)
 
 Prompt:
   Status: ✅ Archived (or ⏭️ Skipped - no prompt provided)
@@ -794,6 +799,16 @@ PHASE STATUS: ✅ COMPLETE - Ready for next phase
 1. Output final Progress Tracker showing all steps ✅ DONE
 2. Present the report to the user
 3. NOW (and ONLY now) await user confirmation before proceeding to next phase
+
+---
+
+## Progress Tracking
+
+Progress is tracked via **Task tools**, not checkboxes. See [ADR-0001](../../docs/decisions/ADR-0001-separate-plan-spec-from-progress-tracking.md).
+
+- Task status is managed by implement-plan (in_progress when starting, completed when done)
+- Plan files remain pure specification documents
+- Step 6 verifies work items but does not modify plan checkboxes
 
 ---
 
@@ -840,6 +855,184 @@ if (phase.metadata.security_sensitive) {
 }
 ```
 
+## Optional Skill Steps
+
+Optional steps can be added to the phase execution pipeline when needed. These steps are **not run by default** and must be explicitly enabled via plan metadata or configuration.
+
+### Optional Steps Overview
+
+| Step | Skill | Purpose | Default |
+|------|-------|---------|---------|
+| Security Review | `security-review` | Comprehensive security audit | Disabled |
+| Verification Loop | `verification-loop` | Extended 6-phase verification | Disabled |
+
+**Key characteristics:**
+- Not included in standard pipeline execution
+- Enabled via plan metadata `optional_steps` configuration
+- Can be enabled globally or per-phase
+- Integrate at specific points in the pipeline
+
+### Security Review Step
+
+**Skill**: `security-review`
+
+**Purpose**: Comprehensive security audit for implementations that handle sensitive operations, user data, or security-critical code paths.
+
+**When to enable:**
+- Authentication and authorization code
+- User input handling and validation
+- API endpoints exposed to external clients
+- Secrets management and credential handling
+- Payment processing or financial transactions
+- Personal data processing (PII, PHI)
+- Cryptographic operations
+
+**How to enable:**
+```yaml
+# In plan metadata
+phase_config:
+  optional_steps:
+    security_review: true
+```
+
+**Integration point**: After Step 4 (Code Review), before Step 5 (ADR Compliance)
+
+```
+Step 1: Implementation
+Step 2: Exit Conditions
+Step 3: Integration Testing
+Step 4: Code Review
+Step 4.5: Security Review ← INSERTED HERE
+Step 5: ADR Compliance
+Step 6: Plan Sync
+Step 7: Prompt Archival
+Step 8: Completion Report
+```
+
+**Expected output format:**
+```
+SECURITY_REVIEW_STATUS: PASS | FAIL | NEEDS_REMEDIATION
+VULNERABILITIES_FOUND: [count]
+SEVERITY_BREAKDOWN:
+  CRITICAL: [count]
+  HIGH: [count]
+  MEDIUM: [count]
+  LOW: [count]
+ISSUES:
+  - [severity] [category]: [description]
+RECOMMENDATIONS: [list]
+COMPLIANCE_CHECKS: [list of standards checked, e.g., OWASP Top 10]
+```
+
+**Gate behavior**: Security review must PASS to proceed. NEEDS_REMEDIATION triggers fix subagents, then re-review.
+
+### Verification Loop Step
+
+**Skill**: `verification-loop`
+
+**Purpose**: Extended 6-phase verification cycle that goes beyond basic exit conditions. Provides comprehensive validation for complex implementations or production-critical deployments.
+
+**When to enable:**
+- Complex implementations with multiple integration points
+- Production deployments requiring extra confidence
+- Mission-critical features where failures have high impact
+- Implementations involving data migrations
+- Features with complex state management
+
+**How to enable:**
+```yaml
+# In plan metadata
+phase_config:
+  optional_steps:
+    verification_loop: true
+```
+
+**Integration point**: Can replace or supplement Step 2 (Exit Conditions)
+
+```
+# Replace mode (verification_loop_mode: replace)
+Step 1: Implementation
+Step 2: Verification Loop (replaces basic Exit Conditions)
+Step 3: Integration Testing
+...
+
+# Supplement mode (verification_loop_mode: supplement)
+Step 1: Implementation
+Step 2: Exit Conditions (basic checks)
+Step 2.5: Verification Loop ← ADDITIONAL VERIFICATION
+Step 3: Integration Testing
+...
+```
+
+**Configuration options:**
+```yaml
+phase_config:
+  optional_steps:
+    verification_loop: true
+  verification_loop_mode: replace | supplement  # Default: supplement
+```
+
+**Expected output format:**
+```
+VERIFICATION_LOOP_STATUS: PASS | FAIL | PARTIAL
+PHASES_COMPLETED: [X/6]
+PHASE_RESULTS:
+  1_static_analysis: PASS | FAIL
+  2_unit_verification: PASS | FAIL
+  3_integration_verification: PASS | FAIL
+  4_contract_verification: PASS | FAIL
+  5_performance_verification: PASS | FAIL
+  6_chaos_verification: PASS | FAIL
+FAILURES: [list of failed checks with details]
+EVIDENCE: logs/verification-loop-phase-N.log
+```
+
+**Gate behavior**: Verification loop must achieve PASS on all 6 phases to proceed. Individual phase failures trigger targeted fixes.
+
+### Enabling Multiple Optional Steps
+
+Multiple optional steps can be enabled simultaneously. They execute in a defined order within the pipeline.
+
+**Example configuration:**
+```yaml
+# In plan metadata
+phase_config:
+  optional_steps:
+    security_review: true
+    verification_loop: true
+  verification_loop_mode: supplement
+```
+
+**Execution order when multiple steps enabled:**
+```
+Step 1: Implementation
+Step 2: Exit Conditions
+Step 2.5: Verification Loop (if enabled, supplement mode)
+Step 3: Integration Testing
+Step 4: Code Review
+Step 4.5: Security Review (if enabled)
+Step 5: ADR Compliance
+Step 6: Plan Sync
+Step 7: Prompt Archival
+Step 8: Completion Report
+```
+
+**Per-phase overrides:**
+```yaml
+# Enable globally but override for specific phases
+phase_config:
+  optional_steps:
+    security_review: true
+
+phases:
+  - name: "Database Schema"
+    # Inherits security_review: true from global config
+
+  - name: "Static Content"
+    optional_steps:
+      security_review: false  # Override: skip for this phase
+```
+
 ## Invocation
 
 ### From implement-plan (primary use)
@@ -877,6 +1070,8 @@ When called by implement-plan, return structured result:
 PHASE_RESULT:
   phase_number: 2
   phase_name: "Authentication Service"
+  task_id: [task_id from input context]
+  task_status: "completed"
   status: COMPLETE | FAILED | BLOCKED
 
   steps:
@@ -984,12 +1179,248 @@ phase_config:
   skip_steps: []             # Steps to skip
   additional_steps: []       # Extra steps to run
   retry_limit: 3             # Max retries per step
+  tdd_mode: false            # Enable TDD (Test-Driven Development) mode
+  coverage_threshold: 80     # Minimum code coverage percentage (TDD mode)
 
 # Global settings (~/.claude/settings.json)
 implement_phase:
   default_retry_limit: 3
   always_run_security: false
   require_adr_for_decisions: true
+  default_tdd_mode: false
+  default_coverage_threshold: 80
+```
+
+## TDD Mode (Optional)
+
+### TDD Mode Overview
+
+TDD (Test-Driven Development) mode inverts the traditional implementation flow by requiring tests to be written before implementation code. This approach ensures:
+
+- **Higher test coverage**: Tests are not an afterthought
+- **Better design**: Writing tests first forces cleaner interfaces
+- **Confidence**: Every line of production code exists to make a test pass
+- **Documentation**: Tests serve as executable specifications
+
+**When to enable TDD mode:**
+- Building new features with well-defined requirements
+- Implementing business logic with clear acceptance criteria
+- Working on code that requires high reliability
+- When the plan specifies TDD as a requirement
+
+**How it modifies the implementation flow:**
+In normal mode, Step 1 spawns implementation subagents first, then test subagents. In TDD mode, this order is reversed, and an additional verification step ensures tests fail before implementation.
+
+### Enabling TDD Mode
+
+**Via plan metadata:**
+```yaml
+# In plan file metadata section
+phase_config:
+  tdd_mode: true
+  coverage_threshold: 80  # Optional, defaults to 80%
+```
+
+**Via command line flag:**
+```
+/implement-phase docs/plans/my-plan.md phase:3 --tdd
+```
+
+**Via global settings:**
+```yaml
+# ~/.claude/settings.json
+implement_phase:
+  default_tdd_mode: true
+  default_coverage_threshold: 80
+```
+
+### RED → GREEN → REFACTOR Cycle
+
+TDD follows the classic three-phase cycle:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    TDD CYCLE                                │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│    ┌───────┐         ┌───────┐         ┌──────────┐        │
+│    │  RED  │ ──────► │ GREEN │ ──────► │ REFACTOR │        │
+│    └───────┘         └───────┘         └──────────┘        │
+│        │                                     │              │
+│        └─────────────────────────────────────┘              │
+│                    (repeat)                                 │
+│                                                             │
+├─────────────────────────────────────────────────────────────┤
+│ RED:      Write a failing test that defines desired behavior│
+│ GREEN:    Write minimal code to make the test pass          │
+│ REFACTOR: Improve code quality while keeping tests green    │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**RED Phase:**
+- Write test(s) that describe the expected behavior
+- Tests MUST fail initially (this proves they test something real)
+- If tests pass immediately, either the test is wrong or the feature already exists
+
+**GREEN Phase:**
+- Write the minimum code necessary to make the test pass
+- Do not add extra functionality "just in case"
+- Ugly code is acceptable at this stage - it will be refactored
+
+**REFACTOR Phase:**
+- Improve code structure, naming, and design
+- Remove duplication
+- Tests must remain green throughout refactoring
+- If tests fail, you've broken something - revert and try again
+
+### Step 1 Modifications for TDD
+
+**Normal Flow (TDD disabled):**
+```
+Step 1: Implementation
+├── 1a. Read phase requirements
+├── 1b. Spawn IMPLEMENTATION subagents
+├── 1c. Spawn TEST subagents
+└── 1d. Verify tests pass
+```
+
+**TDD Flow (TDD enabled):**
+```
+Step 1: Implementation (TDD Mode)
+├── 1a. Read phase requirements
+├── 1b. Spawn TEST subagents FIRST (RED)
+├── 1c. Verify tests FAIL (proves tests are valid)
+├── 1d. Spawn IMPLEMENTATION subagents (GREEN)
+├── 1e. Verify tests PASS
+├── 1f. Spawn REFACTOR subagents (optional)
+└── 1g. Verify tests still PASS
+```
+
+**Subagent Spawning Order Changes:**
+
+| Step | Normal Mode | TDD Mode |
+|------|-------------|----------|
+| First | Implementation code | Test code |
+| Second | Test code | Verify tests fail (RED) |
+| Third | Verify tests pass | Implementation code (GREEN) |
+| Fourth | - | Verify tests pass |
+| Fifth | - | Refactor (optional) |
+
+**TDD Subagent Examples:**
+
+```
+# Step 1b: Write failing tests FIRST (RED)
+Task (run_in_background: true): "Write unit tests for UserAuthService.
+
+Context: Phase 3 - User Authentication (TDD Mode - RED phase)
+Location: src/auth/user-auth.service.spec.ts
+
+Test scenarios (from requirements):
+- authenticateUser() returns token for valid credentials
+- authenticateUser() throws UnauthorizedError for invalid password
+- authenticateUser() throws NotFoundError for unknown user
+- refreshToken() extends session for valid refresh token
+
+IMPORTANT: Implementation does NOT exist yet. Tests MUST fail.
+Write tests that will drive the implementation.
+
+RESPONSE FORMAT: STATUS, FILES created, test count, ERRORS if any."
+
+# Step 1c: Verify tests fail
+Task: "Run tests and verify they FAIL.
+
+Command: npm test -- --testPathPattern=user-auth.service.spec.ts
+Expected: Tests should FAIL (RED phase of TDD)
+
+If tests PASS, there is a problem - either tests are wrong or feature already exists.
+
+RESPONSE FORMAT: STATUS (expect FAIL), test count, failure summary."
+
+# Step 1d: Write minimal implementation (GREEN)
+Task (run_in_background: true): "Implement UserAuthService to pass tests.
+
+Context: Phase 3 - User Authentication (TDD Mode - GREEN phase)
+Location: src/auth/user-auth.service.ts
+Tests at: src/auth/user-auth.service.spec.ts
+
+Write MINIMAL code to make all tests pass. Do not add extra functionality.
+Follow the interface defined by the tests.
+
+RESPONSE FORMAT: STATUS, FILES created/modified, ERRORS if any."
+```
+
+### Coverage Verification
+
+TDD mode enforces a minimum code coverage threshold (default: 80%).
+
+**How coverage is checked:**
+1. After Step 1 completes, spawn a coverage verification subagent
+2. Run tests with coverage reporting enabled
+3. Parse coverage report and compare against threshold
+4. Fail the phase if coverage is below threshold
+
+**Coverage Subagent Example:**
+```
+Task: "Verify code coverage meets TDD threshold.
+
+Commands:
+1. npm test -- --coverage --coverageReporters=text
+2. Parse coverage percentage from output
+
+Threshold: 80%
+Scope: Files created/modified in this phase
+
+RESPONSE FORMAT:
+STATUS: PASS | FAIL
+COVERAGE: [percentage]%
+UNCOVERED_LINES: [count]
+DETAILS: [brief summary or path to full report]"
+```
+
+**Handling coverage failures:**
+1. Identify uncovered lines/branches
+2. Spawn subagent to add missing tests
+3. Re-run coverage check
+4. Repeat until threshold met or max retries exhausted
+
+```
+COVERAGE_STATUS: FAIL
+COVERAGE: 72%
+THRESHOLD: 80%
+UNCOVERED:
+  - src/auth/user-auth.service.ts: lines 45-52 (error handling)
+  - src/auth/user-auth.service.ts: lines 78-80 (edge case)
+
+ACTION: Spawning subagent to add tests for uncovered code paths...
+```
+
+### TDD Mode Checklist
+
+Before marking Step 1 as complete in TDD mode, verify:
+
+```
+TDD VERIFICATION CHECKLIST:
+- [ ] Tests written BEFORE implementation code
+- [ ] Tests failed initially (RED phase verified)
+- [ ] Minimal code written to pass tests (GREEN phase)
+- [ ] Refactoring done with passing tests (REFACTOR phase)
+- [ ] Coverage threshold met (default: 80%)
+- [ ] No implementation code without corresponding tests
+```
+
+**Step 1 Output (TDD Mode):**
+```
+IMPLEMENTATION_STATUS: PASS
+TDD_MODE: enabled
+TDD_PHASES:
+  RED: VERIFIED (tests failed as expected)
+  GREEN: PASS (all tests now passing)
+  REFACTOR: PASS (tests still green)
+COVERAGE: 85% (threshold: 80%)
+FILES_CREATED: [list]
+FILES_MODIFIED: [list]
+TEST_RESULTS: 12 passing, 0 failing
+ERRORS: None
 ```
 
 ## Best Practices
