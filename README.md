@@ -182,10 +182,22 @@ Installs to:
 ### What Gets Installed
 
 **Hooks** (automatic behaviors):
-| Hook | Skill | Trigger | Purpose |
-|------|-------|---------|---------|
-| PreToolUse | `strategic-compact` | Before each tool call | Monitor session complexity, suggest `/compact` at logical boundaries |
-| Stop | `continuous-learning` | Session end | Extract valuable patterns and save to `~/.claude/skills/learned/` |
+
+| Hook Type | Name | Trigger | Purpose |
+|-----------|------|---------|---------|
+| **PreToolUse** | tmux-dev-block | `npm run dev` etc. | Block dev servers outside tmux |
+| **PreToolUse** | tmux-reminder | Long-running commands | Suggest tmux for session persistence |
+| **PreToolUse** | git-push-review | `git push` | Reminder to review before push |
+| **PreToolUse** | doc-file-warn | `.md/.txt` creation | Warn about docs outside `docs/` structure |
+| **PreToolUse** | strategic-compact | Edit/Write/Read | Suggest `/compact` at logical boundaries |
+| **PostToolUse** | pr-url-logger | `gh pr create` | Log PR URL and review command |
+| **PostToolUse** | prettier-format | JS/TS file edits | Auto-format with Prettier |
+| **PostToolUse** | typescript-check | `.ts/.tsx` edits | Run `tsc --noEmit` and show errors |
+| **PostToolUse** | console-log-warn | JS/TS file edits | Warn about `console.log` statements |
+| **Stop** | console-log-audit | Session end | Audit modified files for `console.log` |
+| **Stop** | continuous-learning | Session end | Extract patterns to `~/.claude/skills/learned/` |
+| **SessionStart** | load-context | Session start | Detect saved context files in `docs/context/` |
+| **PreCompact** | save-context-remind | Before `/compact` | Remind to save context before compaction |
 
 ### Manual Install
 
