@@ -63,8 +63,12 @@ The core workflow for implementing features follows this hierarchy:
 | **Execution** | `implement-plan` | Orchestrate full plan execution |
 | **Phase Work** | `implement-phase` | Execute single phase with quality gates |
 | **Quality** | `code-review` | Verify code quality, patterns, ADR compliance |
+| **Security** | `security-review` | OWASP-aligned security audit (optional step) |
+| **Verification** | `verification-loop` | 6-phase verification: build, type, lint, test, security, diff |
 | **Decisions** | `adr` | Document architectural decisions |
 | **Testing** | `e2e-testing` | End-to-end validation with Playwright |
+| **Evaluation** | `eval-harness` | Formal capability/regression testing with metrics |
+| **Learning** | `continuous-learning` | Extract patterns from sessions for reuse |
 
 ## Skills
 
@@ -87,6 +91,9 @@ Skills are invoked via the `Skill` tool or `/skill-name` shorthand.
 | **code-review** | `/code-review`, Step 3 of implement-phase | Systematic review: SRP, patterns, ADR compliance |
 | **adr** | `/adr`, "document decision" | Creates Architecture Decision Records |
 | **e2e-testing** | `/e2e-testing`, "test my webapp" | E2E testing with Playwright MCP |
+| **security-review** | `/security-review`, auth/input code | 10-category OWASP-aligned security audit |
+| **verification-loop** | `/verification-loop`, "verify implementation" | 6-phase verification: build, type, lint, test, security, diff |
+| **eval-harness** | `/eval-harness`, "run evals" | Formal evaluation framework with pass@k metrics |
 
 ### Research & Context
 
@@ -95,6 +102,13 @@ Skills are invoked via the `Skill` tool or `/skill-name` shorthand.
 | **codebase-research** | "how does X work" | Parallel codebase research with sub-agents |
 | **context-saver** | `/context-saver`, "save context" | Preserves session state for continuation |
 | **prompt-generator** | `/prompt`, "generate prompt" | Creates implementation prompts for phases |
+
+### Learning & Optimization
+
+| Skill | Trigger | Description |
+|-------|---------|-------------|
+| **continuous-learning** | Stop hook, "save learnings" | Extracts patterns from sessions to `~/.claude/skills/learned/` |
+| **strategic-compact** | PreToolUse hook | Suggests `/compact` at logical boundaries, not arbitrary thresholds |
 
 ### Development
 
@@ -114,6 +128,7 @@ Agents are specialized sub-agents launched via the `Task` tool for parallel exec
 | **docs-analyzer** | Extracts insights from docs, ADRs, design docs |
 | **docs-locator** | Finds documentation and research notes |
 | **web-search-researcher** | Web research for APIs, libraries, troubleshooting |
+| **browser-verification-agent** | UI testing via Playwright MCP with screenshot evidence |
 
 ## Installation
 
@@ -217,7 +232,10 @@ Each phase passes through these gates:
 └─────────────────────────────────────────────────────────┘
 ```
 
-**Extensible**: New steps can be added (security-scan, performance-check, etc.)
+**Extensible**: Optional steps can be enabled via plan metadata:
+- `security_review: true` - Adds security audit step
+- `verification_loop: true` - Adds 6-phase verification
+- `tdd_mode: true` - Enforces RED → GREEN → REFACTOR cycle with 80% coverage
 
 ## Prompt Integration
 
@@ -266,45 +284,33 @@ Every phase must end clean. Therefore:
 claude-skills-collection/
 ├── skills/
 │   ├── adr/
-│   │   ├── SKILL.md
-│   │   └── references/
 │   ├── agent-creator/
-│   │   ├── SKILL.md
-│   │   └── references/
 │   ├── brainstorm/
-│   │   ├── SKILL.md
-│   │   └── references/
 │   ├── code-review/
-│   │   ├── SKILL.md
-│   │   └── references/
 │   ├── codebase-research/
-│   │   └── SKILL.md
 │   ├── context-saver/
-│   │   ├── SKILL.md
-│   │   └── references/
+│   ├── continuous-learning/      # NEW: Pattern extraction
 │   ├── create-plan/
-│   │   └── SKILL.md
 │   ├── e2e-testing/
-│   │   ├── SKILL.md
-│   │   └── references/
+│   ├── eval-harness/             # NEW: Formal evaluation framework
 │   ├── implement-phase/
-│   │   ├── SKILL.md
-│   │   └── references/
 │   ├── implement-plan/
-│   │   ├── SKILL.md
-│   │   └── references/
 │   ├── iterate-plan/
-│   │   └── SKILL.md
-│   └── prompt-generator/
-│       ├── SKILL.md
-│       └── references/
+│   ├── prompt-generator/
+│   ├── security-review/          # NEW: OWASP security audit
+│   ├── strategic-compact/        # NEW: Smart compaction suggestions
+│   └── verification-loop/        # NEW: 6-phase verification
 ├── agents/
+│   ├── browser-verification-agent.md  # NEW: UI testing
 │   ├── codebase-analyzer.md
 │   ├── codebase-locator.md
 │   ├── codebase-pattern-finder.md
 │   ├── docs-analyzer.md
 │   ├── docs-locator.md
 │   └── web-search-researcher.md
+├── docs/
+│   ├── decisions/                # ADRs
+│   └── plans/                    # Implementation plans
 ├── install.sh
 └── README.md
 ```
