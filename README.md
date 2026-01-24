@@ -2,6 +2,27 @@
 
 Custom skills and agents for Claude Code that enhance codebase research, context management, and implementation planning workflows.
 
+## Built on Claude Code Task Tools
+
+> **This skill collection uses Claude Code's native Task tools for progress tracking.**
+
+Progress tracking is handled entirely through Claude Code's built-in Task system:
+
+| Tool | Purpose |
+|------|---------|
+| `TaskCreate` | Create tasks for each phase with dependencies |
+| `TaskUpdate` | Mark tasks as `in_progress` or `completed` |
+| `TaskList` | View all tasks with status and blockers |
+| `TaskGet` | Get full task details including description |
+
+**Benefits:**
+- **Persistent** - Tasks survive session restarts
+- **Cross-session** - Share progress across multiple terminals
+- **Dependency tracking** - Blocked tasks visible, execute in order
+- **No file pollution** - Progress tracked in memory, not plan files
+
+Plans remain pure specification documents. See [Progress Tracking](#progress-tracking-with-task-tools) for details.
+
 ## Implementation Workflow
 
 The core workflow for implementing features follows this hierarchy:
@@ -350,6 +371,105 @@ claude-skills-collection/
 5. **Extensibility**: Pipeline steps can be added without core changes
 6. **Parallel Execution**: Independent tasks run concurrently via background subagents
 7. **Precise References**: All analysis includes file:line references
+8. **Task-Based Progress**: Progress tracked via Claude Code Task tools, not file modifications
+
+## Progress Tracking with Task Tools
+
+This skill collection uses **Claude Code's native Task tools** for all progress tracking. This replaces the traditional approach of modifying plan file checkboxes.
+
+### Why Task Tools?
+
+| Traditional Approach | Task Tools Approach |
+|---------------------|---------------------|
+| Modify plan file checkboxes `[x]` | `TaskUpdate(status: "completed")` |
+| Parse markdown for progress | `TaskList` returns structured data |
+| Single session only | Cross-session persistence |
+| File conflicts in teams | Shared task state |
+| Progress mixed with spec | Clean separation |
+
+### Task Lifecycle
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                      TASK LIFECYCLE                              │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  create-plan                                                     │
+│      │                                                           │
+│      ▼                                                           │
+│  TaskCreate ─────────────────────────────────────────────────┐  │
+│      │  subject: "Phase 1: Setup"                            │  │
+│      │  description: "Phase objective..."                    │  │
+│      │  activeForm: "Implementing Phase 1"                   │  │
+│      │                                                       │  │
+│      ▼                                                       │  │
+│  TaskUpdate(addBlockedBy) ───────────────────────────────┐  │  │
+│      │  Phase 2 blocked by Phase 1                       │  │  │
+│      │  Phase 3 blocked by Phase 2                       │  │  │
+│      │  ...                                              │  │  │
+│      │                                                   │  │  │
+│      ▼                                                   │  │  │
+│  implement-plan                                          │  │  │
+│      │                                                   │  │  │
+│      ▼                                                   │  │  │
+│  TaskList ◄──────────────────────────────────────────────┘  │  │
+│      │  Shows: pending, in_progress, completed, blocked     │  │
+│      │                                                      │  │
+│      ▼                                                      │  │
+│  TaskUpdate(status: "in_progress") ─────────────────────┐  │  │
+│      │  Mark phase as started                           │  │  │
+│      │                                                  │  │  │
+│      ▼                                                  │  │  │
+│  implement-phase executes...                            │  │  │
+│      │                                                  │  │  │
+│      ▼                                                  │  │  │
+│  TaskUpdate(status: "completed") ◄──────────────────────┘  │  │
+│      │  Mark phase as done                                 │  │
+│      │  Unblocks dependent phases                          │  │
+│      │                                                     │  │
+│      ▼                                                     │  │
+│  Next pending task... ◄────────────────────────────────────┘  │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Multi-Session Support
+
+Tasks persist on the filesystem and can be shared across Claude Code sessions:
+
+```bash
+# Session 1: Start implementation
+CLAUDE_CODE_TASK_LIST_ID=plan-my-feature claude
+> /implement-plan docs/plans/my-feature.md
+# ... complete Phase 1, 2 ...
+
+# Session 2: Resume from another terminal
+CLAUDE_CODE_TASK_LIST_ID=plan-my-feature claude
+> /implement-plan docs/plans/my-feature.md
+# Automatically resumes from Phase 3
+```
+
+### Task Status Display
+
+```
+Tasks (2 done, 3 open):
+  ✓ #1 Phase 1: Setup
+  ✓ #2 Phase 2: Core Logic
+  ● #3 Phase 3: Integration (in_progress)
+  ◻ #4 Phase 4: Testing › blocked by #3
+  ◻ #5 Phase 5: Documentation › blocked by #4
+```
+
+### Plan Files Remain Specifications
+
+With Task tools handling progress, plan files remain pure specification documents:
+
+- **No checkbox modifications** during implementation
+- **Phase status** tracked via TaskUpdate, not `[x]` markers
+- **Work item verification** done by querying TaskList
+- **Clean diffs** - plan changes only when spec changes
+
+This separation ensures plans are always authoritative specifications, not progress trackers.
 
 ## License
 
