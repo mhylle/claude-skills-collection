@@ -1,6 +1,6 @@
 ---
 name: iterate-plan
-description: Update existing implementation plans through user feedback with thorough research and validation. This skill should be used when iterating on implementation plans, updating plans based on new requirements, refining technical approaches in existing plans, or when the user wants to modify a previously created plan file. Triggers on requests like "update the plan", "change the implementation approach", "iterate on this plan", or when feedback is provided about an existing plan document.
+description: Update existing implementation plans through user feedback with thorough research and validation. Also migrates old checkbox-based plans to the new Task tools system. This skill should be used when iterating on implementation plans, updating plans based on new requirements, refining technical approaches in existing plans, migrating old plans to Task tools, or when the user wants to modify a previously created plan file. Triggers on requests like "update the plan", "change the implementation approach", "iterate on this plan", "migrate to new system", or when feedback is provided about an existing plan document.
 ---
 
 # Iterate Plan
@@ -24,6 +24,168 @@ When iterating on plans, you must keep Tasks synchronized with plan changes:
 | Modify phase scope | `TaskUpdate` to change description |
 
 **Important**: The plan's `task_list_id` in metadata links to its Tasks. Always verify you're updating the correct task list.
+
+## Migrating Old Plans to Task Tools
+
+> **Use this process when a plan lacks `task_list_id` in its metadata.**
+
+Old plans used checkbox-based progress tracking (`[x]` / `[ ]`). The new system uses Task tools. When you encounter an old plan, migrate it.
+
+### Detecting Old Plans
+
+An old plan has:
+- No `task_list_id` in YAML frontmatter
+- Checkbox-based progress: `- [x] Task completed` / `- [ ] Task pending`
+- No reference to Task tools
+
+### Migration Process
+
+**Step M1: Generate task_list_id**
+
+Create an ID from the plan filename:
+```
+docs/plans/2024-03-15-user-auth.md → plan-2024-03-15-user-auth
+docs/plans/api-refactor.md → plan-api-refactor
+```
+
+**Step M2: Add metadata to plan**
+
+Add or update the YAML frontmatter:
+```yaml
+---
+task_list_id: plan-2024-03-15-user-auth
+migrated_from_checkboxes: true
+migration_date: 2026-01-25
+---
+```
+
+**Step M3: Create Tasks for each phase**
+
+For each phase in the plan:
+```
+TaskCreate:
+  subject: "Phase N: [Phase Name]"
+  description: "[Phase objective from plan] - Plan: [plan file path]"
+  activeForm: "Implementing Phase N: [Name]"
+```
+
+**Step M4: Determine phase status from checkboxes**
+
+Analyze existing checkboxes to determine status:
+
+| Checkbox Pattern | Task Status |
+|-----------------|-------------|
+| All tasks `[x]` checked | `completed` |
+| Some tasks `[x]`, some `[ ]` | `in_progress` |
+| All tasks `[ ]` unchecked | `pending` |
+
+```
+TaskUpdate:
+  taskId: [phase task]
+  status: "completed" | "in_progress" | "pending"
+```
+
+**Step M5: Set up dependencies**
+
+Create sequential dependencies:
+```
+TaskUpdate:
+  taskId: [phase-2-task]
+  addBlockedBy: [phase-1-task]
+
+TaskUpdate:
+  taskId: [phase-3-task]
+  addBlockedBy: [phase-2-task]
+```
+
+**Step M6: Preserve checkboxes as reference**
+
+Do NOT remove checkboxes from the plan. They serve as historical record. Add a note:
+```markdown
+> **Note**: This plan has been migrated to Task tools for progress tracking.
+> Checkboxes below are preserved for reference but progress is now tracked via `TaskList`.
+> Task List ID: `plan-2024-03-15-user-auth`
+```
+
+### Migration Example
+
+**Before (old plan):**
+```markdown
+# Implementation Plan: User Authentication
+
+## Phase 1: Database Schema
+- [x] Create users table
+- [x] Add password hash column
+- [x] Create sessions table
+
+## Phase 2: Auth Service
+- [x] Implement password hashing
+- [ ] Implement login endpoint
+- [ ] Implement logout endpoint
+
+## Phase 3: Testing
+- [ ] Unit tests for auth service
+- [ ] Integration tests
+```
+
+**After (migrated plan):**
+```markdown
+---
+task_list_id: plan-user-authentication
+migrated_from_checkboxes: true
+migration_date: 2026-01-25
+---
+
+# Implementation Plan: User Authentication
+
+> **Note**: This plan has been migrated to Task tools for progress tracking.
+> Checkboxes below are preserved for reference but progress is now tracked via `TaskList`.
+> Task List ID: `plan-user-authentication`
+
+## Phase 1: Database Schema
+- [x] Create users table
+- [x] Add password hash column
+- [x] Create sessions table
+
+## Phase 2: Auth Service
+- [x] Implement password hashing
+- [ ] Implement login endpoint
+- [ ] Implement logout endpoint
+
+## Phase 3: Testing
+- [ ] Unit tests for auth service
+- [ ] Integration tests
+```
+
+**Tasks created:**
+```
+Tasks (1 done, 2 open):
+  ✓ #1 Phase 1: Database Schema
+  ● #2 Phase 2: Auth Service (in_progress) › blocked by #1
+  ◻ #3 Phase 3: Testing › blocked by #2
+```
+
+### When to Migrate
+
+Migrate automatically when:
+- User runs `/iterate-plan` on an old plan
+- User runs `/implement-plan` on an old plan
+- User explicitly asks to "migrate" or "update to new system"
+
+Present migration summary to user:
+```
+📋 Plan Migration Required
+
+This plan uses the old checkbox-based progress tracking.
+I'll migrate it to the new Task tools system.
+
+Phases detected: 3
+  - Phase 1: Database Schema (completed - all checkboxes checked)
+  - Phase 2: Auth Service (in progress - partial checkboxes)
+  - Phase 3: Testing (pending - no checkboxes checked)
+
+Proceed with migration? (Tasks will be created, checkboxes preserved)
+```
 
 ## Initial Input Handling
 
@@ -52,15 +214,24 @@ Read the complete plan file and thoroughly understand:
 - Any existing constraints or trade-offs documented
 - **The `task_list_id` in plan metadata** (links to Task tools progress)
 
-**Check existing Tasks:**
+**Check for old plan format:**
+```
+IF plan has no task_list_id in frontmatter:
+  → Plan needs migration (see "Migrating Old Plans to Task Tools")
+  → Present migration summary to user
+  → Perform migration before proceeding with iteration
+```
+
+**Check existing Tasks (for migrated/new plans):**
 ```
 TaskList: View current tasks for this plan
 ```
 
 Note which phases:
-- Are already completed (don't modify completed work)
+- Are already completed (don't modify completed work without good reason)
 - Are in progress (coordinate changes carefully)
 - Are pending (safe to modify)
+- Are blocked (check what's blocking them)
 
 Document the sections that will likely need modification based on the feedback.
 
@@ -236,13 +407,21 @@ Before considering iteration complete, verify:
 - [ ] Technical approach is validated (if changes were technical)
 - [ ] **Tasks synchronized** (added/removed/reordered to match plan)
 - [ ] **Task dependencies correct** (blockedBy relationships updated)
-- [ ] **task_list_id preserved** in plan metadata
+- [ ] **task_list_id present** in plan metadata (add if missing)
 - [ ] User has confirmed the changes meet their needs
+
+**For migrated plans, also verify:**
+- [ ] `task_list_id` added to YAML frontmatter
+- [ ] `migrated_from_checkboxes: true` in frontmatter
+- [ ] Migration note added to plan body
+- [ ] Task status matches checkbox state (completed/in_progress/pending)
+- [ ] Original checkboxes preserved for reference
 
 ## Task Synchronization Rules
 
 | Scenario | Plan Action | Task Action |
 |----------|-------------|-------------|
+| **Migrate old plan** | Add frontmatter + migration note | TaskCreate for all phases with correct status |
 | Add phase between 2 and 3 | Insert new Phase 2.5 (renumber to 3) | TaskCreate + update dependencies |
 | Remove phase 3 | Delete phase content | Mark task completed with "REMOVED" note |
 | Split phase into two | Create two phases from one | TaskCreate for new, update original |
