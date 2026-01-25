@@ -979,6 +979,11 @@ User Verification (only if truly not automatable):
   - [ ] [Physical hardware check]
   - [ ] [Third-party dashboard verification]
 
+Learnings Captured:
+  Status: ✅ Extracted
+  Patterns Found: [count]
+  Saved To: ~/.claude/skills/learned/
+
 ═══════════════════════════════════════════════════════════════
 PHASE STATUS: ✅ COMPLETE - Ready for next phase
 ═══════════════════════════════════════════════════════════════
@@ -990,8 +995,40 @@ PHASE STATUS: ✅ COMPLETE - Ready for next phase
 
 After outputting the Completion Report:
 1. Output final Progress Tracker showing all steps ✅ DONE
-2. Present the report to the user
-3. NOW (and ONLY now) await user confirmation before proceeding to next phase
+2. **Invoke continuous-learning skill** to capture patterns from this phase
+3. Present the report to the user
+4. NOW (and ONLY now) await user confirmation before proceeding to next phase
+
+### Continuous Learning at Phase Boundary
+
+> **Phase completion is a natural learning boundary.** Always invoke continuous-learning here.
+
+**Why invoke here?**
+- User may `/clear` or `/compact` before next phase
+- Patterns from implementation are fresh and detailed
+- Captures decisions, fixes, and approaches while context is complete
+- Prevents loss of valuable learnings
+
+**Invocation:**
+```
+Skill(skill="continuous-learning"): Extract patterns from Phase [N] completion.
+
+Context:
+- Phase: [N] ([Phase Name])
+- Files Changed: [list]
+- Key Decisions: [any architectural choices made]
+- Issues Resolved: [problems fixed during implementation]
+- Approaches Used: [patterns and techniques applied]
+
+Extract valuable patterns for future sessions.
+```
+
+**Output** (appended to completion report):
+```
+Learnings Captured:
+  Patterns Extracted: [count]
+  Saved To: ~/.claude/skills/learned/
+```
 
 ```
 YOU HAVE REACHED THE END OF THE PHASE PIPELINE.
@@ -1243,6 +1280,10 @@ PHASE_RESULT:
     # Only include items that truly cannot be automated, e.g.:
     # - "Verify physical device display"
     # - "Check email arrived in inbox"
+
+  learnings:
+    patterns_extracted: [count]
+    saved_to: "~/.claude/skills/learned/"
 
   ready_for_next: true | false
   blocker: null | "description of blocker"
