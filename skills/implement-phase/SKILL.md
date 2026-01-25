@@ -157,7 +157,7 @@ This skill orchestrates other skills (code-review, adr) and can be extended to i
 
 | Condition | Requirement | Rationale |
 |-----------|-------------|-----------|
-| **verification-loop PASS** | All 6 phases pass (Build, Type, Lint, Test, Security, Diff) | Code must compile, type-check, pass linting, tests, and security checks |
+| **verification-loop PASS** | All 6 checks pass (Build, Type, Lint, Test, Security, Diff) | Code must compile, type-check, pass linting, tests, and security checks |
 | **Integration tests PASS** | All API/UI tests pass | Feature must work end-to-end |
 | **Code review PASS** | Clean PASS status (not PASS_WITH_NOTES) | No outstanding issues |
 | **All recommendations fixed** | Every recommendation addressed | Recommendations are blocking, not optional |
@@ -614,20 +614,20 @@ SUBAGENTS_SPAWNED: [count]
 
 ### Step 2: Exit Condition Verification (verification-loop)
 
-**Responsibility**: Verify all exit conditions using the comprehensive 6-phase verification-loop.
+**Responsibility**: Verify all exit conditions using the comprehensive 6-check verification-loop.
 
 > **verification-loop is the DEFAULT exit condition verification.** It provides comprehensive validation that goes beyond basic build/test checks.
 
 **Process**:
 1. Read exit conditions from plan
 2. Invoke `verification-loop` skill with phase context
-3. verification-loop executes 6 phases:
-   - **Phase 1: Build** - Compilation, bundling, artifact generation
-   - **Phase 2: Type** - Type checking, interface compliance
-   - **Phase 3: Lint** - Code style, static analysis
-   - **Phase 4: Test** - Unit tests, integration tests, coverage
-   - **Phase 5: Security** - Dependency audit, secret scanning
-   - **Phase 6: Diff** - Review changes, detect unintended modifications
+3. verification-loop executes 6 checks:
+   - **Check 1: Build** - Compilation, bundling, artifact generation
+   - **Check 2: Type** - Type checking, interface compliance
+   - **Check 3: Lint** - Code style, static analysis
+   - **Check 4: Test** - Unit tests, integration tests, coverage
+   - **Check 5: Security** - Dependency audit, secret scanning
+   - **Check 6: Diff** - Review changes, detect unintended modifications
 4. Aggregate results and report
 
 **Invocation**:
@@ -639,21 +639,21 @@ Context:
 - Phase: [N] ([Phase Name])
 - Changed Files: [list of files modified in this phase]
 
-Execute all 6 verification phases and return structured result.
+Execute all 6 verification checks and return structured result.
 ```
 
 **Output**:
 ```
 VERIFICATION_LOOP_STATUS: PASS | FAIL
-PHASES_COMPLETED: 6/6
-PHASE_RESULTS:
+CHECKS_COMPLETED: 6/6
+CHECK_RESULTS:
   BUILD: PASS | FAIL
   TYPE: PASS | FAIL
   LINT: PASS | FAIL
   TEST: PASS | FAIL
   SECURITY: PASS | FAIL
   DIFF: PASS | FAIL
-FAILED_PHASES: [list if any]
+FAILED_CHECKS: [list if any]
 EVIDENCE: logs/verification-loop-phase-N.log
 ─────────────────────────────────────────────────
 ⚡ NEXT_STEP: EXECUTE STEP 3 NOW (Integration Testing)
@@ -661,9 +661,9 @@ EVIDENCE: logs/verification-loop-phase-N.log
 
 > **CRITICAL**: The output MUST include `NEXT_STEP: EXECUTE STEP 3 NOW`. This is not optional. When you see this in the output, you MUST immediately execute Step 3 without waiting for user input.
 
-**Gate**: ALL 6 verification phases must PASS to proceed.
+**Gate**: ALL 6 verification checks must PASS to proceed.
 
-**On Failure**: Spawn fix subagents for failed phases, re-run verification-loop, repeat until all pass or escalate.
+**On Failure**: Spawn fix subagents for failed checks, re-run verification-loop, repeat until all pass or escalate.
 
 **Disabling verification-loop** (not recommended):
 ```yaml

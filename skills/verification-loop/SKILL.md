@@ -1,11 +1,13 @@
 ---
 name: verification-loop
-description: Comprehensive 6-phase verification framework for validating implementation quality across build, types, lint, tests, security, and diff review. This skill ensures code meets all quality gates before phase completion. Triggers on "verify implementation", "run verification", "/verification-loop", or automatically as part of implement-phase Step 2.
+description: Comprehensive 6-check verification framework for validating implementation quality across build, types, lint, tests, security, and diff review. This skill ensures code meets all quality gates before phase completion. Triggers on "verify implementation", "run verification", "/verification-loop", or automatically as part of implement-phase Step 2.
 ---
 
 # Verification Loop
 
-A systematic 6-phase verification framework that validates implementation quality across multiple dimensions. This skill provides a structured approach to catching issues early, ensuring code compiles, type-checks, passes linting, runs tests, has no security issues, and contains no unintended changes.
+A systematic 6-check verification framework that validates implementation quality across multiple dimensions. This skill provides a structured approach to catching issues early, ensuring code compiles, type-checks, passes linting, runs tests, has no security issues, and contains no unintended changes.
+
+> **TERMINOLOGY NOTE**: This skill uses "Checks" (Check 1-6) for its internal verification stages. Do not confuse these with "Phases" (plan phases) or "Steps" (implement-phase steps).
 
 ---
 
@@ -13,9 +15,9 @@ A systematic 6-phase verification framework that validates implementation qualit
 
 ### Defense in Depth
 
-Each verification phase catches different categories of issues:
+Each verification check catches different categories of issues:
 
-| Phase | Catches | Why It Matters |
+| Check | Catches | Why It Matters |
 |-------|---------|----------------|
 | Build | Syntax errors, missing deps, bundling issues | Code must compile to run |
 | Types | Type mismatches, null safety, interface violations | Type safety prevents runtime errors |
@@ -26,7 +28,7 @@ Each verification phase catches different categories of issues:
 
 ### Fail Fast
 
-Phases are ordered by detection speed. Build errors appear in seconds; security scans may take longer. By running fast checks first, we provide rapid feedback on common issues.
+Checks are ordered by detection speed. Build errors appear in seconds; security scans may take longer. By running fast checks first, we provide rapid feedback on common issues.
 
 ### Project-Agnostic
 
@@ -34,7 +36,7 @@ The framework detects project type automatically and applies appropriate tooling
 
 ### Idempotent Execution
 
-Running the verification loop multiple times produces the same result. Each phase either passes or fails deterministically based on codebase state.
+Running the verification loop multiple times produces the same result. Each check either passes or fails deterministically based on codebase state.
 
 ---
 
@@ -60,7 +62,7 @@ Running the verification loop multiple times produces the same result. Each phas
 
 ## Project Type Detection
 
-Before running verification phases, detect the project type to determine appropriate commands.
+Before running verification checks, detect the project type to determine appropriate commands.
 
 ### Detection Matrix
 
@@ -133,7 +135,7 @@ detect_python_tooling() {
 
 ---
 
-## Phase 1: Build Verification
+## Check 1: Build Verification
 
 **Purpose**: Ensure the codebase compiles, bundles, and produces valid build artifacts.
 
@@ -227,7 +229,7 @@ cargo check
 ### Example Output
 
 ```
-PHASE_1_BUILD_VERIFICATION:
+CHECK_1_BUILD_VERIFICATION:
   STATUS: PASS | FAIL
   COMMAND: npm run build
   EXIT_CODE: 0 | [non-zero]
@@ -238,7 +240,7 @@ PHASE_1_BUILD_VERIFICATION:
 
 ---
 
-## Phase 2: Type Verification
+## Check 2: Type Verification
 
 **Purpose**: Ensure type safety across the codebase with no type errors.
 
@@ -334,7 +336,7 @@ cargo check --all-targets
 ### Example Output
 
 ```
-PHASE_2_TYPE_VERIFICATION:
+CHECK_2_TYPE_VERIFICATION:
   STATUS: PASS | FAIL
   COMMAND: npx tsc --noEmit
   EXIT_CODE: 0 | [non-zero]
@@ -347,7 +349,7 @@ PHASE_2_TYPE_VERIFICATION:
 
 ---
 
-## Phase 3: Lint Verification
+## Check 3: Lint Verification
 
 **Purpose**: Ensure code follows style guidelines and catches potential bugs.
 
@@ -462,7 +464,7 @@ cargo clippy --all-features -- -D warnings
 ### Example Output
 
 ```
-PHASE_3_LINT_VERIFICATION:
+CHECK_3_LINT_VERIFICATION:
   STATUS: PASS | FAIL
   COMMANDS: [
     { cmd: "npm run lint:fix", exit_code: 0 },
@@ -477,7 +479,7 @@ PHASE_3_LINT_VERIFICATION:
 
 ---
 
-## Phase 4: Test Verification
+## Check 4: Test Verification
 
 **Purpose**: Ensure all tests pass and new code has appropriate coverage.
 
@@ -593,7 +595,7 @@ cargo test --all-features
 ### Example Output
 
 ```
-PHASE_4_TEST_VERIFICATION:
+CHECK_4_TEST_VERIFICATION:
   STATUS: PASS | FAIL
   COMMAND: npm test
   EXIT_CODE: 0 | [non-zero]
@@ -610,7 +612,7 @@ PHASE_4_TEST_VERIFICATION:
 
 ---
 
-## Phase 5: Security Scan
+## Check 5: Security Scan
 
 **Purpose**: Detect secrets, debug code, and security vulnerabilities before code reaches production.
 
@@ -730,7 +732,7 @@ cargo audit
 ### Example Output
 
 ```
-PHASE_5_SECURITY_SCAN:
+CHECK_5_SECURITY_SCAN:
   STATUS: PASS | FAIL
   SCANS_RUN: [
     { scan: "secrets", status: "PASS", findings: 0 },
@@ -747,7 +749,7 @@ PHASE_5_SECURITY_SCAN:
 
 ---
 
-## Phase 6: Diff Review
+## Check 6: Diff Review
 
 **Purpose**: Verify only intended changes are present and no unintended modifications occurred.
 
@@ -880,7 +882,7 @@ done
 ### Example Output
 
 ```
-PHASE_6_DIFF_REVIEW:
+CHECK_6_DIFF_REVIEW:
   STATUS: PASS | FAIL
   FILES_CHANGED: 8
   EXPECTED_RANGE: 5-12
@@ -902,7 +904,7 @@ PHASE_6_DIFF_REVIEW:
 
 ## Integration with implement-phase
 
-When invoked as Step 2 of implement-phase, this skill runs all 6 verification phases and returns a structured result.
+When invoked as Step 2 of implement-phase, this skill runs all 6 verification checks and returns a structured result.
 
 ### Input Context
 
@@ -914,53 +916,57 @@ VERIFICATION_INPUT:
   expected_file_patterns: ["src/auth/*", "tests/auth/*"]
   expected_file_range: [5, 15]
   protected_files: ["package-lock.json", ".env"]
-  skip_phases: []  # Optional: skip specific phases
+  skip_checks: []  # Optional: skip specific checks
 ```
 
 ### Output Format
 
 ```
-STATUS: PASS | FAIL
-PHASES_RUN: 6
-PHASES_PASSED: 6 | [count]
-PHASES_FAILED: 0 | [count]
-FAILED_PHASES: [] | [
+VERIFICATION_LOOP_STATUS: PASS | FAIL
+CHECKS_RUN: 6
+CHECKS_PASSED: 6 | [count]
+CHECKS_FAILED: 0 | [count]
+FAILED_CHECKS: [] | [
   {
-    phase: 1,
+    check: 1,
     name: "build",
     error: "TypeScript compilation failed",
     details: "src/auth.ts(45): error TS2322: Type 'string' not assignable..."
   }
 ]
 REPORT:
-  phase_1_build:
+  check_1_build:
     status: PASS
     duration: 12.3s
-  phase_2_types:
+  check_2_types:
     status: PASS
     duration: 8.2s
-  phase_3_lint:
+  check_3_lint:
     status: PASS
     auto_fixed: 12
     duration: 5.1s
-  phase_4_tests:
+  check_4_tests:
     status: PASS
     tests_run: 156
     tests_passed: 156
     coverage: 87.3%
     duration: 45.2s
-  phase_5_security:
+  check_5_security:
     status: PASS
     secrets_found: 0
     console_logs: 0
     duration: 3.4s
-  phase_6_diff:
+  check_6_diff:
     status: PASS
     files_changed: 8
     scope_violations: 0
     duration: 1.2s
 TOTAL_DURATION: 75.4s
+
+⚡ NEXT_STEP: EXECUTE STEP 3 NOW (Integration Testing)
 ```
+
+> **CRITICAL**: When VERIFICATION_LOOP_STATUS is PASS, the output MUST include `NEXT_STEP: EXECUTE STEP 3 NOW`. This is not optional. When you see this in the output, you MUST immediately proceed to Step 3 (Automated Integration Testing) without waiting for user input.
 
 ### Implement-Phase Integration Point
 
@@ -970,12 +976,12 @@ implement-phase pipeline:
 Step 1: Implementation (subagents)
         ↓
 Step 2: VERIFICATION-LOOP (this skill) ←
-        ├── Phase 1: Build
-        ├── Phase 2: Types
-        ├── Phase 3: Lint
-        ├── Phase 4: Tests
-        ├── Phase 5: Security
-        └── Phase 6: Diff Review
+        ├── Check 1: Build
+        ├── Check 2: Types
+        ├── Check 3: Lint
+        ├── Check 4: Tests
+        ├── Check 5: Security
+        └── Check 6: Diff Review
         ↓
 Step 3: Automated Integration Testing
         ↓
@@ -990,12 +996,12 @@ implement-phase handles retry logic:
 
 ```
 1. INVOKE verification-loop
-2. IF any phase FAILS:
+2. IF any check FAILS:
    a. IDENTIFY failure type
    b. SPAWN fix subagent with failure context
-   c. Re-run verification-loop (or just failed phases)
-   d. REPEAT until PASS (max 3 retries per phase)
-3. IF all phases PASS:
+   c. Re-run verification-loop (or just failed checks)
+   d. REPEAT until PASS (max 3 retries per check)
+3. IF all checks PASS:
    a. PROCEED to Step 3 (Integration Testing)
 ```
 
@@ -1008,10 +1014,10 @@ implement-phase handles retry logic:
 ```
 /verification-loop
 
-# With specific phases
-/verification-loop phases:build,types,tests
+# With specific checks
+/verification-loop checks:build,types,tests
 
-# Skip phases
+# Skip checks
 /verification-loop skip:security,diff
 
 # Specific project path
@@ -1025,39 +1031,41 @@ implement-phase handles retry logic:
 
 > Running verification loop...
 >
-> Phase 1: Build Verification
+> Check 1: Build Verification
 >   Command: npm run build
 >   Status: PASS (12.3s)
 >
-> Phase 2: Type Verification
+> Check 2: Type Verification
 >   Command: npx tsc --noEmit
 >   Status: PASS (8.2s)
 >
-> Phase 3: Lint Verification
+> Check 3: Lint Verification
 >   Command: npm run lint
 >   Auto-fixed: 12 issues
 >   Status: PASS (5.1s)
 >
-> Phase 4: Test Verification
+> Check 4: Test Verification
 >   Command: npm test
 >   Tests: 156 passed, 0 failed
 >   Coverage: 87.3%
 >   Status: PASS (45.2s)
 >
-> Phase 5: Security Scan
+> Check 5: Security Scan
 >   Secrets: 0 found
 >   Console logs: 0 found
 >   Status: PASS (3.4s)
 >
-> Phase 6: Diff Review
+> Check 6: Diff Review
 >   Files changed: 8
 >   Scope violations: 0
 >   Status: PASS (1.2s)
 >
 > ═══════════════════════════════════════
-> VERIFICATION COMPLETE: ALL PHASES PASSED
+> VERIFICATION COMPLETE: ALL CHECKS PASSED
 > Duration: 75.4s
 > ═══════════════════════════════════════
+>
+> ⚡ NEXT_STEP: EXECUTE STEP 3 NOW (Integration Testing)
 ```
 
 ---
@@ -1066,25 +1074,25 @@ implement-phase handles retry logic:
 
 ### Project-Level Configuration
 
-Add to `package.json`, `pyproject.toml`, or dedicated config file:
+The verification loop auto-detects project type and uses appropriate defaults. Override specific checks via project config if needed:
 
 ```json
-// package.json
+// package.json or .verification.json
 {
   "verification": {
-    "phases": {
-      "build": { "command": "npm run build", "timeout": 120000 },
-      "types": { "command": "npx tsc --noEmit", "timeout": 60000 },
-      "lint": { "command": "npm run lint", "autoFix": true },
-      "tests": { "command": "npm test", "coverage": { "threshold": 80 } },
+    "checks": {
+      "build": { "command": "<command>", "timeout": "<ms>" },
+      "types": { "command": "<command>", "timeout": "<ms>" },
+      "lint": { "command": "<command>", "autoFix": "<bool>" },
+      "tests": { "command": "<command>", "coverage": { "threshold": "<percent>" } },
       "security": {
-        "scanSecrets": true,
-        "scanConsoleLogs": true,
-        "excludePatterns": ["**/*.test.ts", "**/tests/**"]
+        "scanSecrets": "<bool>",
+        "scanConsoleLogs": "<bool>",
+        "excludePatterns": ["<glob-patterns>"]
       },
       "diff": {
-        "protectedFiles": ["package-lock.json", ".env*"],
-        "maxFileCount": 50
+        "protectedFiles": ["<glob-patterns>"],
+        "maxFileCount": "<number>"
       }
     }
   }
@@ -1092,41 +1100,41 @@ Add to `package.json`, `pyproject.toml`, or dedicated config file:
 ```
 
 ```toml
-# pyproject.toml
+# pyproject.toml or .verification.toml
 [tool.verification]
-phases.build.command = "poetry build"
-phases.types.command = "mypy src/"
-phases.lint.command = "ruff check src/"
-phases.lint.auto_fix = true
-phases.tests.command = "pytest"
-phases.tests.coverage_threshold = 80
-phases.security.scan_secrets = true
-phases.security.exclude_patterns = ["tests/**", "**/*_test.py"]
+checks.build.command = "<command>"
+checks.types.command = "<command>"
+checks.lint.command = "<command>"
+checks.lint.auto_fix = <bool>
+checks.tests.command = "<command>"
+checks.tests.coverage_threshold = <percent>
+checks.security.scan_secrets = <bool>
+checks.security.exclude_patterns = ["<glob-patterns>"]
 ```
 
 ### Environment Variables
 
 ```bash
-# Skip specific phases
-VERIFICATION_SKIP_PHASES=security,diff
+# Skip specific checks
+VERIFICATION_SKIP_CHECKS=<comma-separated-check-names>
 
 # Set timeouts
-VERIFICATION_BUILD_TIMEOUT=180000
-VERIFICATION_TEST_TIMEOUT=300000
+VERIFICATION_BUILD_TIMEOUT=<ms>
+VERIFICATION_TEST_TIMEOUT=<ms>
 
 # Security scan configuration
-VERIFICATION_SECRETS_SCAN=true
-VERIFICATION_CONSOLE_LOG_SCAN=true
+VERIFICATION_SECRETS_SCAN=<bool>
+VERIFICATION_CONSOLE_LOG_SCAN=<bool>
 ```
 
 ---
 
 ## Best Practices
 
-### For Phase Authors
+### For Check Authors
 
-1. **Order phases by speed** - Fast checks first for rapid feedback
-2. **Make phases independent** - Each phase should run in isolation
+1. **Order checks by speed** - Fast checks first for rapid feedback
+2. **Make checks independent** - Each check should run in isolation
 3. **Provide clear error messages** - Include file, line, and fix suggestions
 4. **Support auto-fix** - Automate mechanical fixes where possible
 5. **Cache when possible** - Avoid redundant work across runs
@@ -1135,17 +1143,17 @@ VERIFICATION_CONSOLE_LOG_SCAN=true
 
 1. **Run locally before commit** - Catch issues before CI
 2. **Trust the verification** - If it passes, proceed confidently
-3. **Fix root causes** - Don't skip phases; fix the underlying issues
+3. **Fix root causes** - Don't skip checks; fix the underlying issues
 4. **Review security warnings** - Even non-blocking findings need attention
 5. **Keep scope tight** - Large diffs often indicate scope creep
 
 ### For CI/CD Integration
 
-1. **Run full verification** - Don't skip phases in CI
-2. **Cache dependencies** - Speed up build/install phases
-3. **Parallelize when possible** - Some phases can run concurrently
+1. **Run full verification** - Don't skip checks in CI
+2. **Cache dependencies** - Speed up build/install checks
+3. **Parallelize when possible** - Some checks can run concurrently
 4. **Fail fast** - Stop on first failure to save CI time
-5. **Report clearly** - Surface which phase failed and why
+5. **Report clearly** - Surface which check failed and why
 
 ---
 
@@ -1179,15 +1187,15 @@ VERIFICATION_DEBUG=true /verification-loop
 
 - [implement-phase SKILL.md](../implement-phase/SKILL.md) - Parent skill that invokes verification-loop
 - [code-review SKILL.md](../code-review/SKILL.md) - Follows verification-loop in the pipeline
-- [security-review SKILL.md](../security-review/SKILL.md) - Deep security analysis (beyond Phase 5)
+- [security-review SKILL.md](../security-review/SKILL.md) - Deep security analysis (beyond Check 5)
 
 ---
 
 ## Appendix: Quick Reference
 
-### Phase Summary
+### Check Summary
 
-| Phase | Purpose | Commands | Blocks On |
+| Check | Purpose | Commands | Blocks On |
 |-------|---------|----------|-----------|
 | 1. Build | Compilation | `npm run build`, `cargo build` | Any error |
 | 2. Types | Type safety | `tsc --noEmit`, `mypy` | Any error |
@@ -1210,7 +1218,7 @@ npm run build && npx tsc --noEmit && npm run lint
 For complete verification (e.g., pre-merge):
 
 ```bash
-# All 6 phases
+# All 6 checks
 npm run build && \
 npx tsc --noEmit && \
 npm run lint && \
