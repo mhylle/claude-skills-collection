@@ -9,6 +9,22 @@ description: Update existing implementation plans through user feedback with tho
 
 This skill enables intelligent iteration on existing implementation plans. Rather than rewriting plans from scratch, it makes surgical, well-researched updates while preserving the plan's existing structure and quality standards.
 
+## Progress Tracking with Task Tools
+
+> **This skill uses Claude Code's native Task tools for progress tracking.**
+
+When iterating on plans, you must keep Tasks synchronized with plan changes:
+
+| Plan Change | Task Action |
+|-------------|-------------|
+| Add new phase | `TaskCreate` for new phase, update `addBlockedBy` dependencies |
+| Remove phase | `TaskUpdate` to mark removed (or delete if not started) |
+| Reorder phases | Update `addBlockedBy` relationships |
+| Rename phase | `TaskUpdate` to change subject |
+| Modify phase scope | `TaskUpdate` to change description |
+
+**Important**: The plan's `task_list_id` in metadata links to its Tasks. Always verify you're updating the correct task list.
+
 ## Initial Input Handling
 
 Parse the user's request to identify two required elements:
@@ -24,7 +40,7 @@ Handle these scenarios:
 | Plan but no feedback | Ask: "What changes would you like to make to this plan?" |
 | Both provided | Proceed to Step 1 |
 
-## Five-Step Iteration Process
+## Six-Step Iteration Process
 
 ### Step 1: Understand the Current Plan
 
@@ -34,6 +50,17 @@ Read the complete plan file and thoroughly understand:
 - Success criteria (both automated and manual)
 - Dependencies and relationships between sections
 - Any existing constraints or trade-offs documented
+- **The `task_list_id` in plan metadata** (links to Task tools progress)
+
+**Check existing Tasks:**
+```
+TaskList: View current tasks for this plan
+```
+
+Note which phases:
+- Are already completed (don't modify completed work)
+- Are in progress (coordinate changes carefully)
+- Are pending (safe to modify)
 
 Document the sections that will likely need modification based on the feedback.
 
@@ -105,15 +132,66 @@ Update the plan using Edit tool with these principles:
 - Avoid "while I'm here" improvements unless explicitly requested
 - Preserve author's voice and existing explanations where possible
 
-### Step 5: Present Changes and Invite Iteration
+### Step 5: Synchronize Tasks
+
+**Critical**: Keep Tasks aligned with plan changes.
+
+**For added phases:**
+```
+TaskCreate:
+  subject: "Phase N: [New Phase Name]"
+  description: "[Phase objective] - Plan: [plan file path]"
+  activeForm: "Implementing Phase N: [Name]"
+
+TaskUpdate:
+  taskId: [new task]
+  addBlockedBy: [previous phase task ID]
+```
+
+**For removed phases:**
+```
+# If phase was never started:
+TaskUpdate:
+  taskId: [removed task]
+  status: "completed"
+  description: "[Original description] - REMOVED: [reason]"
+
+# Update dependencies of subsequent phases
+TaskUpdate:
+  taskId: [next phase]
+  addBlockedBy: [new predecessor]
+```
+
+**For reordered phases:**
+```
+# Clear old dependencies and set new ones
+TaskUpdate:
+  taskId: [moved phase]
+  addBlockedBy: [new predecessor IDs]
+```
+
+**For renamed/modified phases:**
+```
+TaskUpdate:
+  taskId: [phase task]
+  subject: "Phase N: [New Name]"
+  description: "[Updated description]"
+```
+
+### Step 6: Present Changes and Invite Iteration
 
 After editing, present:
 
 1. **Summary of Changes Made**
-   - What was modified and why
+   - What was modified in the plan and why
    - Any dependencies that were updated as a result
+   - **Task changes made** (added, removed, reordered)
 
-2. **Invitation for Further Iteration**
+2. **Current Task Status**
+   - Show updated TaskList output
+   - Highlight any dependency changes
+
+3. **Invitation for Further Iteration**
    - Ask if the changes meet expectations
    - Offer to refine any sections further
 
@@ -156,4 +234,19 @@ Before considering iteration complete, verify:
 - [ ] No broken references or orphaned sections
 - [ ] Plan remains internally consistent
 - [ ] Technical approach is validated (if changes were technical)
+- [ ] **Tasks synchronized** (added/removed/reordered to match plan)
+- [ ] **Task dependencies correct** (blockedBy relationships updated)
+- [ ] **task_list_id preserved** in plan metadata
 - [ ] User has confirmed the changes meet their needs
+
+## Task Synchronization Rules
+
+| Scenario | Plan Action | Task Action |
+|----------|-------------|-------------|
+| Add phase between 2 and 3 | Insert new Phase 2.5 (renumber to 3) | TaskCreate + update dependencies |
+| Remove phase 3 | Delete phase content | Mark task completed with "REMOVED" note |
+| Split phase into two | Create two phases from one | TaskCreate for new, update original |
+| Merge two phases | Combine into single phase | Mark one completed with "MERGED" note |
+| Change phase order | Reorder in plan | Update all blockedBy relationships |
+
+**Never leave Tasks out of sync with the plan.** The Task list is the source of truth for progress, and the plan is the source of truth for specifications.
