@@ -147,6 +147,24 @@
     ],
     "PreCompact": [
       {
+        "name": "continuous-learning-before-compact",
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "skill",
+            "skill": "continuous-learning"
+          }
+        ],
+        "config": {
+          "threshold": 0.7,
+          "interactive": false,
+          "summary": true,
+          "max_patterns": 10,
+          "auto_merge": true
+        },
+        "description": "Extract patterns before compaction loses context"
+      },
+      {
         "name": "save-context-before-compact",
         "matcher": "*",
         "hooks": [
