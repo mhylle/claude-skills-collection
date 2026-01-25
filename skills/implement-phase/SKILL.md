@@ -221,7 +221,73 @@ If a **Prompt Path** is provided (from `prompt-generator` skill):
 
 ## Phase Execution Pipeline
 
-### CRITICAL: Continuous Execution (MANDATORY)
+### ⚡ AUTO-CONTINUE RULES (READ THIS FIRST)
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                     AUTOMATIC CONTINUATION ENGINE                        │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│   RULE 1: After completing ANY step, IMMEDIATELY start the next step.   │
+│   RULE 2: Do NOT output "waiting for input" or ask to continue.         │
+│   RULE 3: Do NOT summarize and stop. Summarize and CONTINUE.            │
+│   RULE 4: The ONLY valid stop point is after Step 8 completion.         │
+│                                                                          │
+│   EXECUTION ALGORITHM:                                                   │
+│                                                                          │
+│   current_step = 1                                                       │
+│   while current_step <= 8:                                               │
+│       result = execute_step(current_step)                                │
+│       if result == PASS:                                                 │
+│           current_step += 1          # AUTO-CONTINUE                     │
+│       elif result == FAIL:                                               │
+│           fix_and_retry(current_step) # Stay on step, fix, retry         │
+│       elif result == BLOCKED:                                            │
+│           return BLOCKED             # Only valid early exit             │
+│   return COMPLETE                    # Only stop here                    │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### WHAT TO DO AFTER EACH STEP
+
+| After Step | Status | YOUR IMMEDIATE ACTION |
+|------------|--------|----------------------|
+| Step 1 | PASS | **Execute Step 2 NOW** (invoke verification-loop) |
+| Step 2 | PASS | **Execute Step 3 NOW** (run integration tests) |
+| Step 3 | PASS | **Execute Step 4 NOW** (invoke code-review skill) |
+| Step 4 | PASS | **Execute Step 5 NOW** (check ADR compliance) |
+| Step 5 | PASS | **Execute Step 6 NOW** (verify plan sync) |
+| Step 6 | PASS | **Execute Step 7 NOW** (archive prompt) |
+| Step 7 | PASS | **Execute Step 8 NOW** (generate completion report) |
+| Step 8 | DONE | **STOP** - Present report, await user |
+
+**On FAIL at any step:** Fix the issue, re-run the SAME step, get PASS, then continue.
+
+### NEVER DO THESE
+
+```
+❌ "Step 2 complete. Let me know when you want to continue."
+❌ "Verification passed. Would you like me to proceed to Step 3?"
+❌ "Code review done. Waiting for your input."
+❌ "I've completed the exit conditions. What's next?"
+❌ Outputting results without immediately starting the next step
+❌ Asking permission to continue between steps 1-7
+```
+
+### ALWAYS DO THESE
+
+```
+✅ "Step 2 PASS. Executing Step 3: Integration Testing..."
+✅ "Code review PASS. Now checking ADR compliance..."
+✅ "Exit conditions verified. Running integration tests now..."
+✅ Immediately invoke the next step's tools/skills after reporting status
+✅ Chain steps together without pause
+```
+
+---
+
+### Continuous Execution Details
 
 > **The entire pipeline (Steps 1-8) MUST execute as one continuous flow.**
 
@@ -236,13 +302,18 @@ After EACH step completes (including skill invocations), **IMMEDIATELY proceed t
 | Maximum retries exhausted | Present failure and options to user |
 
 **DO NOT PAUSE after:**
+- Implementation complete → Continue to Step 2
+- Exit conditions pass → Continue to Step 3
 - Integration tests pass → Continue to Step 4
 - Code review returns PASS → Continue to Step 5
 - ADR compliance returns PASS → Continue to Step 6
+- Plan sync complete → Continue to Step 7
+- Prompt archived → Continue to Step 8
 - Any successful step completion → Continue to next step
 - Fix loop completes with PASS → Continue to next step
 
 **Fix Loops (internal, no user pause):**
+- Verification fails → Fix code, re-run verification, expect PASS
 - Integration tests fail → Fix code, re-run tests, expect PASS
 - Code review returns PASS_WITH_NOTES → Fix notes, re-run Step 4, expect PASS
 - Code review returns NEEDS_CHANGES → Fix issues, re-run Step 4, expect PASS
@@ -431,17 +502,32 @@ This is not optional. The Progress Tracker forces explicit acknowledgment of sta
 
 ## Execution Contract (READ BEFORE STARTING)
 
-Before executing ANY step, acknowledge this contract:
+> **⚠️ THIS IS A BINDING CONTRACT. VIOLATION = FAILURE.**
+
+Before executing ANY step, internalize these rules:
 
 ```
-I WILL execute Steps 1-8 as ONE continuous operation.
-I WILL output a Progress Tracker after EVERY step.
-I WILL test the feature MYSELF in Step 3 (not ask the user).
-I WILL NOT stop after Step 4 (code review) - there are 4 more steps.
-I WILL NOT ask the user if they want me to continue.
-I WILL NOT ask the user to manually verify anything.
-I WILL only stop at Step 8 after presenting the Completion Report.
-I WILL only stop early for genuine BLOCKING elements I cannot fix.
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         EXECUTION CONTRACT                               │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  I WILL execute Steps 1-8 as ONE continuous operation.                   │
+│  I WILL NOT stop between steps (except Step 8 or BLOCKED).               │
+│  I WILL invoke the next step's tools IMMEDIATELY after each step.        │
+│  I WILL output a Progress Tracker after EVERY step.                      │
+│  I WILL test the feature MYSELF in Step 3 (not ask the user).            │
+│  I WILL NOT stop after Step 4 (code review) - there are 4 more steps.    │
+│  I WILL NOT ask the user if they want me to continue.                    │
+│  I WILL NOT ask the user to manually verify anything.                    │
+│  I WILL only stop at Step 8 after presenting the Completion Report.      │
+│  I WILL only stop early for genuine BLOCKING elements I cannot fix.      │
+│                                                                          │
+│  AFTER EACH STEP OUTPUT:                                                 │
+│  ├── Output status (PASS/FAIL)                                           │
+│  ├── Output Progress Tracker                                             │
+│  └── IMMEDIATELY execute next step (no pause, no waiting)                │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
 If you find yourself about to stop before Step 8, RE-READ this contract.
@@ -514,11 +600,15 @@ FILES_MODIFIED: [list]
 TEST_RESULTS: [summary]
 ERRORS: [if any]
 SUBAGENTS_SPAWNED: [count]
+─────────────────────────────────────────────────
+⚡ NEXT_STEP: EXECUTE STEP 2 NOW (verification-loop)
 ```
+
+> **CRITICAL**: The output MUST include `NEXT_STEP: EXECUTE STEP 2 NOW`. This is not optional. When you see this in the output, you MUST immediately invoke the verification-loop skill without waiting for user input.
 
 **Gate**: Implementation must PASS to proceed.
 
-**→ NEXT STEP**: Output Progress Tracker, then IMMEDIATELY execute Step 2 (Exit Condition Verification). Do NOT wait for user input.
+**⚡ AUTO-CONTINUE**: Step 1 complete → **NOW EXECUTE STEP 2** (invoke verification-loop skill)
 
 ---
 
@@ -565,7 +655,11 @@ PHASE_RESULTS:
   DIFF: PASS | FAIL
 FAILED_PHASES: [list if any]
 EVIDENCE: logs/verification-loop-phase-N.log
+─────────────────────────────────────────────────
+⚡ NEXT_STEP: EXECUTE STEP 3 NOW (Integration Testing)
 ```
+
+> **CRITICAL**: The output MUST include `NEXT_STEP: EXECUTE STEP 3 NOW`. This is not optional. When you see this in the output, you MUST immediately execute Step 3 without waiting for user input.
 
 **Gate**: ALL 6 verification phases must PASS to proceed.
 
@@ -578,7 +672,7 @@ phase_config:
   verification_loop: false  # Falls back to basic exit conditions
 ```
 
-**→ NEXT STEP**: Output Progress Tracker, then IMMEDIATELY execute Step 3 (Automated Integration Testing). Do NOT wait for user input.
+**⚡ AUTO-CONTINUE**: Step 2 complete → **NOW EXECUTE STEP 3** (run integration tests yourself)
 
 ---
 
@@ -660,7 +754,11 @@ TESTS_PASSED: [count]
 TESTS_FAILED: [count]
 FAILURE_DETAILS: [if any]
 EVIDENCE: [log files, screenshots]
+─────────────────────────────────────────────────
+⚡ NEXT_STEP: EXECUTE STEP 4 NOW (Code Review)
 ```
+
+> **CRITICAL**: The output MUST include `NEXT_STEP: EXECUTE STEP 4 NOW`. This is not optional. When you see this in the output, you MUST immediately invoke the code-review skill without waiting for user input.
 
 **Gate**: Integration tests must PASS to proceed.
 
@@ -670,7 +768,7 @@ EVIDENCE: [log files, screenshots]
 3. Re-run failed tests
 4. Repeat until pass or hit blocking element
 
-**→ NEXT STEP**: Output Progress Tracker, then IMMEDIATELY execute Step 4 (Code Review). Do NOT wait for user input.
+**⚡ AUTO-CONTINUE**: Step 3 complete → **NOW EXECUTE STEP 4** (invoke code-review skill)
 
 ---
 
@@ -688,7 +786,11 @@ EVIDENCE: [log files, screenshots]
 CODE_REVIEW_STATUS: PASS | PASS_WITH_NOTES | NEEDS_CHANGES
 BLOCKING_ISSUES: [count]
 RECOMMENDATIONS: [list]
+─────────────────────────────────────────────────
+⚡ NEXT_STEP: EXECUTE STEP 5 NOW (ADR Compliance)
 ```
+
+> **CRITICAL**: When CODE_REVIEW_STATUS is PASS, the output MUST include `NEXT_STEP: EXECUTE STEP 5 NOW`. This is not optional. When you see this in the output, you MUST immediately check ADR compliance without waiting for user input.
 
 **Gate**: Code review must be **PASS** to proceed. PASS_WITH_NOTES is NOT acceptable.
 
@@ -724,7 +826,7 @@ RECOMMENDATIONS: [list]
 > - DO NOT report to user and wait. DO NOT ask if they want to continue.
 > - The phase is NOT complete. You have 4 more steps to execute.
 
-**→ NEXT STEP**: Output Progress Tracker, then IMMEDIATELY execute Step 5 (ADR Compliance). Do NOT wait for user input. Do NOT report "code review complete" and stop.
+**⚡ AUTO-CONTINUE**: Step 4 complete → **NOW EXECUTE STEP 5** (check ADR compliance)
 
 ---
 
@@ -744,13 +846,17 @@ ADR_COMPLIANCE_STATUS: PASS | NEEDS_DOCUMENTATION
 APPLICABLE_ADRS: [list]
 COMPLIANCE_RESULTS: [per-ADR status]
 NEW_DECISIONS_DOCUMENTED: [list of new ADR numbers, if any]
+─────────────────────────────────────────────────
+⚡ NEXT_STEP: EXECUTE STEP 6 NOW (Plan Synchronization)
 ```
+
+> **CRITICAL**: The output MUST include `NEXT_STEP: EXECUTE STEP 6 NOW`. This is not optional. When you see this in the output, you MUST immediately verify plan synchronization without waiting for user input.
 
 **Gate**: ADR compliance must PASS to proceed.
 
 **On NEEDS_DOCUMENTATION**: Invoke `adr` skill for each undocumented decision.
 
-**→ NEXT STEP**: Output Progress Tracker, then IMMEDIATELY execute Step 6 (Plan Synchronization). Do NOT wait for user input.
+**⚡ AUTO-CONTINUE**: Step 5 complete → **NOW EXECUTE STEP 6** (verify plan synchronization)
 
 ---
 
@@ -772,11 +878,15 @@ PLAN_SYNC_STATUS: PASS | FAIL
 WORK_ITEMS_VERIFIED: [count]
 DEVIATIONS_NOTED: [count]
 ADR_REFERENCES_ADDED: [count]
+─────────────────────────────────────────────────
+⚡ NEXT_STEP: EXECUTE STEP 7 NOW (Prompt Archival)
 ```
+
+> **CRITICAL**: The output MUST include `NEXT_STEP: EXECUTE STEP 7 NOW`. This is not optional. When you see this in the output, you MUST immediately archive the prompt (or skip if none) without waiting for user input.
 
 **Gate**: Plan sync must complete successfully.
 
-**→ NEXT STEP**: Output Progress Tracker, then IMMEDIATELY execute Step 7 (Prompt Archival). Do NOT wait for user input.
+**⚡ AUTO-CONTINUE**: Step 6 complete → **NOW EXECUTE STEP 7** (archive prompt if provided)
 
 ---
 
@@ -801,7 +911,11 @@ ADR_REFERENCES_ADDED: [count]
 PROMPT_ARCHIVAL_STATUS: PASS | SKIPPED | FAIL
 PROMPT_FILE: [original path]
 ARCHIVED_TO: [new path in completed/]
+─────────────────────────────────────────────────
+⚡ NEXT_STEP: EXECUTE STEP 8 NOW (Completion Report)
 ```
+
+> **CRITICAL**: The output MUST include `NEXT_STEP: EXECUTE STEP 8 NOW`. This is not optional. When you see this in the output, you MUST immediately generate the completion report without waiting for user input.
 
 **Gate**: Non-blocking (failure logged but doesn't stop completion).
 
@@ -811,7 +925,7 @@ ARCHIVED_TO: [new path in completed/]
 - Keeps the prompts folder clean for pending work
 - Allows review of what instructions were used
 
-**→ NEXT STEP**: Output Progress Tracker, then IMMEDIATELY execute Step 8 (Completion Report). Do NOT wait for user input.
+**⚡ AUTO-CONTINUE**: Step 7 complete → **NOW EXECUTE STEP 8** (generate completion report)
 
 ---
 
@@ -872,10 +986,17 @@ PHASE STATUS: ✅ COMPLETE - Ready for next phase
 
 > **Note on User Verification**: This section should almost always be empty. Claude performs integration testing in Step 3. Only include items here that genuinely require human eyes (e.g., "verify email arrived in inbox", "check physical device display").
 
-**→ STOP POINT**: This is the ONLY valid stopping point. After outputting the Completion Report:
+**🛑 STOP POINT**: This is the ONLY valid stopping point in the entire pipeline.
+
+After outputting the Completion Report:
 1. Output final Progress Tracker showing all steps ✅ DONE
 2. Present the report to the user
 3. NOW (and ONLY now) await user confirmation before proceeding to next phase
+
+```
+YOU HAVE REACHED THE END OF THE PHASE PIPELINE.
+THIS IS THE ONLY PLACE WHERE YOU MAY STOP AND WAIT FOR USER INPUT.
+```
 
 ---
 
