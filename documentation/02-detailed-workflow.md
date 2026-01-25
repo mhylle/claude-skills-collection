@@ -1,0 +1,705 @@
+# Detailed Implementation Workflow
+
+A comprehensive guide explaining each step of the workflow and the reasoning behind it.
+
+## Table of Contents
+
+1. [The Workflow Philosophy](#the-workflow-philosophy)
+2. [Phase 1: Brainstorming](#phase-1-brainstorming)
+3. [Phase 2: Planning](#phase-2-planning)
+4. [Phase 3: Implementation](#phase-3-implementation)
+5. [Phase 4: The Clear-and-Continue Pattern](#phase-4-the-clear-and-continue-pattern)
+6. [Understanding Quality Gates](#understanding-quality-gates)
+7. [Progress Tracking Deep Dive](#progress-tracking-deep-dive)
+8. [Continuous Learning System](#continuous-learning-system)
+9. [Hooks and Automation](#hooks-and-automation)
+
+---
+
+## The Workflow Philosophy
+
+### Why This Workflow Exists
+
+Traditional AI-assisted coding often suffers from:
+
+| Problem | Symptom | Our Solution |
+|---------|---------|--------------|
+| **Context bloat** | AI gets confused after long sessions | Clear between phases |
+| **Lost progress** | Have to restart after clearing | Task tools persist progress |
+| **Forgotten learnings** | Same mistakes repeated | Continuous learning captures patterns |
+| **Quality drift** | Code quality degrades over time | Quality gates on every phase |
+| **Unclear requirements** | Building the wrong thing | Brainstorm before planning |
+
+### The Core Principles
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           CORE PRINCIPLES                                    │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  1. ORCHESTRATION OVER IMPLEMENTATION                                        │
+│     ├── Claude coordinates, subagents execute                               │
+│     └── Never write code directly in the main session                       │
+│                                                                              │
+│  2. CLEAN BASELINE PRINCIPLE                                                 │
+│     ├── Every phase ends clean (all checks pass)                            │
+│     └── Next phase inherits a working codebase                              │
+│                                                                              │
+│  3. PERSISTENT PROGRESS                                                      │
+│     ├── Task tools survive /clear and session restarts                      │
+│     └── Plan files remain pure specifications                               │
+│                                                                              │
+│  4. CAPTURED KNOWLEDGE                                                       │
+│     ├── Learnings extracted at natural boundaries                           │
+│     └── Patterns available for future sessions                              │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Phase 1: Brainstorming
+
+### What Happens
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           BRAINSTORM FLOW                                    │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  You: "I want to add user authentication"                                   │
+│                                                                              │
+│         │                                                                    │
+│         ▼                                                                    │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │ PHASE 1: Idea Capture                                                │   │
+│  │ • What is the core concept?                                          │   │
+│  │ • What are the stated goals?                                         │   │
+│  │ • Is there project context?                                          │   │
+│  └──────────────────────────────────────┬──────────────────────────────┘   │
+│                                         │                                    │
+│                                         ▼                                    │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │ PHASE 2: Socratic Clarification                                      │   │
+│  │ • Scope: "What's in scope? What's explicitly out?"                   │   │
+│  │ • Assumptions: "What are we taking for granted?"                     │   │
+│  │ • Alternatives: "What other approaches exist?"                       │   │
+│  │ • Consequences: "What happens if this succeeds/fails?"               │   │
+│  └──────────────────────────────────────┬──────────────────────────────┘   │
+│                                         │                                    │
+│                                         ▼                                    │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │ PHASE 3: Context Gathering                                           │   │
+│  │ • Web research for best practices                                    │   │
+│  │ • Codebase research for existing patterns                            │   │
+│  │ • Documentation analysis                                              │   │
+│  └──────────────────────────────────────┬──────────────────────────────┘   │
+│                                         │                                    │
+│                                         ▼                                    │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │ PHASE 4-5: Analysis & Synthesis                                      │   │
+│  │ • Six Thinking Hats (facts, risks, benefits, creativity)            │   │
+│  │ • SCAMPER enhancement                                                │   │
+│  │ • Premortem analysis                                                 │   │
+│  │ • Key decisions documented as ADRs                                   │   │
+│  └──────────────────────────────────────┬──────────────────────────────┘   │
+│                                         │                                    │
+│                                         ▼                                    │
+│  Output: docs/brainstorms/2026-01-25-user-auth.md                          │
+│          + ADR documents for key decisions                                  │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Why Brainstorm?
+
+| Without Brainstorming | With Brainstorming |
+|-----------------------|---------------------|
+| Jump straight to code | Clarify requirements first |
+| Discover issues during implementation | Discover issues before writing code |
+| Build, then realize it's wrong | Validate approach upfront |
+| No documentation of reasoning | ADRs capture why decisions were made |
+
+### When to Skip
+
+Skip brainstorming when:
+- Requirements are crystal clear
+- It's a bug fix or small change
+- You've done this exact thing before
+
+---
+
+## Phase 2: Planning
+
+### What Happens
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           CREATE-PLAN FLOW                                   │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  STEP 1: Research the Codebase                                              │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │ Parallel research agents:                                            │   │
+│  │ • codebase-locator: Find relevant files                             │   │
+│  │ • codebase-analyzer: Understand existing patterns                   │   │
+│  │ • codebase-pattern-finder: Find similar implementations             │   │
+│  └──────────────────────────────────────┬──────────────────────────────┘   │
+│                                         │                                    │
+│                                         ▼                                    │
+│  STEP 2: Present Understanding                                              │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │ • Here's what I found in the codebase...                            │   │
+│  │ • These patterns exist...                                            │   │
+│  │ • I have these questions...                                          │   │
+│  │                                                                      │   │
+│  │ [Wait for your confirmation before proceeding]                       │   │
+│  └──────────────────────────────────────┬──────────────────────────────┘   │
+│                                         │                                    │
+│                                         ▼                                    │
+│  STEP 3: Research Corrections (if any)                                      │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │ • You said X, let me verify...                                       │   │
+│  │ • Cross-reference with codebase                                      │   │
+│  │ • Resolve conflicts between user input and reality                   │   │
+│  └──────────────────────────────────────┬──────────────────────────────┘   │
+│                                         │                                    │
+│                                         ▼                                    │
+│  STEP 4: Design Options                                                     │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │ Option A: [Approach]                                                 │   │
+│  │   Pros: ...  Cons: ...                                              │   │
+│  │                                                                      │   │
+│  │ Option B: [Alternative]                                              │   │
+│  │   Pros: ...  Cons: ...                                              │   │
+│  │                                                                      │   │
+│  │ Recommendation: Option A because...                                  │   │
+│  │                                                                      │   │
+│  │ [Wait for your approval → Create ADR]                                │   │
+│  └──────────────────────────────────────┬──────────────────────────────┘   │
+│                                         │                                    │
+│                                         ▼                                    │
+│  STEP 5: Phase Structure                                                    │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │ Proposed phases:                                                     │   │
+│  │   Phase 1: Database Schema                                           │   │
+│  │   Phase 2: Auth Service                                              │   │
+│  │   Phase 3: API Endpoints                                             │   │
+│  │   Phase 4: Testing                                                   │   │
+│  │                                                                      │   │
+│  │ [Wait for your approval]                                             │   │
+│  └──────────────────────────────────────┬──────────────────────────────┘   │
+│                                         │                                    │
+│                                         ▼                                    │
+│  STEP 6: Write Plan                                                         │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │ Output: docs/plans/2026-01-25-user-auth.md                          │   │
+│  │                                                                      │   │
+│  │ Contains:                                                            │   │
+│  │ • Overview and context                                               │   │
+│  │ • Design decision + ADR reference                                    │   │
+│  │ • Phased implementation with tasks                                   │   │
+│  │ • Exit conditions for each phase                                     │   │
+│  │ • Dependencies and risks                                             │   │
+│  └──────────────────────────────────────┬──────────────────────────────┘   │
+│                                         │                                    │
+│                                         ▼                                    │
+│  STEP 7: Bootstrap Tasks                                                    │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │ TaskCreate for each phase with dependencies:                         │   │
+│  │                                                                      │   │
+│  │   ◻ #1 Phase 1: Database Schema                                     │   │
+│  │   ◻ #2 Phase 2: Auth Service › blocked by #1                        │   │
+│  │   ◻ #3 Phase 3: API Endpoints › blocked by #2                       │   │
+│  │   ◻ #4 Phase 4: Testing › blocked by #3                             │   │
+│  │                                                                      │   │
+│  │ task_list_id added to plan metadata                                  │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Why Break Into Phases?
+
+| Monolithic Approach | Phased Approach |
+|--------------------|-----------------|
+| Big bang delivery | Incremental progress |
+| All-or-nothing | Each phase independently valuable |
+| Hard to verify | Verify after each phase |
+| Difficult rollback | Easy to pause or revert |
+| Context overload | Fresh context per phase |
+
+### Exit Conditions Are Critical
+
+Each phase MUST define:
+
+```markdown
+**Exit Conditions**:
+
+Build Verification:
+- [ ] `npm run build` succeeds
+- [ ] `npm run lint` passes
+- [ ] `npm run typecheck` passes
+
+Runtime Verification:
+- [ ] Application starts without errors
+- [ ] No console errors on load
+
+Functional Verification:
+- [ ] `npm test` passes
+- [ ] New endpoints return expected responses
+```
+
+**Why?** Exit conditions are gates. If they don't pass, the phase isn't complete. This prevents "it works on my machine" and ensures each phase leaves a clean baseline.
+
+---
+
+## Phase 3: Implementation
+
+### The Orchestrator Pattern
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                        ORCHESTRATOR HIERARCHY                                │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  implement-plan (ORCHESTRATOR)                                              │
+│  │                                                                           │
+│  │  ⛔ NEVER writes code                                                    │
+│  │  ⛔ NEVER uses Write/Edit tools                                          │
+│  │  ✅ Coordinates phases                                                   │
+│  │  ✅ Tracks overall progress                                              │
+│  │                                                                           │
+│  └──► implement-phase (ORCHESTRATOR)                                        │
+│       │                                                                      │
+│       │  ⛔ NEVER writes code                                               │
+│       │  ⛔ NEVER uses Write/Edit tools                                     │
+│       │  ✅ Coordinates steps within phase                                  │
+│       │  ✅ Invokes quality gate skills                                     │
+│       │                                                                      │
+│       └──► Subagents (WORKERS)                                              │
+│            │                                                                 │
+│            │  ✅ Write code                                                 │
+│            │  ✅ Create/modify files                                        │
+│            │  ✅ Run tests                                                  │
+│            │  ✅ Fix issues                                                 │
+│            │                                                                 │
+│            └──► Return concise results                                      │
+│                 STATUS: PASS/FAIL                                           │
+│                 FILES: created/modified                                     │
+│                 ERRORS: if any                                              │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Why Orchestration?**
+
+1. **Context Preservation**: Main session keeps the full plan context
+2. **Parallelization**: Independent tasks run concurrently
+3. **Clean Separation**: Orchestration logic separate from implementation
+4. **Better Errors**: Failures don't pollute main context
+
+### The 8-Step Phase Pipeline
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         IMPLEMENT-PHASE PIPELINE                             │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  Step 1: IMPLEMENTATION                                                      │
+│  ├── Spawn subagents to write tests (verification-first)                   │
+│  ├── Spawn subagents to write implementation                               │
+│  └── Collect results: files created, tests passing                         │
+│       │                                                                      │
+│       ▼ PASS → Continue (FAIL → Fix and retry)                             │
+│                                                                              │
+│  Step 2: VERIFICATION-LOOP (6 phases)                                       │
+│  ├── Build: Compilation, bundling                                          │
+│  ├── Type: Type checking, interface compliance                             │
+│  ├── Lint: Code style, static analysis                                     │
+│  ├── Test: Unit tests, integration tests                                   │
+│  ├── Security: Dependency audit, secret scanning                           │
+│  └── Diff: Review changes, detect unintended modifications                 │
+│       │                                                                      │
+│       ▼ ALL 6 PASS → Continue (ANY FAIL → Fix and retry)                   │
+│                                                                              │
+│  Step 3: INTEGRATION TESTING                                                 │
+│  ├── Claude tests the feature (not you!)                                   │
+│  ├── API tests: Make HTTP requests, verify responses                       │
+│  ├── UI tests: browser-verification-agent with screenshots                 │
+│  └── Capture evidence in logs/                                              │
+│       │                                                                      │
+│       ▼ PASS → Continue                                                     │
+│                                                                              │
+│  Step 4: CODE REVIEW                                                         │
+│  ├── Invoke code-review skill                                              │
+│  ├── Check: Service delegation, framework standards, ADR compliance        │
+│  ├── PASS_WITH_NOTES? → Fix notes, re-run (must achieve clean PASS)        │
+│  └── Optional: security-review for sensitive code                          │
+│       │                                                                      │
+│       ▼ PASS → Continue                                                     │
+│                                                                              │
+│  Step 5: ADR COMPLIANCE                                                      │
+│  ├── Check against existing ADRs                                           │
+│  └── Document new decisions if any                                          │
+│       │                                                                      │
+│       ▼ PASS → Continue                                                     │
+│                                                                              │
+│  Step 6: PLAN SYNC                                                           │
+│  ├── Verify work items completed                                           │
+│  └── Update task status                                                     │
+│       │                                                                      │
+│       ▼ PASS → Continue                                                     │
+│                                                                              │
+│  Step 7: PROMPT ARCHIVAL                                                     │
+│  └── Move used prompt to completed/                                         │
+│       │                                                                      │
+│       ▼ PASS/SKIP → Continue                                                │
+│                                                                              │
+│  Step 8: COMPLETION REPORT                                                   │
+│  ├── Generate summary                                                       │
+│  ├── Invoke continuous-learning (capture patterns)                         │
+│  └── Present to user                                                        │
+│       │                                                                      │
+│       ▼ 🛑 STOP - Await user confirmation                                  │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Why Each Step Matters
+
+| Step | What It Catches | Without It |
+|------|-----------------|------------|
+| 1. Implementation | - | No code gets written |
+| 2. Verification | Broken code, type errors, lint issues | Ship broken code |
+| 3. Integration Testing | "Works" but doesn't actually work | False confidence |
+| 4. Code Review | Pattern violations, tech debt | Quality degrades |
+| 5. ADR Compliance | Undocumented decisions | Future confusion |
+| 6. Plan Sync | Missed work items | Incomplete features |
+| 7. Prompt Archival | Prompt reuse confusion | Accidental re-runs |
+| 8. Completion + Learning | Lost knowledge | Repeated mistakes |
+
+---
+
+## Phase 4: The Clear-and-Continue Pattern
+
+### Your Workflow
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                      CLEAR-AND-CONTINUE WORKFLOW                             │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  SESSION 1                                                                   │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │ /implement-plan docs/plans/my-feature.md                            │   │
+│  │                                                                      │   │
+│  │ TaskList shows:                                                      │   │
+│  │   ◻ #1 Phase 1: Setup                                               │   │
+│  │   ◻ #2 Phase 2: Core Logic › blocked by #1                          │   │
+│  │   ◻ #3 Phase 3: Integration › blocked by #2                         │   │
+│  │                                                                      │   │
+│  │ Executing Phase 1...                                                 │   │
+│  │ ✅ Step 1-8 complete                                                 │   │
+│  │ Learnings captured ✅                                                │   │
+│  │                                                                      │   │
+│  │ TaskList now shows:                                                  │   │
+│  │   ✓ #1 Phase 1: Setup                                               │   │
+│  │   ◻ #2 Phase 2: Core Logic (unblocked!)                             │   │
+│  │   ◻ #3 Phase 3: Integration › blocked by #2                         │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│       │                                                                      │
+│       ▼                                                                      │
+│  /clear                                                                      │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │ Context cleared, fresh start                                         │   │
+│  │ BUT: Tasks persist on filesystem                                     │   │
+│  │ AND: Learnings saved to ~/.claude/skills/learned/                   │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│       │                                                                      │
+│       ▼                                                                      │
+│  SESSION 2 (or continued session after /clear)                              │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │ /implement-plan docs/plans/my-feature.md                            │   │
+│  │                                                                      │   │
+│  │ TaskList shows current progress:                                     │   │
+│  │   ✓ #1 Phase 1: Setup (already done!)                               │   │
+│  │   ◻ #2 Phase 2: Core Logic                                          │   │
+│  │   ◻ #3 Phase 3: Integration › blocked by #2                         │   │
+│  │                                                                      │   │
+│  │ Resuming from Phase 2...                                             │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                              │
+│  Repeat until all phases complete                                           │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Why Clear Between Phases?
+
+| Benefit | Explanation |
+|---------|-------------|
+| **Fresh context** | Each phase gets full attention without accumulated noise |
+| **No confusion** | Claude doesn't mix up Phase 1 and Phase 2 code |
+| **Faster responses** | Less context = faster processing |
+| **Cleaner errors** | Errors are clearly from current phase |
+
+### What Persists Across /clear
+
+| Persists | Doesn't Persist |
+|----------|-----------------|
+| Task status (TaskList) | Conversation history |
+| Learned patterns | Temporary mental context |
+| Committed code | Uncommitted changes |
+| Plan files | In-progress explanations |
+
+---
+
+## Understanding Quality Gates
+
+### The Clean Baseline Principle
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                       CLEAN BASELINE PRINCIPLE                               │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  Previous Phase ────► Exit Conditions PASS ────► Clean State                │
+│                                                        │                     │
+│                                                        ▼                     │
+│                                            Current Phase Implementation      │
+│                                                        │                     │
+│                                                        ▼                     │
+│                                            Code Review ◄── ANY errors here  │
+│                                                        │   are from THIS    │
+│                                                        │   phase            │
+│                                                        ▼                     │
+│                                            ALL errors are blocking          │
+│                                                                              │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  IMPLICATION: There is no "pre-existing error" exception.                   │
+│                                                                              │
+│  • If lint passed before this phase, any lint errors now = we caused them  │
+│  • If build passed before, any build errors now = we caused them           │
+│  • If tests passed before, any test failures now = we caused them          │
+│                                                                              │
+│  Even errors in UNCHANGED files are our responsibility:                     │
+│  • We changed types.ts                                                      │
+│  • endpoints.ts (unchanged) now has type errors                             │
+│  • → We broke endpoints.ts by changing types it depends on                  │
+│  • → This is BLOCKING, we must fix it                                       │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Why Recommendations Are Blocking
+
+```
+❌ WRONG THINKING:
+   "It's just a recommendation, we can fix it later"
+   "PASS_WITH_NOTES is good enough"
+   "We'll address it in the next phase"
+
+✅ CORRECT THINKING:
+   "Recommendations are blocking issues"
+   "Only clean PASS allows phase completion"
+   "Fix it now or the phase cannot complete"
+```
+
+**Rationale**:
+- Recommendations indicate real issues (pattern violations, missing tests)
+- Leaving them unfixed accumulates technical debt
+- Each phase that ignores recommendations makes the next phase harder
+- If it's worth noting, it's worth fixing
+
+---
+
+## Progress Tracking Deep Dive
+
+### Task Tools vs. Checkboxes
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    OLD WAY vs. NEW WAY                                       │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  OLD: Checkbox-based (in plan file)                                         │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │ ## Phase 1: Setup                                                    │   │
+│  │ - [x] Create database schema                                         │   │
+│  │ - [x] Add migrations                                                 │   │
+│  │ - [ ] Write seed data      ◄── Modifies plan file                   │   │
+│  │                                                                      │   │
+│  │ Problems:                                                            │   │
+│  │ • Plan file = spec + progress (mixed concerns)                      │   │
+│  │ • Single session only (lost on /clear)                              │   │
+│  │ • Git conflicts when multiple people work                           │   │
+│  │ • Hard to parse programmatically                                     │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                              │
+│  NEW: Task Tools (persistent, separate)                                     │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │ Plan file stays clean (pure specification)                          │   │
+│  │                                                                      │   │
+│  │ TaskList:                                                            │   │
+│  │   ✓ #1 Phase 1: Setup                                               │   │
+│  │   ● #2 Phase 2: Core Logic (in_progress)                            │   │
+│  │   ◻ #3 Phase 3: Integration › blocked by #2                         │   │
+│  │                                                                      │   │
+│  │ Benefits:                                                            │   │
+│  │ • Plan = spec only (clean separation)                               │   │
+│  │ • Persists across sessions                                          │   │
+│  │ • Dependency tracking built-in                                      │   │
+│  │ • Structured API for querying                                       │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Multi-Session Support
+
+```bash
+# Session 1: Start work
+CLAUDE_CODE_TASK_LIST_ID=plan-my-feature claude
+> /implement-plan docs/plans/my-feature.md
+# Complete Phase 1, 2...
+
+# Session 2: Resume from different terminal
+CLAUDE_CODE_TASK_LIST_ID=plan-my-feature claude
+> /implement-plan docs/plans/my-feature.md
+# Automatically knows Phase 1, 2 are done, starts Phase 3
+```
+
+---
+
+## Continuous Learning System
+
+### When Patterns Are Captured
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    LEARNING CAPTURE POINTS                                   │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  ┌──────────────────┐                                                       │
+│  │ Phase Completion │ ◄── End of implement-phase Step 8                    │
+│  │                  │     Patterns from this phase captured                 │
+│  └────────┬─────────┘                                                       │
+│           │                                                                  │
+│           ▼                                                                  │
+│  ┌──────────────────┐                                                       │
+│  │    /compact      │ ◄── PreCompact hook triggers                         │
+│  │                  │     Patterns captured before context loss             │
+│  └────────┬─────────┘                                                       │
+│           │                                                                  │
+│           ▼                                                                  │
+│  ┌──────────────────┐                                                       │
+│  │   Session End    │ ◄── Stop hook triggers                               │
+│  │                  │     Final pattern extraction                          │
+│  └────────┬─────────┘                                                       │
+│           │                                                                  │
+│           ▼                                                                  │
+│  ~/.claude/skills/learned/                                                   │
+│                                                                              │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  ⚠️  /clear does NOT trigger learning capture                              │
+│      Patterns are captured at phase completion BEFORE you /clear            │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### What Gets Learned
+
+| Pattern Type | Example |
+|--------------|---------|
+| **Error Resolution** | "When you see 'ECONNREFUSED', check if the service is running" |
+| **User Correction** | "User prefers functional style over class-based" |
+| **Workaround** | "This framework doesn't support X, use Y instead" |
+| **Project Pattern** | "All services in this codebase use dependency injection" |
+| **Debugging Technique** | "Enable DEBUG=* to see detailed logs" |
+
+### Future Session Usage
+
+Learned patterns are loaded at session start and used for:
+- Automatic matching when similar errors occur
+- Pattern suggestions during debugging
+- Consistency with project conventions
+
+---
+
+## Hooks and Automation
+
+### Active Hooks
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         HOOK CONFIGURATION                                   │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  PreToolUse (before tool execution):                                         │
+│  ├── tmux-dev-block: Block dev servers outside tmux                        │
+│  ├── tmux-reminder: Suggest tmux for long-running commands                 │
+│  ├── git-push-review: Reminder before git push                             │
+│  ├── doc-file-warn: Warn about docs outside docs/ structure                │
+│  └── strategic-compact: Suggest /compact at logical boundaries             │
+│                                                                              │
+│  PostToolUse (after tool execution):                                         │
+│  ├── pr-url-logger: Log PR URL after creation                              │
+│  ├── prettier-format: Auto-format JS/TS with Prettier                      │
+│  ├── typescript-check: Run tsc after .ts/.tsx edits                        │
+│  └── console-log-warn: Warn about console.log statements                   │
+│                                                                              │
+│  PreCompact:                                                                 │
+│  ├── continuous-learning: Extract patterns before compaction               │
+│  └── save-context-remind: Remind to save context                           │
+│                                                                              │
+│  SessionStart:                                                               │
+│  └── load-context: Detect saved context files                              │
+│                                                                              │
+│  Stop (session end):                                                         │
+│  ├── console-log-audit: Audit modified files for console.log               │
+│  └── continuous-learning: Extract patterns before exit                     │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### How Hooks Help Your Workflow
+
+| Hook | How It Helps |
+|------|--------------|
+| strategic-compact | Suggests when to compact based on logical boundaries, not arbitrary thresholds |
+| continuous-learning (PreCompact) | Captures patterns before context loss |
+| continuous-learning (Stop) | Captures patterns when session ends |
+| prettier-format | Keeps code formatted automatically |
+| typescript-check | Catches type errors immediately |
+
+---
+
+## Summary: The Complete Flow
+
+```
+1. /brainstorm (optional)
+   └── Clarify requirements, create ADRs
+
+2. /create-plan
+   └── Research codebase, design phases, create tasks
+
+3. /implement-plan
+   └── For each phase:
+       ├── implement-phase (8 steps)
+       ├── Quality gates (verification, review, ADR)
+       ├── Learnings captured
+       └── Wait for confirmation
+
+4. /clear (your workflow)
+   └── Fresh context, progress preserved in Task tools
+
+5. Repeat step 3-4 until all phases complete
+
+6. Session end
+   └── Final learnings captured
+```
+
+**Your investment**: Plan once, execute phase by phase, never lose progress, always learn.

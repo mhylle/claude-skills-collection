@@ -134,6 +134,17 @@
     ],
     "SessionStart": [
       {
+        "name": "load-learned-patterns",
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node -e \"const fs=require('fs');const path=require('path');const learnedDir=path.join(process.env.HOME,'.claude','skills','learned');if(fs.existsSync(learnedDir)){const files=fs.readdirSync(learnedDir).filter(f=>f.endsWith('.md'));if(files.length){console.error('[Hook] Learned patterns available: '+files.length);files.slice(0,5).forEach(f=>console.error('  - '+f.replace('.md','')));console.error('[Hook] Patterns will be applied automatically during this session')}}\""
+          }
+        ],
+        "description": "Load learned patterns from previous sessions"
+      },
+      {
         "name": "load-context",
         "matcher": "*",
         "hooks": [
