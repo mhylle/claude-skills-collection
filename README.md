@@ -2,7 +2,7 @@
 
 Custom skills and agents for Claude Code that enhance codebase research, context management, and implementation planning workflows.
 
-> **New to this workflow?** See the [Workflow Tutorials](documentation/) for step-by-step guides.
+> **New to this workflow?** See the [Workflow Overview](documentation/01-workflow-overview.md) for a step-by-step guide.
 
 ## Built on Claude Code Task Tools
 
@@ -219,9 +219,7 @@ cp hooks.json ~/.claude/hooks.json
 
 **Restart Claude Code after installation.**
 
-> **Ready to start?** Check out the [Workflow Tutorials](documentation/) for a complete guide:
-> - [High-Level Overview](documentation/01-workflow-overview.md) - Quick introduction with diagrams
-> - [Detailed Workflow](documentation/02-detailed-workflow.md) - Step-by-step with rationale
+> **Ready to start?** Check out the [Workflow Overview](documentation/01-workflow-overview.md) for a complete guide.
 
 ## Usage Examples
 
