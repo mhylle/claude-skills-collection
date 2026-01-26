@@ -6,6 +6,38 @@ A high-level guide to the Claude Code skills-based implementation workflow.
 
 ## The Big Picture
 
+```mermaid
+flowchart TD
+    idea([You have an idea])
+
+    idea --> brainstorm
+    brainstorm["/brainstorm<br><i>Clarify your idea through questions</i>"]
+
+    brainstorm --> createplan
+    createplan["/create-plan<br><i>Research codebase, design approach</i>"]
+
+    createplan --> implementplan
+
+    subgraph implementplan ["/implement-plan"]
+        direction LR
+        p1[Phase 1] --> p2[Phase 2] --> p3[Phase 3] --> pn[Phase N]
+    end
+
+    implementplan --> phase
+
+    subgraph phase ["implement-phase (each phase)"]
+        s1["Write code via subagents"]
+        s2["Run verification (build, test, lint)"]
+        s3["Code review"]
+        s4["Capture learnings"]
+    end
+
+    phase --> complete([Feature Complete!])
+```
+
+<details>
+<summary>ASCII fallback (if Mermaid doesn't render)</summary>
+
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                         YOUR IMPLEMENTATION JOURNEY                          │
@@ -34,7 +66,7 @@ A high-level guide to the Claude Code skills-based implementation workflow.
 │    │  └────┬────┘   └────┬────┘   └────┬────┘   └────┬────┘       │        │
 │    │       │              │              │              │           │        │
 │    │       ▼              ▼              ▼              ▼           │        │
-│    │  ┌─────────────────────────────────────────────────────┐      │        │
+│    │  ┌─────────────────────────────────────────────────────────┐      │        │
 │    │  │              implement-phase                         │      │        │
 │    │  │  • Write code (via subagents)                       │      │        │
 │    │  │  • Run verification (build, test, lint)             │      │        │
@@ -51,6 +83,8 @@ A high-level guide to the Claude Code skills-based implementation workflow.
 │                                                                              │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
+
+</details>
 
 ## Four Simple Steps
 
