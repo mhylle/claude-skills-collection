@@ -20,19 +20,33 @@ flowchart TD
 
     subgraph implementplan ["/implement-plan"]
         direction LR
+        implnote["Auto-detects next phase to implement"]
         p1[Phase 1] --> p2[Phase 2] --> p3[Phase 3] --> pn[Phase N]
     end
 
     implementplan --> phase
 
-    subgraph phase ["implement-phase (each phase)"]
-        s1["Write code via subagents"]
-        s2["Run verification (build, test, lint)"]
-        s3["Code review"]
-        s4["Capture learnings"]
+    subgraph phase ["implement-phase"]
+        direction LR
+        s1["Write code"] --> s2["Verify"] --> s3["Review"] --> s4["Learn"]
     end
 
     phase --> complete([Feature Complete!])
+
+    %% Muted color styling
+    style idea fill:#e8f4f8,stroke:#94a3b8,color:#475569
+    style brainstorm fill:#f0fdf4,stroke:#86efac,color:#166534
+    style createplan fill:#fef3c7,stroke:#fcd34d,color:#92400e
+    style complete fill:#dbeafe,stroke:#93c5fd,color:#1e40af
+    style implnote fill:#f8fafc,stroke:#cbd5e1,color:#64748b,stroke-dasharray: 5 5
+    style p1 fill:#faf5ff,stroke:#c4b5fd,color:#5b21b6
+    style p2 fill:#faf5ff,stroke:#c4b5fd,color:#5b21b6
+    style p3 fill:#faf5ff,stroke:#c4b5fd,color:#5b21b6
+    style pn fill:#faf5ff,stroke:#c4b5fd,color:#5b21b6
+    style s1 fill:#fff1f2,stroke:#fda4af,color:#9f1239
+    style s2 fill:#fff1f2,stroke:#fda4af,color:#9f1239
+    style s3 fill:#fff1f2,stroke:#fda4af,color:#9f1239
+    style s4 fill:#fff1f2,stroke:#fda4af,color:#9f1239
 ```
 
 <details>
