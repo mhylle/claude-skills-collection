@@ -536,6 +536,14 @@ If you find yourself about to stop before Step 8, RE-READ this contract.
 
 ### Step 1: Implementation
 
+```
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║ ⏩ ENTERING STEP 1 - This is part of a continuous 8-step pipeline.            ║
+║    When this step completes with PASS, IMMEDIATELY execute Step 2.            ║
+║    Do NOT stop. Do NOT wait for user input.                                   ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+```
+
 **Responsibility**: Execute all tasks in the phase using subagent delegation.
 
 > **REMINDER: You are an orchestrator. Spawn subagents for ALL implementation work.**
@@ -608,11 +616,25 @@ SUBAGENTS_SPAWNED: [count]
 
 **Gate**: Implementation must PASS to proceed.
 
-**⚡ AUTO-CONTINUE**: Step 1 complete → **NOW EXECUTE STEP 2** (invoke verification-loop skill)
+```
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║ ✅ STEP 1 COMPLETE → IMMEDIATELY EXECUTE STEP 2 NOW                           ║
+║    Do NOT output results and wait. Do NOT ask "shall I continue?"             ║
+║    Your next action MUST be: invoke the verification-loop skill               ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+```
 
 ---
 
 ### Step 2: Exit Condition Verification (verification-loop)
+
+```
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║ ⏩ ENTERING STEP 2 - This is part of a continuous 8-step pipeline.            ║
+║    When this step completes with PASS, IMMEDIATELY execute Step 3.            ║
+║    Do NOT stop. Do NOT wait for user input.                                   ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+```
 
 **Responsibility**: Verify all exit conditions using the comprehensive 6-check verification-loop.
 
@@ -672,11 +694,25 @@ phase_config:
   verification_loop: false  # Falls back to basic exit conditions
 ```
 
-**⚡ AUTO-CONTINUE**: Step 2 complete → **NOW EXECUTE STEP 3** (run integration tests yourself)
+```
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║ ✅ STEP 2 COMPLETE → IMMEDIATELY EXECUTE STEP 3 NOW                           ║
+║    Do NOT output results and wait. Do NOT ask "shall I continue?"             ║
+║    Your next action MUST be: run integration tests (Step 3)                   ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+```
 
 ---
 
 ### Step 3: Automated Integration Testing
+
+```
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║ ⏩ ENTERING STEP 3 - This is part of a continuous 8-step pipeline.            ║
+║    When this step completes with PASS, IMMEDIATELY execute Step 4.            ║
+║    Do NOT stop. Do NOT wait for user input.                                   ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+```
 
 **Responsibility**: Verify the implementation works end-to-end through automated testing performed by YOU, not the user.
 
@@ -768,11 +804,25 @@ EVIDENCE: [log files, screenshots]
 3. Re-run failed tests
 4. Repeat until pass or hit blocking element
 
-**⚡ AUTO-CONTINUE**: Step 3 complete → **NOW EXECUTE STEP 4** (invoke code-review skill)
+```
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║ ✅ STEP 3 COMPLETE → IMMEDIATELY EXECUTE STEP 4 NOW                           ║
+║    Do NOT output results and wait. Do NOT ask "shall I continue?"             ║
+║    Your next action MUST be: invoke the code-review skill                     ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+```
 
 ---
 
 ### Step 4: Code Review
+
+```
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║ ⏩ ENTERING STEP 4 - This is part of a continuous 8-step pipeline.            ║
+║    When this step completes with PASS, IMMEDIATELY execute Step 5.            ║
+║    Do NOT stop. Do NOT wait for user input.                                   ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+```
 
 **Responsibility**: Validate implementation quality across all dimensions.
 
@@ -826,11 +876,25 @@ RECOMMENDATIONS: [list]
 > - DO NOT report to user and wait. DO NOT ask if they want to continue.
 > - The phase is NOT complete. You have 4 more steps to execute.
 
-**⚡ AUTO-CONTINUE**: Step 4 complete → **NOW EXECUTE STEP 5** (check ADR compliance)
+```
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║ ✅ STEP 4 COMPLETE → IMMEDIATELY EXECUTE STEP 5 NOW                           ║
+║    Do NOT output results and wait. Do NOT ask "shall I continue?"             ║
+║    Your next action MUST be: check ADR compliance                             ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+```
 
 ---
 
 ### Step 5: ADR Compliance Check
+
+```
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║ ⏩ ENTERING STEP 5 - This is part of a continuous 8-step pipeline.            ║
+║    When this step completes with PASS, IMMEDIATELY execute Step 6.            ║
+║    Do NOT stop. Do NOT wait for user input.                                   ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+```
 
 **Responsibility**: Ensure architectural decisions are followed and documented.
 
@@ -856,11 +920,25 @@ NEW_DECISIONS_DOCUMENTED: [list of new ADR numbers, if any]
 
 **On NEEDS_DOCUMENTATION**: Invoke `adr` skill for each undocumented decision.
 
-**⚡ AUTO-CONTINUE**: Step 5 complete → **NOW EXECUTE STEP 6** (verify plan synchronization)
+```
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║ ✅ STEP 5 COMPLETE → IMMEDIATELY EXECUTE STEP 6 NOW                           ║
+║    Do NOT output results and wait. Do NOT ask "shall I continue?"             ║
+║    Your next action MUST be: verify plan synchronization                      ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+```
 
 ---
 
 ### Step 6: Plan Synchronization
+
+```
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║ ⏩ ENTERING STEP 6 - This is part of a continuous 8-step pipeline.            ║
+║    When this step completes with PASS, IMMEDIATELY execute Step 7.            ║
+║    Do NOT stop. Do NOT wait for user input.                                   ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+```
 
 **Responsibility**: Verify work items completed and update plan status.
 
@@ -886,11 +964,25 @@ ADR_REFERENCES_ADDED: [count]
 
 **Gate**: Plan sync must complete successfully.
 
-**⚡ AUTO-CONTINUE**: Step 6 complete → **NOW EXECUTE STEP 7** (archive prompt if provided)
+```
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║ ✅ STEP 6 COMPLETE → IMMEDIATELY EXECUTE STEP 7 NOW                           ║
+║    Do NOT output results and wait. Do NOT ask "shall I continue?"             ║
+║    Your next action MUST be: archive the prompt (if provided)                 ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+```
 
 ---
 
 ### Step 7: Prompt Archival
+
+```
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║ ⏩ ENTERING STEP 7 - This is part of a continuous 8-step pipeline.            ║
+║    When this step completes with PASS, IMMEDIATELY execute Step 8.            ║
+║    Do NOT stop. Do NOT wait for user input.                                   ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+```
 
 **Responsibility**: Archive the phase prompt to the completed folder (if prompt was provided).
 
@@ -925,11 +1017,25 @@ ARCHIVED_TO: [new path in completed/]
 - Keeps the prompts folder clean for pending work
 - Allows review of what instructions were used
 
-**⚡ AUTO-CONTINUE**: Step 7 complete → **NOW EXECUTE STEP 8** (generate completion report)
+```
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║ ✅ STEP 7 COMPLETE → IMMEDIATELY EXECUTE STEP 8 NOW                           ║
+║    Do NOT output results and wait. Do NOT ask "shall I continue?"             ║
+║    Your next action MUST be: generate the completion report                   ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+```
 
 ---
 
 ### Step 8: Phase Completion Report
+
+```
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║ ⏩ ENTERING STEP 8 (FINAL STEP) - This completes the pipeline.                ║
+║    After generating the completion report, the phase is DONE.                 ║
+║    You may NOW stop and await user input for the next phase.                  ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+```
 
 **Responsibility**: Generate summary for orchestrator and user.
 
