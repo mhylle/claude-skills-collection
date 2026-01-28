@@ -963,10 +963,20 @@ REPORT:
     duration: 1.2s
 TOTAL_DURATION: 75.4s
 
-⚡ NEXT_STEP: EXECUTE STEP 3 NOW (Integration Testing)
+═══════════════════════════════════════════════════════════════
+⚡ ACTION REQUIRED: IMMEDIATELY EXECUTE STEP 3 (Integration Testing)
+   DO NOT wait for user input. DO NOT ask for confirmation.
+   YOU MUST proceed to Step 3 NOW as your next action.
+═══════════════════════════════════════════════════════════════
 ```
 
-> **CRITICAL**: When VERIFICATION_LOOP_STATUS is PASS, the output MUST include `NEXT_STEP: EXECUTE STEP 3 NOW`. This is not optional. When you see this in the output, you MUST immediately proceed to Step 3 (Automated Integration Testing) without waiting for user input.
+> **CRITICAL INSTRUCTION TO AI**: When VERIFICATION_LOOP_STATUS is PASS, you MUST:
+> 1. Output the above ACTION REQUIRED block exactly as shown
+> 2. **IMMEDIATELY** proceed to Step 3 (Automated Integration Testing) as your very next action
+> 3. **DO NOT** wait for user input or confirmation
+> 4. **DO NOT** ask "shall I proceed?" or similar questions
+>
+> This is a direct instruction to execute, not information to display. Treat this like a function call that must happen automatically.
 
 ### Implement-Phase Integration Point
 
@@ -1065,7 +1075,11 @@ implement-phase handles retry logic:
 > Duration: 75.4s
 > ═══════════════════════════════════════
 >
-> ⚡ NEXT_STEP: EXECUTE STEP 3 NOW (Integration Testing)
+> ═══════════════════════════════════════════════════════════════
+> ⚡ ACTION REQUIRED: IMMEDIATELY EXECUTE STEP 3 (Integration Testing)
+>    DO NOT wait for user input. DO NOT ask for confirmation.
+>    YOU MUST proceed to Step 3 NOW as your next action.
+> ═══════════════════════════════════════════════════════════════
 ```
 
 ---
