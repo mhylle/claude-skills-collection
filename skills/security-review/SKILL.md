@@ -1,6 +1,7 @@
 ---
 name: security-review
 description: Comprehensive security audit for code changes. Use this skill when implementing authentication, authorization, user input handling, API endpoints, secrets/credentials, payment features, or file uploads. Provides security checklists, vulnerability patterns, and remediation guidance. Integrates with implement-phase as a security quality gate.
+allowed-tools: Read, Glob, Grep, Bash
 ---
 
 # Security Review Skill

@@ -282,14 +282,45 @@ Step 8: Completion Report   → Summary + learnings captured
 
 ---
 
+## Skill Arguments
+
+Skills support argument passing with hints shown in autocomplete:
+
+```
+/implement-plan docs/plans/my-feature.md    # $0 = plan path
+/e2e-testing run https://localhost:3000     # $0 = mode, $1 = URL
+/adr Use JWT for authentication             # $0 = decision title
+```
+
+The `argument-hint` in each skill shows expected arguments (e.g., `[plan-path]`, `[mode] [url?]`).
+
+---
+
+## Visualize Your Skills
+
+Generate an interactive HTML visualization of the skills collection:
+
+```
+/skill-visualizer skills
+```
+
+Opens a browser with:
+- Force-directed graph of all skills
+- Color-coded by type (orchestrator/read-only/hybrid)
+- Dependency arrows between skills
+- Hover tooltips with descriptions
+
+---
+
 ## Summary
 
 | What | Command | Result |
 |------|---------|--------|
 | Clarify idea | `/brainstorm` | Refined concept |
 | Create plan | `/create-plan` | Phased plan + tasks |
-| Implement | `/implement-plan` | Working code |
+| Implement | `/implement-plan [path]` | Working code |
 | Fresh start | `/clear` | Clean context, progress preserved |
+| Visualize | `/skill-visualizer` | Interactive skill map |
 
 **Your workflow**: Plan → Implement phase → Clear → Implement next phase → Clear → ...
 

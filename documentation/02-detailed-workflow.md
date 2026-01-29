@@ -13,6 +13,7 @@ A comprehensive guide explaining each step of the workflow and the reasoning beh
 7. [Progress Tracking Deep Dive](#progress-tracking-deep-dive)
 8. [Continuous Learning System](#continuous-learning-system)
 9. [Hooks and Automation](#hooks-and-automation)
+10. [Skill Architecture (Claude Code 2.1.x)](#skill-architecture-claude-code-21x)
 
 ---
 
@@ -674,6 +675,168 @@ Learned patterns are loaded at session start and used for:
 | continuous-learning (Stop) | Captures patterns when session ends |
 | prettier-format | Keeps code formatted automatically |
 | typescript-check | Catches type errors immediately |
+
+---
+
+## Skill Architecture (Claude Code 2.1.x)
+
+### Skill Types and Context Behavior
+
+Skills are categorized by their execution context and tool access:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         SKILL CATEGORIES                                     │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  ORCHESTRATORS (context: fork)                                              │
+│  ├── Run in isolated subagent context                                       │
+│  ├── Spawn their own subagents for work                                     │
+│  ├── Never write code directly                                              │
+│  └── Examples: implement-plan, implement-phase, brainstorm, create-plan     │
+│                                                                              │
+│  READ-ONLY SKILLS (allowed-tools: restricted)                               │
+│  ├── Can only read, search, and run verification commands                   │
+│  ├── Cannot modify files                                                    │
+│  ├── Safe to run at any time                                                │
+│  └── Examples: code-review, verification-loop, security-review              │
+│                                                                              │
+│  HYBRID SKILLS                                                              │
+│  ├── Full tool access                                                       │
+│  ├── Write files when appropriate                                           │
+│  └── Examples: adr, e2e-testing, context-saver                              │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Frontmatter Fields
+
+Skills are configured via YAML frontmatter in their SKILL.md files:
+
+| Field | Purpose | Example |
+|-------|---------|---------|
+| `context: fork` | Run skill in isolated subagent | Orchestrator skills |
+| `agent: Explore\|Plan` | Specify subagent type for forked context | Research/planning skills |
+| `allowed-tools:` | Restrict which tools the skill can use | Read-only skills |
+| `argument-hint:` | Autocomplete hint shown in CLI | `[plan-path]` |
+| `user-invocable: false` | Hide from user menu (internal only) | implement-phase |
+| `disable-model-invocation: true` | Prevent auto-invocation by Claude | prompt-generator |
+
+### Frontmatter Examples
+
+**Orchestrator skill** (spawns subagents):
+```yaml
+---
+name: implement-plan
+description: Orchestrate the execution of complete implementation plans...
+context: fork
+argument-hint: "[plan-path]"
+---
+```
+
+**Read-only skill** (restricted tools):
+```yaml
+---
+name: code-review
+description: Systematic code review for implementation phases...
+allowed-tools: Read, Grep, Glob, Bash
+argument-hint: "[files-or-path?]"
+---
+```
+
+**Internal skill** (not user-invocable):
+```yaml
+---
+name: implement-phase
+description: Execute a single phase from an implementation plan...
+context: fork
+user-invocable: false
+argument-hint: "[plan-path] [phase-number]"
+---
+```
+
+### Argument Substitution
+
+Skills can receive arguments from the user. Arguments are substituted into the skill prompt:
+
+| Variable | Description |
+|----------|-------------|
+| `$0` | First argument |
+| `$1` | Second argument |
+| `$ARGUMENTS` | All arguments as a single string |
+| `${CLAUDE_SESSION_ID}` | Current session ID |
+
+**Usage examples:**
+```bash
+/implement-plan docs/plans/my-feature.md    # $0 = "docs/plans/my-feature.md"
+/e2e-testing run https://localhost:3000     # $0 = "run", $1 = "https://localhost:3000"
+/adr Use JWT for authentication             # $0 = "Use JWT for authentication"
+```
+
+### Visualizing Skills
+
+Use the skill-visualizer to generate an interactive HTML map:
+
+```bash
+/skill-visualizer skills
+```
+
+This creates a D3.js force-directed graph showing:
+- All skills as color-coded nodes (by type)
+- Dependency arrows between skills
+- Hover tooltips with descriptions
+- Auto-opens in browser
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         SKILL VISUALIZATION                                  │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│       ┌─────────────┐                                                       │
+│       │ brainstorm  │─────────────────┐                                     │
+│       └─────────────┘                 │                                     │
+│              │                        ▼                                     │
+│              │              ┌─────────────────┐                             │
+│              └─────────────►│  create-plan    │                             │
+│                             └────────┬────────┘                             │
+│                                      │                                      │
+│                                      ▼                                      │
+│                             ┌─────────────────┐                             │
+│                             │ implement-plan  │                             │
+│                             └────────┬────────┘                             │
+│                                      │                                      │
+│              ┌───────────────────────┼───────────────────────┐             │
+│              ▼                       ▼                       ▼             │
+│     ┌────────────────┐    ┌─────────────────┐    ┌────────────────┐        │
+│     │ implement-phase│───►│ verification-   │───►│  code-review   │        │
+│     │                │    │      loop       │    │                │        │
+│     └────────────────┘    └─────────────────┘    └────────────────┘        │
+│                                                                              │
+│  Legend:                                                                    │
+│    ■ Orchestrator (purple)    ■ Read-only (green)    ■ Hybrid (blue)       │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Skill Summary Table
+
+| Skill | Type | Context | Agent | Key Tools |
+|-------|------|---------|-------|-----------|
+| brainstorm | Orchestrator | fork | Explore | All |
+| create-plan | Orchestrator | fork | Plan | All |
+| implement-plan | Orchestrator | fork | - | All |
+| implement-phase | Orchestrator | fork | - | All |
+| codebase-research | Orchestrator | fork | Explore | Read, Glob, Grep, Bash |
+| agent-creator | Orchestrator | fork | Explore | All |
+| code-review | Read-only | - | - | Read, Grep, Glob, Bash |
+| verification-loop | Read-only | - | - | Read, Glob, Bash |
+| security-review | Read-only | - | - | Read, Glob, Grep, Bash |
+| strategic-compact | Read-only | - | - | Read, Bash |
+| adr | Hybrid | - | - | All |
+| e2e-testing | Hybrid | - | - | All |
+| context-saver | Hybrid | - | - | All |
+| prompt-generator | Hybrid | - | - | All |
+| skill-visualizer | Hybrid | - | - | Bash, Read, Glob, Write |
 
 ---
 

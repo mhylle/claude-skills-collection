@@ -1,6 +1,8 @@
 ---
 name: code-review
 description: Systematic code review for implementation phases verifying architectural principles, framework standards, ADR compliance, and code quality. This skill is invoked by implement-phase as part of its quality gate pipeline, or manually when reviewing code changes. Triggers on "review code", "code review", "/code-review", or automatically as Step 3 of implement-phase.
+allowed-tools: Read, Grep, Glob, Bash
+argument-hint: "[files-or-path?]"
 ---
 
 # Code Review

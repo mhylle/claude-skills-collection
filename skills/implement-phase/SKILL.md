@@ -1,6 +1,9 @@
 ---
 name: implement-phase
 description: Execute a single phase from an implementation plan with all quality gates. This skill is the unit of work for implement-plan, handling implementation, verification, code review, ADR compliance, and plan synchronization for ONE phase. Triggers when implement-plan delegates a phase, or manually with "/implement-phase" and a phase reference.
+context: fork
+user-invocable: false
+argument-hint: "[plan-path] [phase-number]"
 ---
 
 # Implement Phase

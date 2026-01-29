@@ -1,6 +1,8 @@
 ---
 name: context-saver
 description: Save session context to disk for seamless continuation in new chat sessions. This skill should be used when the user asks to save context, preserve work state, checkpoint progress, or prepare for session handoff. Triggers on "save context", "checkpoint", "save progress", "preserve state", or when explicitly asked to create a context file for later resumption. Optimizes for correctness, completeness, minimal size, and trajectory preservation.
+disable-model-invocation: true
+argument-hint: "[topic?]"
 ---
 
 # Context Saver

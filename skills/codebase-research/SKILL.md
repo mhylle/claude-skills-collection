@@ -1,6 +1,9 @@
 ---
 name: codebase-research
 description: Orchestrates comprehensive codebase research by decomposing user queries into parallel sub-agent tasks and synthesizing findings. This skill should be used when users ask questions about how code works, where functionality exists, how components interact, or need comprehensive documentation of existing implementations. It focuses exclusively on documenting and explaining the codebase as it exists today.
+context: fork
+agent: Explore
+allowed-tools: Read, Glob, Grep, Bash
 ---
 
 # Codebase Research

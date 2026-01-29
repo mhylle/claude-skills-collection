@@ -25,6 +25,28 @@ Progress tracking is handled entirely through Claude Code's built-in Task system
 
 Plans remain pure specification documents. See [Progress Tracking](#progress-tracking-with-task-tools) for details.
 
+## Claude Code 2.1.x Feature Alignment
+
+This collection uses modern Claude Code skill features (v2.1.16+):
+
+| Feature | Skills Using It | Purpose |
+|---------|-----------------|---------|
+| `context: fork` | brainstorm, create-plan, implement-plan, implement-phase, codebase-research, agent-creator | Run in isolated subagent context |
+| `agent: Explore/Plan` | brainstorm, create-plan, codebase-research | Specify subagent type for forked context |
+| `allowed-tools` | code-review, verification-loop, security-review, codebase-research, strategic-compact | Restrict available tools (read-only enforcement) |
+| `argument-hint` | implement-plan, implement-phase, adr, e2e-testing, code-review, context-saver, prompt-generator | Show usage hints in autocomplete |
+| `disable-model-invocation` | context-saver, prompt-generator | User-only invocation (no auto-trigger) |
+| `user-invocable: false` | implement-phase | Hide from user menu (internal skill) |
+
+### Argument Substitution
+
+Skills support the new argument syntax:
+- `$0`, `$1`, `$2` - Positional arguments
+- `$ARGUMENTS` - All arguments
+- `${CLAUDE_SESSION_ID}` - Session tracking
+
+Example: `/implement-plan docs/plans/my-feature.md` passes the path as `$0`.
+
 ## Implementation Workflow
 
 The core workflow for implementing features follows this hierarchy:
@@ -147,6 +169,7 @@ Skills are invoked via the `Skill` tool or `/skill-name` shorthand.
 |-------|---------|-------------|
 | **continuous-learning** | Stop hook, "save learnings" | Extracts patterns from sessions to `~/.claude/skills/learned/` |
 | **strategic-compact** | PreToolUse hook | Suggests `/compact` at logical boundaries, not arbitrary thresholds |
+| **skill-visualizer** | `/skill-visualizer`, "visualize skills" | Generate interactive HTML visualizations of skills and codebase |
 
 ### Development
 
@@ -384,6 +407,7 @@ claude-skills-collection/
 │   ├── prompt-generator/
 │   ├── security-review/          # NEW: OWASP security audit
 │   ├── strategic-compact/        # NEW: Smart compaction suggestions
+│   ├── skill-visualizer/         # NEW: Interactive HTML visualizations
 │   └── verification-loop/        # NEW: 6-phase verification
 ├── agents/
 │   ├── browser-verification-agent.md  # NEW: UI testing

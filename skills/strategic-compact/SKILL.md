@@ -1,15 +1,7 @@
 ---
 name: strategic-compact
 description: Strategic compaction suggestion framework that monitors session complexity and suggests context compaction at optimal logical boundaries rather than arbitrary thresholds.
-triggers:
-  - PreToolUse hook (automatic monitoring)
-  - Manual invocation when context feels heavy
-  - Before major phase transitions
-tools:
-  - Read (for checking context-saver availability)
-  - Bash (for session state queries)
-hooks:
-  - PreToolUse (primary monitoring mechanism)
+allowed-tools: Read, Bash
 ---
 
 # Strategic Compact Skill

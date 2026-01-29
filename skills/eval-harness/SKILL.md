@@ -1,16 +1,10 @@
-# Eval Harness
-
 ---
 name: eval-harness
 description: Comprehensive evaluation framework for systematic testing, measurement, and quality assurance of AI-assisted implementations. Supports capability evals, regression testing, multiple grader types, and standardized metrics.
-triggers:
-  - "create eval"
-  - "run evaluation"
-  - "eval harness"
-  - "test capabilities"
-  - "regression test"
-  - "measure quality"
+argument-hint: "[mode: create|run|report]"
 ---
+
+# Eval Harness
 
 ## Design Philosophy
 

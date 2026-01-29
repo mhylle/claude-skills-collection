@@ -1,6 +1,8 @@
 ---
 name: brainstorm
 description: Interactive idea refinement using Socratic questioning methodology. This skill should be used when users want to explore an idea, find gaps in concepts, enhance proposals, or structure thoughts before implementation planning. Triggers on "brainstorm", "explore this idea", "find holes in", "help me think through", "what am I missing", or when presenting rough concepts that need refinement. Output integrates with create-plan skill.
+context: fork
+agent: Explore
 ---
 
 # Brainstorm
