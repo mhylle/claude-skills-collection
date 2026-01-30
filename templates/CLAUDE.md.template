@@ -1,0 +1,89 @@
+# [PROJECT NAME]
+
+## Overview
+
+[Brief project description - 1-2 sentences]
+
+## Tech Stack
+
+- [Primary language/framework]
+- [Database if applicable]
+- [Key dependencies]
+
+## Project Structure
+
+```
+src/
+  [key directories]
+tests/
+docs/
+  plans/       # Implementation plans
+  brainstorms/ # Ideation documents
+  adr/         # Architectural decision records
+```
+
+---
+
+## Skill-Based Development Workflow
+
+This project follows structured skill-based development.
+
+### For Features & Complex Changes
+
+1. **Plan First**: `/create-plan` - Design before implementing
+2. **Execute**: `/implement-plan docs/plans/[file].md` - Run the plan
+3. **Never Skip**: All quality gates are mandatory
+
+### Quality Gates (All Required)
+
+| Check | Command | Must Pass |
+|-------|---------|-----------|
+| Build | `npm run build` | ✓ |
+| Types | `npm run typecheck` | ✓ |
+| Lint | `npm run lint` | ✓ |
+| Tests | `npm test` | ✓ |
+| Review | `/code-review` | PASS (not PASS_WITH_NOTES) |
+
+**Recommendations are BLOCKING** - address before phase completion.
+
+### Key Rules
+
+- Plans: `docs/plans/YYYY-MM-DD-name.md`
+- ADRs for architectural decisions: `/adr [title]`
+- Security review for auth/input/API: `/security-review`
+- Progress tracked via Task tools (persists across sessions)
+
+### Resume Across Sessions
+
+```bash
+CLAUDE_CODE_TASK_LIST_ID=plan-feature-name claude
+```
+
+---
+
+## Project Commands
+
+```bash
+# Development
+npm run dev          # Start dev server
+npm run build        # Production build
+
+# Quality
+npm run lint         # Run linter
+npm run typecheck    # Type checking
+npm test             # Run tests
+
+# [Add project-specific commands]
+```
+
+## Key Files
+
+- `[entry point]` - Application entry
+- `[config files]` - Configuration
+- `[important modules]` - Core logic
+
+## Conventions
+
+- [Coding conventions]
+- [Naming conventions]
+- [File organization rules]

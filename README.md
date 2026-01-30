@@ -242,6 +242,39 @@ cp hooks.json ~/.claude/hooks.json
 
 **Restart Claude Code after installation.**
 
+### CLAUDE.md Integration
+
+Enforce the skill workflow in your projects using the init script:
+
+```bash
+# Initialize a project with workflow enforcement
+./init-workflow.sh ~/projects/myapp           # Standard level (recommended)
+./init-workflow.sh ~/projects/myapp minimal   # Lightweight reminder
+./init-workflow.sh ~/projects/myapp strict    # Full enforcement
+
+# Or from within your project
+cd ~/projects/myapp && /path/to/init-workflow.sh .
+```
+
+This script:
+- Creates `docs/plans/`, `docs/brainstorms/`, `docs/adr/`, `logs/` directories
+- Appends workflow rules to existing CLAUDE.md (non-destructive)
+- Creates new CLAUDE.md from template if none exists
+- Backs up existing CLAUDE.md before modifying
+
+**Enforcement levels:**
+
+| Level | Description |
+|-------|-------------|
+| `minimal` | Basic 5-line workflow reminder |
+| `standard` | Workflow + quality gates + key rules (recommended) |
+| `strict` | Complete enforcement with orchestrator pattern, ADRs, security triggers |
+
+**Resources:**
+- **[CLAUDE.md Snippets](docs/claude-md-snippets.md)** - All modular snippets for manual customization
+- **[Enforcement Rules](docs/enforcement-rules.md)** - Complete rule reference
+- **[CLAUDE.md Template](templates/CLAUDE.md.template)** - Full project template
+
 > **Ready to start?** Check out the [Workflow Overview](documentation/01-workflow-overview.md) for a complete guide.
 
 ## Usage Examples
