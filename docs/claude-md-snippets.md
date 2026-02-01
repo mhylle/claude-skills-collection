@@ -1,25 +1,53 @@
-# CLAUDE.md Snippets for Skill Workflow Enforcement
+# CLAUDE.md Snippets for Workflow Enforcement
 
-This document contains modular snippets you can add to your project's `CLAUDE.md` file to enforce proper skill workflow usage.
+This document contains modular snippets for your project's `CLAUDE.md` file.
+
+## Key Insight: Passive Context > Skill Invocation
+
+Based on [Vercel's research](https://vercel.com/blog/agents-md-outperforms-skills-in-our-agent-evals):
+
+| Approach | Success Rate |
+|----------|--------------|
+| Skills only (default) | 53% |
+| Skills with explicit instructions | 79% |
+| **Passive context (always loaded)** | **100%** |
+
+**Conclusion**: Embed workflow rules directly in CLAUDE.md. They're loaded every turn without requiring skill invocation.
+
+---
 
 ## Quick Start
 
-Copy the **Essential Snippet** below for basic workflow enforcement, or compose your own from the modular sections.
+Use `./init-workflow.sh [project-dir] [level]` to generate CLAUDE.md automatically.
+
+Or copy the **Essential Snippet** below:
 
 ---
 
 ## Essential Snippet (Recommended Minimum)
 
 ```markdown
-## Workflow Requirements
+## Workflow Rules (Mandatory - Always Enforced)
 
-For any non-trivial implementation work, follow this workflow:
+### Decision Matrix
 
-1. **Plan First**: Use `/create-plan` before implementing features
-2. **Execute with Skills**: Use `/implement-plan [path]` to execute plans
-3. **Never Skip Quality Gates**: All phases must pass verification-loop and code-review
+| Condition | Required Action |
+|-----------|-----------------|
+| Single file, obvious fix | Implement directly |
+| 2-3 files, clear scope | Consider `/create-plan` |
+| **3+ files OR architectural** | **MUST `/create-plan` first** |
 
-Do NOT write implementation code directly for complex tasks. Delegate to the skill pipeline.
+### Quality Gates (ALL Blocking)
+
+| Gate | Blocking? |
+|------|-----------|
+| Build compiles | **YES** |
+| Types pass | **YES** |
+| Lint passes | **YES** |
+| Tests pass | **YES** |
+| Code review = PASS | **YES** |
+
+**PASS_WITH_NOTES is NOT acceptable.** Fix all recommendations first.
 ```
 
 ---
@@ -99,29 +127,35 @@ When using `/implement-plan` or `/implement-phase`:
 - Return only: STATUS, FILES modified, ERRORS (if any)
 ```
 
-### 4. Task Tracking Enforcement
+### 4. Task Tools Integration (Claude Code 2.1.16+)
 
 ```markdown
-## Progress Tracking
+## Task Tools Integration
 
-Implementation progress is tracked via Claude Code Task tools:
+Progress tracked via Task tools with dependency tracking (persists across `/clear` and sessions):
 
-### Task Status
-- `pending` - Not started
-- `in_progress` - Currently being worked on
-- `completed` - Done and verified
+### Task Lifecycle
+| Status | Meaning |
+|--------|---------|
+| `pending` | Not started |
+| `in_progress` | Currently being worked on |
+| `completed` | Done and verified |
 
-### Multi-Session Support
-To resume work across sessions:
+### Dependencies
+Tasks use `blockedBy` to enforce ordering. Blocked tasks auto-unblock when dependencies complete.
+
+### Session Management
 ```bash
-CLAUDE_CODE_TASK_LIST_ID=plan-feature-name claude
+claude --resume "feature-name"    # Resume named session
+claude --from-pr 123              # Resume by PR number (2.1.27+)
 ```
-Then run `/implement-plan docs/plans/feature.md` - it will resume from last completed phase.
+
+Sessions auto-link to PRs when created via `gh pr create`.
 
 ### Rules
-- Do NOT manually modify plan checkboxes
-- Use Task tools for all progress tracking
-- Dependencies between phases are enforced via blockedBy
+- Use TaskUpdate for status changes (not manual edits)
+- Dependencies enforce phase ordering automatically
+- Progress persists across `/clear` commands
 ```
 
 ### 5. ADR Enforcement

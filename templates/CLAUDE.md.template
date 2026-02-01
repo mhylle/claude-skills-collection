@@ -10,80 +10,170 @@
 - [Database if applicable]
 - [Key dependencies]
 
-## Project Structure
+---
+
+## Workflow Rules (Mandatory - Always Enforced)
+
+These rules apply to every interaction. No skill invocation required.
+
+### Decision Matrix
+
+| Condition | Required Action |
+|-----------|-----------------|
+| Single file, obvious fix | Implement directly |
+| 2-3 files, clear scope | Consider `/create-plan` |
+| **3+ files OR architectural** | **MUST `/create-plan` first** |
+
+**Never implement complex features without a plan.**
+
+### Execution Sequence
+
+```
+/brainstorm (optional) → /create-plan → /implement-plan [path]
+```
+
+### Quality Gates (ALL Blocking)
+
+Every phase MUST pass ALL gates before completion:
+
+| Gate | Criteria | Blocking? |
+|------|----------|-----------|
+| Build | Compiles without errors | **YES** |
+| Types | Type checking passes | **YES** |
+| Lint | No linting errors | **YES** |
+| Tests | All tests pass | **YES** |
+| Security | No vulnerabilities | **YES** |
+| Code Review | Clean PASS only | **YES** |
+
+**PASS_WITH_NOTES is NOT acceptable.** Fix all recommendations first.
+**Recommendations are BLOCKING** - not optional suggestions.
+
+### Orchestrator Pattern
+
+```
+implement-plan / implement-phase (ORCHESTRATORS)
+    ⛔ NEVER use Write/Edit tools directly
+    ⛔ NEVER write code
+    ✅ Delegate to subagents via Task tool
+    ✅ Track progress via Task tools
+
+Subagents (WORKERS)
+    ✅ Write code
+    ✅ Run verification
+    ✅ Return concise status (not 300+ lines)
+```
+
+### Subagent Response Format
+
+```
+STATUS: PASS | FAIL
+FILES: path/file.ts (created|modified|deleted)
+ERRORS: None | [description]
+```
+
+Large outputs → `logs/` directory, return file path only.
+
+### Phase Completion Rules
+
+1. **ALL steps must execute** - no skipping
+2. **STOP after each phase** - wait for human approval
+3. **Recommendations are BLOCKING** - fix before proceeding
+4. **Clean baseline** - each phase ends with verified, working code
+
+---
+
+## Auto-Triggers
+
+### Security Review (Mandatory)
+
+Invoke `/security-review` when implementing ANY of:
+- Authentication / authorization
+- User input handling / validation
+- API endpoints (especially public)
+- Secrets / credentials / API keys
+- Payment processing
+- File uploads
+- Database queries with user input
+
+### ADR Creation (Mandatory)
+
+Invoke `/adr [title]` when:
+- Choosing between technologies or approaches
+- Establishing new patterns or conventions
+- Making trade-offs with significant implications
+- Making decisions future developers will question
+
+---
+
+## Task Tools Integration
+
+Progress tracked via Task tools (persists across `/clear` and session restarts):
+
+| Status | Meaning |
+|--------|---------|
+| `pending` | Not started |
+| `in_progress` | Currently being worked on |
+| `completed` | Done and verified |
+
+Dependencies via `blockedBy` auto-unblock when parent completes.
+
+### Session Management
+
+```bash
+claude --resume "feature-name"    # Resume named session
+claude --from-pr 123              # Resume by PR number
+```
+
+---
+
+## Directory Structure
 
 ```
 src/
   [key directories]
 tests/
 docs/
-  plans/       # Implementation plans
-  brainstorms/ # Ideation documents
-  adr/         # Architectural decision records
+  plans/          # YYYY-MM-DD-feature.md
+  decisions/      # ADR-NNNN-title.md
+  brainstorms/    # YYYY-MM-DD-topic.md
+logs/             # Large outputs (gitignored)
 ```
 
 ---
 
-## Skill-Based Development Workflow
+## Build Commands
 
-This project follows structured skill-based development.
+```bash
+npm run build        # Build
+npm run typecheck    # Type check
+npm run lint         # Lint
+npm test             # Tests
+```
 
-### For Features & Complex Changes
+---
 
-1. **Plan First**: `/create-plan` - Design before implementing
-2. **Execute**: `/implement-plan docs/plans/[file].md` - Run the plan
-3. **Never Skip**: All quality gates are mandatory
+## Skill Reference
 
-### Quality Gates (All Required)
-
-| Check | Command | Must Pass |
+| Skill | Purpose | Arguments |
 |-------|---------|-----------|
-| Build | `npm run build` | ✓ |
-| Types | `npm run typecheck` | ✓ |
-| Lint | `npm run lint` | ✓ |
-| Tests | `npm test` | ✓ |
-| Review | `/code-review` | PASS (not PASS_WITH_NOTES) |
-
-**Recommendations are BLOCKING** - address before phase completion.
-
-### Key Rules
-
-- Plans: `docs/plans/YYYY-MM-DD-name.md`
-- ADRs for architectural decisions: `/adr [title]`
-- Security review for auth/input/API: `/security-review`
-- Progress tracked via Task tools (persists across sessions)
-
-### Resume Across Sessions
-
-```bash
-CLAUDE_CODE_TASK_LIST_ID=plan-feature-name claude
-```
+| `/brainstorm` | Refine ideas through questioning | `[topic]` |
+| `/create-plan` | Design phased implementation | `[description]` |
+| `/implement-plan` | Execute a plan | `[path/to/plan.md]` |
+| `/verification-loop` | Run all 6 quality checks | |
+| `/code-review` | Review code quality | |
+| `/security-review` | Security audit | |
+| `/adr` | Document architectural decision | `[title]` |
 
 ---
 
-## Project Commands
+## Project-Specific
 
-```bash
-# Development
-npm run dev          # Start dev server
-npm run build        # Production build
-
-# Quality
-npm run lint         # Run linter
-npm run typecheck    # Type checking
-npm test             # Run tests
-
-# [Add project-specific commands]
-```
-
-## Key Files
+### Key Files
 
 - `[entry point]` - Application entry
 - `[config files]` - Configuration
-- `[important modules]` - Core logic
 
-## Conventions
+### Conventions
 
 - [Coding conventions]
 - [Naming conventions]
-- [File organization rules]

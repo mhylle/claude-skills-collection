@@ -1,6 +1,8 @@
-# Skill Workflow Enforcement Rules
+# Workflow Enforcement Rules
 
-Hard rules that must be followed when using the skill-based development workflow.
+Hard rules enforced via passive context in CLAUDE.md (not skill invocation).
+
+Based on [Vercel research](https://vercel.com/blog/agents-md-outperforms-skills-in-our-agent-evals): Passive context achieves 100% compliance vs 53-79% for skill-based enforcement.
 
 ## Rule 1: Plan Before Implement
 
@@ -83,19 +85,27 @@ Large outputs (test logs, stack traces) → write to `logs/` directory.
 
 ---
 
-## Rule 6: Progress Via Task Tools
+## Rule 6: Progress Via Task Tools (2.1.16+)
 
-**Never modify plan file checkboxes. Use Task tools.**
+**Use Task tools with dependency tracking.**
 
 ```
 ✗ BAD:  Edit plan.md to change [ ] to [x]
 ✓ GOOD: TaskUpdate(taskId, status: "completed")
 ```
 
-Multi-session resume:
+### Task Dependencies
+- Use `blockedBy` to enforce phase ordering
+- Blocked tasks auto-unblock when dependencies complete
+- Progress persists across `/clear` and session restarts
+
+### Session Management
 ```bash
-CLAUDE_CODE_TASK_LIST_ID=plan-feature-name claude
+claude --resume "feature-name"    # Resume named session
+claude --from-pr 123              # Resume by PR number (2.1.27+)
 ```
+
+Sessions auto-link to PRs when created via `gh pr create`.
 
 ---
 
@@ -180,5 +190,5 @@ Decisions:   /adr [title]
 |------|----------|
 | Plans | `docs/plans/YYYY-MM-DD-name.md` |
 | Brainstorms | `docs/brainstorms/YYYY-MM-DD-topic.md` |
-| ADRs | `docs/adr/NNNN-title.md` |
+| ADRs | `docs/decisions/ADR-NNNN-title.md` |
 | Logs | `logs/[type]-[name].log` |
