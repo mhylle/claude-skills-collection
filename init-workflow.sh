@@ -155,6 +155,20 @@ Every phase MUST pass ALL gates before completion:
 **PASS_WITH_NOTES is NOT acceptable.** Fix all recommendations first.
 **Recommendations are BLOCKING** - not optional suggestions.
 
+### Coding Standards (Enforced)
+
+| Standard | Limit | Severity |
+|----------|-------|----------|
+| Service file | <500 lines | **BLOCKING** |
+| Controller method | <30 lines | **BLOCKING** if >50 |
+| Service public methods | <12 | **BLOCKING** |
+| DTOs typed | Required | **BLOCKING** |
+| `console.log` | Forbidden | **BLOCKING** |
+| Empty catch blocks | Forbidden | **BLOCKING** |
+| Hardcoded secrets | Forbidden | **BLOCKING** |
+
+Reference: `docs/standards/CODING_STANDARDS.md` (if exists)
+
 ### Phase Completion Rules
 
 1. **ALL steps must execute** - no skipping
@@ -242,6 +256,20 @@ Every phase MUST pass ALL gates before completion:
 
 **PASS_WITH_NOTES is NOT acceptable.** Fix all recommendations first.
 **Recommendations are BLOCKING** - not optional suggestions.
+
+### Coding Standards (Enforced)
+
+| Standard | Limit | Severity |
+|----------|-------|----------|
+| Service file | <500 lines | **BLOCKING** |
+| Controller method | <30 lines | **BLOCKING** if >50 |
+| Service public methods | <12 | **BLOCKING** |
+| DTOs typed | Required | **BLOCKING** |
+| `console.log` | Forbidden | **BLOCKING** |
+| Empty catch blocks | Forbidden | **BLOCKING** |
+| Hardcoded secrets | Forbidden | **BLOCKING** |
+
+Reference: `docs/standards/CODING_STANDARDS.md` (if exists)
 
 ### Orchestrator Pattern (Enforced)
 

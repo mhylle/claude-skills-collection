@@ -7,7 +7,7 @@ argument-hint: "[files-or-path?]"
 
 # Code Review
 
-Systematic code review skill that validates implementation quality across five dimensions: service delegation, framework standards, ADR compliance, plan synchronization, and general code quality.
+Systematic code review skill that validates implementation quality across six dimensions: service delegation, framework standards, ADR compliance, plan synchronization, coding standards, and general code quality.
 
 ## Design Philosophy
 
@@ -89,6 +89,22 @@ Standard code review concerns:
 | Test coverage | New code has appropriate test coverage |
 | Documentation | Complex logic has explanatory comments |
 
+### 6. Coding Standards Compliance
+
+Verify implementation follows project coding standards:
+
+| Check | What to Verify |
+|-------|----------------|
+| File size limits | Services <500 lines, controllers <250 lines |
+| Service delegation | Controllers thin, services focused |
+| Interface usage | DTOs and response types have interfaces |
+| Error handling | Domain exceptions, no swallowed errors |
+| Logging | Project logger used, no `console.log` |
+| Configuration | Via ConfigService, no hardcoded values |
+| Forbidden patterns | No empty catch blocks, no unhandled promises |
+
+Reference: `docs/standards/CODING_STANDARDS.md`
+
 ## Review Workflow
 
 ### Step 1: Gather Context
@@ -130,6 +146,7 @@ Task (parallel): "Compare code against framework patterns found"
 Task (parallel): "Check ADR compliance for [relevant ADRs]"
 Task (parallel): "Verify plan file [path] is synchronized"
 Task (parallel): "General code quality review of [files]"
+Task (parallel): "Coding standards compliance check against docs/standards/CODING_STANDARDS.md"
 ```
 
 ### Step 4: Generate Review Report
@@ -170,6 +187,11 @@ Status: PASS | NEEDS_CHANGES
 [Findings or "All checks passed"]
 
 ### General Code Quality
+Status: PASS | NEEDS_CHANGES
+
+[Findings or "All checks passed"]
+
+### Coding Standards Compliance
 Status: PASS | NEEDS_CHANGES
 
 [Findings or "All checks passed"]
@@ -264,6 +286,7 @@ Detailed checklists are available in references:
 - [framework-standards-checklist.md](references/framework-standards-checklist.md)
 - [adr-compliance-checklist.md](references/adr-compliance-checklist.md)
 - [general-quality-checklist.md](references/general-quality-checklist.md)
+- [coding-standards-checklist.md](references/coding-standards-checklist.md)
 
 ## Severity Levels
 

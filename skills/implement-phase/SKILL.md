@@ -553,11 +553,14 @@ If you find yourself about to stop before Step 8, RE-READ this contract.
 
 **Process**:
 1. Read phase requirements and tasks from plan (orchestrator reads)
-2. Identify independent tasks for parallelization
-3. **SPAWN** test subagents FIRST (verification-first)
-4. **SPAWN** implementation subagents
-5. Monitor subagent progress and handle blockers
-6. Collect results and changed files list from subagent responses
+2. Read coding standards from `docs/standards/CODING_STANDARDS.md` (if exists)
+3. Identify independent tasks for parallelization
+4. **SPAWN** test subagents FIRST (verification-first)
+5. **SPAWN** implementation subagents (include coding standards reference)
+6. Monitor subagent progress and handle blockers
+7. Collect results and changed files list from subagent responses
+
+> **CODING STANDARDS**: All subagent prompts MUST reference coding standards. Include size limits (services <500 lines, controllers <30 lines/method), interface requirements (DTOs typed), and forbidden patterns (no console.log, no empty catch blocks). See `docs/standards/CODING_STANDARDS.md`.
 
 **Subagent Spawning Examples**:
 
@@ -581,6 +584,13 @@ Task (run_in_background: true): "Implement SummaryAgentService.
 Context: Phase 5b-ii - SummaryAgent Service
 Requirements from plan: [list requirements]
 Must pass the tests at: [test file path]
+
+CODING STANDARDS (MANDATORY):
+- Services: <500 lines, single responsibility
+- Interfaces: Required for DTOs and response types
+- Errors: Domain exceptions, no empty catch blocks
+- Logging: Use project logger, no console.log
+Ref: docs/standards/CODING_STANDARDS.md
 
 RESPONSE FORMAT: STATUS, FILES created/modified, ERRORS if any."
 

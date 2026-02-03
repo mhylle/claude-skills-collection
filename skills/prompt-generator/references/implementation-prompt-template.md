@@ -53,9 +53,18 @@ Read the phase document at {PHASE_DOC_PATH} to understand:
 
       Requirements:
       - Follow project guidelines in {PROJECT_ROOT}/CLAUDE.md
+      - Follow coding standards in {PROJECT_ROOT}/docs/standards/CODING_STANDARDS.md
       - Use TypeScript strict mode
       - Include proper error handling
       - Add JSDoc comments for interfaces and classes
+
+      CODING STANDARDS (MANDATORY - violations are BLOCKING):
+      - Services: <500 lines, single responsibility
+      - Controllers: <30 lines per method, HTTP concerns only
+      - Interfaces: Required for DTOs and response types
+      - Errors: Domain exceptions, no empty catch blocks
+      - Logging: Use project logger, no console.log
+      - Config: Via ConfigService, no hardcoded values
 
       Verify: Run lint and type check after creation
 
@@ -405,6 +414,7 @@ After creating an ADR during implementation, update the plan file:
 - [ ] Read phase document: {PHASE_DOC_PATH}
 - [ ] Read general plan: {GENERAL_PLAN_PATH}
 - [ ] Read project guidelines: {PROJECT_ROOT}/CLAUDE.md
+- [ ] Read coding standards: {PROJECT_ROOT}/docs/standards/CODING_STANDARDS.md (if exists)
 - [ ] **Read ADRs (tiered)**:
   - [ ] Read INDEX.md first to scan all decisions
   - [ ] Read Quick Reference (limit=10) of relevant ADRs

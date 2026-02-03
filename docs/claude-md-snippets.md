@@ -158,6 +158,62 @@ Sessions auto-link to PRs when created via `gh pr create`.
 - Progress persists across `/clear` commands
 ```
 
+### 4.5. Coding Standards Enforcement
+
+```markdown
+## Coding Standards (Mandatory)
+
+Standards enforced during implementation, not just review.
+
+### Decision Matrix
+
+| Condition | Action |
+|-----------|--------|
+| Creating a controller | MUST be <30 lines per method, HTTP concerns only |
+| Creating a service | MUST have single responsibility, <500 lines |
+| Service >300 lines | WARNING - consider splitting |
+| Missing interface on DTO | **BLOCKING** - add before commit |
+
+### Size Limits
+
+| Type | Warning | Blocking |
+|------|---------|----------|
+| Service file | >300 lines | >500 lines |
+| Controller method | >20 lines | >50 lines |
+| Service public methods | >8 | >12 |
+| Constructor dependencies | >5 | >8 |
+
+### Required Patterns
+
+| Pattern | Requirement |
+|---------|-------------|
+| Controllers | HTTP concerns only, delegate to services |
+| Services | Single responsibility, one domain |
+| Interfaces | DTOs, response types, cross-module contracts |
+| Errors | Domain exceptions, no swallowed errors |
+| Logging | Project logger, no `console.log` |
+| Config | Via ConfigService, no hardcoded values |
+
+### Forbidden Patterns (BLOCKING)
+
+| Pattern | Example | Why |
+|---------|---------|-----|
+| `console.log` | Debug statements in production | Use project logger |
+| Empty catch | `catch (e) {}` | Swallows errors silently |
+| Hardcoded secrets | `apiKey = "sk-..."` | Security risk |
+| Business logic in controller | `if (order.total > 100)` | Violates separation |
+| Untyped DTOs | `@Body() body: any` | Missing contract |
+| Unhandled promises | `asyncOp()` without await | Silent failures |
+
+### Enforcement Points
+
+1. **Implementation**: Subagent prompts include standards
+2. **Verification Loop**: Check 3 (Lint) catches violations
+3. **Code Review**: `/code-review` uses `coding-standards-checklist.md`
+
+Reference: `docs/standards/CODING_STANDARDS.md`
+```
+
 ### 5. ADR Enforcement
 
 ```markdown
@@ -300,6 +356,19 @@ Every phase must pass:
 - Main session: Delegates work, never writes code directly
 - Subagents: Write code, return concise status
 - Large outputs: Write to `logs/` directory
+
+### Coding Standards (Enforced)
+
+| Standard | Limit | Severity |
+|----------|-------|----------|
+| Controller method | <30 lines | **BLOCKING** if >50 |
+| Service file | <500 lines | **BLOCKING** |
+| DTOs typed | Required | **BLOCKING** |
+| `console.log` | Forbidden | **BLOCKING** |
+| Empty catch blocks | Forbidden | **BLOCKING** |
+| Hardcoded secrets | Forbidden | **BLOCKING** |
+
+Reference: `docs/standards/CODING_STANDARDS.md`
 
 ### Progress Tracking
 
