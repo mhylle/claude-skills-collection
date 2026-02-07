@@ -11,9 +11,12 @@ flowchart TD
     idea([You have an idea])
 
     idea --> brainstorm
-    brainstorm["/brainstorm<br><i>Clarify your idea through questions</i>"]
+    idea --> teambrainstorm
+    brainstorm["/brainstorm<br><i>Quick: single-agent analysis</i>"]
+    teambrainstorm["/team-brainstorm<br><i>Deep: adversarial agent team</i>"]
 
     brainstorm --> createplan
+    teambrainstorm --> createplan
     createplan["/create-plan<br><i>Research codebase, design approach</i>"]
 
     createplan --> implementplan
@@ -36,6 +39,7 @@ flowchart TD
     %% Muted color styling
     style idea fill:#e8f4f8,stroke:#94a3b8,color:#475569
     style brainstorm fill:#f0fdf4,stroke:#86efac,color:#166534
+    style teambrainstorm fill:#f0fdf4,stroke:#4ade80,color:#14532d
     style createplan fill:#fef3c7,stroke:#fcd34d,color:#92400e
     style complete fill:#dbeafe,stroke:#93c5fd,color:#1e40af
     style implnote fill:#f8fafc,stroke:#cbd5e1,color:#64748b,stroke-dasharray: 5 5
@@ -104,19 +108,29 @@ flowchart TD
 
 ### Step 1: Brainstorm (Optional but Recommended)
 
+Two options depending on depth needed:
+
 ```
-You: /brainstorm
-     "I want to add user authentication"
+Quick exploration (single agent):
+  You: /brainstorm
+       "I want to add user authentication"
+  Claude: Asks clarifying questions, applies analysis frameworks
+  Result: Clear, refined idea ready for planning (~8-12K tokens)
 
-Claude: Asks clarifying questions
-        - What auth method? (JWT, sessions, OAuth?)
-        - What user data do you need?
-        - What are the security requirements?
-
-Result: Clear, refined idea ready for planning
+Deep analysis (agent team):
+  You: /team-brainstorm
+       "I want to add user authentication"
+  Claude: Asks clarifying questions, then spawns a team:
+          - Devil's Advocate attacks the idea
+          - Optimist champions benefits
+          - Creative Explorer generates alternatives
+          - Researcher gathers evidence
+          - (Optional) Architect evaluates feasibility
+          Teammates debate each other for adversarial depth
+  Result: Thoroughly contested, evidence-backed concept (~25-40K tokens)
 ```
 
-**Why?** Prevents building the wrong thing. 10 minutes of questions saves hours of rework.
+**Why?** Prevents building the wrong thing. Use `/brainstorm` for quick ideas, `/team-brainstorm` for critical decisions where adversarial depth matters.
 
 ---
 
@@ -316,7 +330,8 @@ Opens a browser with:
 
 | What | Command | Result |
 |------|---------|--------|
-| Clarify idea | `/brainstorm` | Refined concept |
+| Clarify idea (quick) | `/brainstorm` | Refined concept |
+| Clarify idea (deep) | `/team-brainstorm` | Adversarially tested concept |
 | Create plan | `/create-plan` | Phased plan + tasks |
 | Implement | `/implement-plan [path]` | Working code |
 | Fresh start | `/clear` | Clean context, progress preserved |

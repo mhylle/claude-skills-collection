@@ -31,7 +31,7 @@ This collection uses modern Claude Code skill features (v2.1.16+):
 
 | Feature | Skills Using It | Purpose |
 |---------|-----------------|---------|
-| `context: fork` | brainstorm, create-plan, implement-plan, implement-phase, codebase-research, agent-creator | Run in isolated subagent context |
+| `context: fork` | brainstorm, team-brainstorm, create-plan, implement-plan, implement-phase, codebase-research, agent-creator | Run in isolated subagent context |
 | `agent: Explore/Plan` | brainstorm, create-plan, codebase-research | Specify subagent type for forked context |
 | `allowed-tools` | code-review, verification-loop, security-review, codebase-research, strategic-compact | Restrict available tools (read-only enforcement) |
 | `argument-hint` | implement-plan, implement-phase, adr, e2e-testing, code-review, context-saver, prompt-generator | Show usage hints in autocomplete |
@@ -52,10 +52,11 @@ Example: `/implement-plan docs/plans/my-feature.md` passes the path as `$0`.
 The core workflow for implementing features follows this hierarchy:
 
 ```
-                              ┌─────────────────┐
-                              │   brainstorm    │
-                              │  (idea → spec)  │
-                              └────────┬────────┘
+                  ┌─────────────────┐   ┌──────────────────────┐
+                  │   brainstorm    │   │   team-brainstorm    │
+                  │  (quick, solo)  │   │  (deep, agent team)  │
+                  └────────┬────────┘   └──────────┬───────────┘
+                           └────────────┬──────────┘
                                        │
                                        ▼
                               ┌─────────────────┐
@@ -118,6 +119,7 @@ The core workflow for implementing features follows this hierarchy:
 | Stage | Skill | Purpose |
 |-------|-------|---------|
 | **Ideation** | `brainstorm` | Refine rough ideas through Socratic questioning |
+| **Deep Ideation** | `team-brainstorm` | Adversarial multi-perspective analysis using agent teams |
 | **Planning** | `create-plan` | Create detailed, phased implementation plans |
 | **Iteration** | `iterate-plan` | Update plans based on feedback |
 | **Execution** | `implement-plan` | Orchestrate full plan execution |
@@ -139,6 +141,7 @@ Skills are invoked via the `Skill` tool or `/skill-name` shorthand.
 | Skill | Trigger | Description |
 |-------|---------|-------------|
 | **brainstorm** | `/brainstorm`, "explore this idea" | Interactive idea refinement using Socratic questioning |
+| **team-brainstorm** | `/team-brainstorm`, "deep brainstorm" | Adversarial brainstorm using agent teams (Devil's Advocate, Optimist, Creative Explorer, Researcher) |
 | **create-plan** | `/create-plan`, "plan the implementation" | Creates detailed implementation plans through research |
 | **iterate-plan** | "update the plan", "iterate on this plan" | Updates existing plans based on feedback |
 | **implement-plan** | `/implement-plan`, "implement the plan" | Orchestrates execution of complete plans |
@@ -441,6 +444,7 @@ claude-skills-collection/
 │   ├── security-review/          # NEW: OWASP security audit
 │   ├── strategic-compact/        # NEW: Smart compaction suggestions
 │   ├── skill-visualizer/         # NEW: Interactive HTML visualizations
+│   ├── team-brainstorm/          # NEW: Agent team adversarial brainstorm
 │   └── verification-loop/        # NEW: 6-phase verification
 ├── agents/
 │   ├── browser-verification-agent.md  # NEW: UI testing

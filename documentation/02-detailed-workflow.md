@@ -61,7 +61,14 @@ Traditional AI-assisted coding often suffers from:
 
 ## Phase 1: Brainstorming
 
-### What Happens
+Two skills are available depending on the depth needed:
+
+| Skill | Method | Best For | Token Cost |
+|-------|--------|----------|------------|
+| `/brainstorm` | Single agent applies all frameworks serially | Quick ideas, straightforward concepts | ~8-12K |
+| `/team-brainstorm` | Agent team with adversarial debate | Critical decisions, high-stakes ideas | ~25-40K |
+
+### /brainstorm Flow (Single Agent)
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -112,6 +119,49 @@ Traditional AI-assisted coding often suffers from:
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
+### /team-brainstorm Flow (Agent Team)
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                        TEAM BRAINSTORM FLOW                                  │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  PHASE 1-2: Idea Capture + Socratic Clarification (Lead-driven)            │
+│  Same as single-agent brainstorm — clarify before spawning team            │
+│                                                                              │
+│  PHASE 3: Team Creation & Research                                          │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │ Lead spawns teammates:                                              │   │
+│  │                                                                      │   │
+│  │  ┌─────────────┐  ┌──────────┐  ┌───────────┐  ┌────────────┐     │   │
+│  │  │   Devil's   │  │ Optimist │  │ Creative  │  │ Researcher │     │   │
+│  │  │  Advocate   │  │          │  │ Explorer  │  │            │     │   │
+│  │  └──────┬──────┘  └────┬─────┘  └─────┬─────┘  └─────┬──────┘     │   │
+│  │         │              │              │              │             │   │
+│  │         └──────┬───────┴──────┬───────┴──────┬───────┘             │   │
+│  │                │              │              │                      │   │
+│  │                ▼              ▼              ▼                      │   │
+│  │         Teammates message each other to debate:                    │   │
+│  │         • Devil's Advocate challenges Optimist                     │   │
+│  │         • Researcher shares evidence with all                      │   │
+│  │         • Creative Explorer proposes alternatives                  │   │
+│  └──────────────────────────────────────┬──────────────────────────────┘   │
+│                                         │                                    │
+│  PHASE 4-5: Synthesis & Debate Resolution (Lead)                            │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │ • Where teammates agreed vs disagreed                               │   │
+│  │ • Strengths that survived adversarial scrutiny                      │   │
+│  │ • Risks the Optimist couldn't mitigate                              │   │
+│  │ • Best alternatives addressing top concerns                        │   │
+│  └──────────────────────────────────────┬──────────────────────────────┘   │
+│                                         │                                    │
+│                                         ▼                                    │
+│  Output: docs/brainstorms/2026-01-25-user-auth-team.md                     │
+│          + ADR documents + team shutdown + cleanup                          │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
 ### Why Brainstorm?
 
 | Without Brainstorming | With Brainstorming |
@@ -121,12 +171,15 @@ Traditional AI-assisted coding often suffers from:
 | Build, then realize it's wrong | Validate approach upfront |
 | No documentation of reasoning | ADRs capture why decisions were made |
 
-### When to Skip
+### When to Use Which
 
-Skip brainstorming when:
-- Requirements are crystal clear
-- It's a bug fix or small change
-- You've done this exact thing before
+| Situation | Recommendation |
+|-----------|---------------|
+| Quick idea, low stakes | `/brainstorm` |
+| Critical architecture decision | `/team-brainstorm` |
+| Bug fix or small change | Skip brainstorming |
+| Complex feature with trade-offs | `/team-brainstorm` |
+| Requirements are crystal clear | Skip or `/brainstorm` |
 
 ---
 
@@ -823,6 +876,7 @@ This creates a D3.js force-directed graph showing:
 | Skill | Type | Context | Agent | Key Tools |
 |-------|------|---------|-------|-----------|
 | brainstorm | Orchestrator | fork | Explore | All |
+| team-brainstorm | Orchestrator | fork | - | All (+ TeamCreate, SendMessage) |
 | create-plan | Orchestrator | fork | Plan | All |
 | implement-plan | Orchestrator | fork | - | All |
 | implement-phase | Orchestrator | fork | - | All |
