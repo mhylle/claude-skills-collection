@@ -121,8 +121,11 @@ The core workflow for implementing features follows this hierarchy:
 | **Ideation** | `brainstorm` | Refine rough ideas through Socratic questioning |
 | **Deep Ideation** | `team-brainstorm` | Adversarial multi-perspective analysis using agent teams |
 | **Planning** | `create-plan` | Create detailed, phased implementation plans |
+| **Deep Planning** | `team-create-plan` | Team-based planning with adversarial design review |
 | **Iteration** | `iterate-plan` | Update plans based on feedback |
-| **Execution** | `implement-plan` | Orchestrate full plan execution |
+| **Execution** | `implement-plan` | Orchestrate full plan execution (solo) |
+| **Team Execution** | `team-implement-plan` | Small team: Implementer + adversarial Reviewer |
+| **Parallel Execution** | `team-implement-plan-full` | Full team: parallel waves + cross-phase Reviewer |
 | **Phase Work** | `implement-phase` | Execute single phase with quality gates |
 | **Quality** | `code-review` | Verify code quality, patterns, ADR compliance |
 | **Security** | `security-review` | OWASP-aligned security audit (optional step) |
@@ -143,9 +146,13 @@ Skills are invoked via the `Skill` tool or `/skill-name` shorthand.
 | **brainstorm** | `/brainstorm`, "explore this idea" | Interactive idea refinement using Socratic questioning |
 | **team-brainstorm** | `/team-brainstorm`, "deep brainstorm" | Adversarial brainstorm using agent teams (Devil's Advocate, Optimist, Creative Explorer, Researcher) |
 | **create-plan** | `/create-plan`, "plan the implementation" | Creates detailed implementation plans through research |
+| **team-create-plan** | `/team-create-plan`, "team plan" | Team-based planning with Architect, Risk Analyst, Researcher |
 | **iterate-plan** | "update the plan", "iterate on this plan" | Updates existing plans based on feedback |
-| **implement-plan** | `/implement-plan`, "implement the plan" | Orchestrates execution of complete plans |
+| **implement-plan** | `/implement-plan`, "implement the plan" | Orchestrates execution of complete plans (subagent mode) |
+| **team-implement-plan** | `/team-implement-plan` | Small team: Implementer + Reviewer + optional Integrator |
+| **team-implement-plan-full** | `/team-implement-plan-full` | Full team: per-phase implementers + shared Reviewer, parallel waves |
 | **implement-phase** | Called by implement-plan | Executes single phase with all quality gates |
+| **workflow-guide** | `/workflow-guide` | Recommends solo, small team, or full team mode based on task |
 
 ### Quality & Documentation
 
@@ -444,8 +451,12 @@ claude-skills-collection/
 │   ├── security-review/          # NEW: OWASP security audit
 │   ├── strategic-compact/        # NEW: Smart compaction suggestions
 │   ├── skill-visualizer/         # NEW: Interactive HTML visualizations
-│   ├── team-brainstorm/          # NEW: Agent team adversarial brainstorm
-│   └── verification-loop/        # NEW: 6-phase verification
+│   ├── team-brainstorm/          # Agent team adversarial brainstorm
+│   ├── team-create-plan/         # NEW: Agent team planning (Architect + Risk Analyst + Researcher)
+│   ├── team-implement-plan/      # NEW: Small review team (Implementer + Reviewer)
+│   ├── team-implement-plan-full/ # NEW: Full parallel team (per-phase + shared Reviewer)
+│   ├── workflow-guide/           # NEW: Recommends workflow mode
+│   └── verification-loop/        # 6-phase verification
 ├── agents/
 │   ├── browser-verification-agent.md  # NEW: UI testing
 │   ├── codebase-analyzer.md
