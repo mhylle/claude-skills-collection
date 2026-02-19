@@ -31,8 +31,8 @@ This collection uses modern Claude Code skill features (v2.1.16+):
 
 | Feature | Skills Using It | Purpose |
 |---------|-----------------|---------|
-| `context: fork` | brainstorm, team-brainstorm, create-plan, implement-plan, implement-phase, codebase-research, agent-creator | Run in isolated subagent context |
-| `agent: Explore/Plan` | brainstorm, create-plan, codebase-research | Specify subagent type for forked context |
+| `context: fork` | brainstorm, team-brainstorm, user-story, create-plan, implement-plan, implement-phase, codebase-research, agent-creator | Run in isolated subagent context |
+| `agent: Explore/Plan` | brainstorm, user-story, create-plan, codebase-research | Specify subagent type for forked context |
 | `allowed-tools` | code-review, verification-loop, security-review, codebase-research, strategic-compact | Restrict available tools (read-only enforcement) |
 | `argument-hint` | implement-plan, implement-phase, adr, e2e-testing, code-review, context-saver, prompt-generator | Show usage hints in autocomplete |
 | `disable-model-invocation` | context-saver, prompt-generator | User-only invocation (no auto-trigger) |
@@ -56,6 +56,14 @@ The core workflow for implementing features follows this hierarchy:
                   │   brainstorm    │   │   team-brainstorm    │
                   │  (quick, solo)  │   │  (deep, agent team)  │
                   └────────┬────────┘   └──────────┬───────────┘
+                           └────────────┬──────────┘
+                                       │
+                           ┌───────────┼───────────┐
+                           ▼                       ▼
+                  ┌─────────────────┐   ┌──────────────────┐
+                  │      adr        │   │   user-story     │
+                  │  (decisions)    │   │ (requirements)   │
+                  └────────┬────────┘   └──────────┬───────┘
                            └────────────┬──────────┘
                                        │
                                        ▼
@@ -120,6 +128,7 @@ The core workflow for implementing features follows this hierarchy:
 |-------|-------|---------|
 | **Ideation** | `brainstorm` | Refine rough ideas through Socratic questioning |
 | **Deep Ideation** | `team-brainstorm` | Adversarial multi-perspective analysis using agent teams |
+| **Requirements** | `user-story` | Generate hierarchical user stories with acceptance criteria |
 | **Planning** | `create-plan` | Create detailed, phased implementation plans |
 | **Deep Planning** | `team-create-plan` | Team-based planning with adversarial design review |
 | **Iteration** | `iterate-plan` | Update plans based on feedback |
@@ -145,6 +154,7 @@ Skills are invoked via the `Skill` tool or `/skill-name` shorthand.
 |-------|---------|-------------|
 | **brainstorm** | `/brainstorm`, "explore this idea" | Interactive idea refinement using Socratic questioning |
 | **team-brainstorm** | `/team-brainstorm`, "deep brainstorm" | Adversarial brainstorm using agent teams (Devil's Advocate, Optimist, Creative Explorer, Researcher) |
+| **user-story** | `/user-story`, "create user stories" | Generate hierarchical user stories (epics/features/tasks) with Given/When/Then acceptance criteria |
 | **create-plan** | `/create-plan`, "plan the implementation" | Creates detailed implementation plans through research |
 | **team-create-plan** | `/team-create-plan`, "team plan" | Team-based planning with Architect, Risk Analyst, Researcher |
 | **iterate-plan** | "update the plan", "iterate on this plan" | Updates existing plans based on feedback |
@@ -267,7 +277,7 @@ cd ~/projects/myapp && /path/to/init-workflow.sh .
 ```
 
 This script:
-- Creates `docs/plans/`, `docs/brainstorms/`, `docs/adr/`, `logs/` directories
+- Creates `docs/plans/`, `docs/brainstorms/`, `docs/user-stories/`, `docs/adr/`, `logs/` directories
 - Appends workflow rules to existing CLAUDE.md (non-destructive)
 - Creates new CLAUDE.md from template if none exists
 - Backs up existing CLAUDE.md before modifying
@@ -296,15 +306,19 @@ This script:
 /brainstorm
 > "I want to add user authentication to the app"
 
-# 2. Create a plan
+# 2. Define requirements (parallel with ADRs)
+/user-story docs/brainstorms/2026-02-17-user-auth.md
+> Creates docs/user-stories/EPIC-01-user-auth.md + INDEX.md
+
+# 3. Create a plan
 /create-plan
 > Creates docs/plans/auth-implementation.md
 
-# 3. Implement the plan
+# 4. Implement the plan
 /implement-plan docs/plans/auth-implementation.md
 > Executes phases with quality gates
 
-# 4. Run E2E tests
+# 5. Run E2E tests
 /e2e-testing run
 ```
 
@@ -452,6 +466,7 @@ claude-skills-collection/
 │   ├── strategic-compact/        # NEW: Smart compaction suggestions
 │   ├── skill-visualizer/         # NEW: Interactive HTML visualizations
 │   ├── team-brainstorm/          # Agent team adversarial brainstorm
+│   ├── user-story/               # Hierarchical user stories with Given/When/Then
 │   ├── team-create-plan/         # NEW: Agent team planning (Architect + Risk Analyst + Researcher)
 │   ├── team-implement-plan/      # NEW: Small review team (Implementer + Reviewer)
 │   ├── team-implement-plan-full/ # NEW: Full parallel team (per-phase + shared Reviewer)

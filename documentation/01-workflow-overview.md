@@ -15,8 +15,16 @@ flowchart TD
     brainstorm["/brainstorm<br><i>Quick: single-agent analysis</i>"]
     teambrainstorm["/team-brainstorm<br><i>Deep: adversarial agent team</i>"]
 
-    brainstorm --> createplan
-    teambrainstorm --> createplan
+    brainstorm --> postbrainstorm
+    teambrainstorm --> postbrainstorm
+
+    subgraph postbrainstorm [" "]
+        direction LR
+        adr["/adr<br><i>Document decisions</i>"]
+        userstory["/user-story<br><i>Define requirements</i>"]
+    end
+
+    postbrainstorm --> createplan
     createplan["/create-plan<br><i>Research codebase, design approach</i>"]
 
     createplan --> implementplan
@@ -69,6 +77,12 @@ flowchart TD
 │            ▼                                                                 │
 │    ┌───────────────┐     "What am I really trying to build?"                │
 │    │  /brainstorm  │     Clarify your idea through questions                │
+│    └───────┬───────┘                                                        │
+│            │                                                                 │
+│            ▼                                                                 │
+│    ┌───────────────┐     "What do users need? What did we decide?"          │
+│    │ /user-story   │     Define requirements + /adr for decisions           │
+│    │ + /adr        │                                                        │
 │    └───────┬───────┘                                                        │
 │            │                                                                 │
 │            ▼                                                                 │
@@ -131,6 +145,32 @@ Deep analysis (agent team):
 ```
 
 **Why?** Prevents building the wrong thing. Use `/brainstorm` for quick ideas, `/team-brainstorm` for critical decisions where adversarial depth matters.
+
+---
+
+### Step 1.5: Define Requirements & Decisions (Optional but Recommended)
+
+After brainstorming, define formal requirements and document key decisions:
+
+```
+User stories (requirements):
+  You: /user-story docs/brainstorms/2026-01-25-user-auth.md
+  Claude: Reads brainstorm, identifies epics/features/tasks
+          Writes Given/When/Then acceptance criteria
+  Result: docs/user-stories/EPIC-01-user-auth.md + INDEX.md
+
+Architectural decisions:
+  You: /adr
+  Claude: Documents key decisions from brainstorm
+  Result: docs/decisions/ADR-NNNN-title.md + INDEX.md updated
+
+Or standalone (no brainstorm needed):
+  You: /user-story
+       "Define requirements for the checkout flow"
+  Claude: Asks clarifying questions, then generates stories
+```
+
+**Why?** User stories bridge the gap between "ideas" (brainstorm) and "implementation" (create-plan). Task-level stories with Given/When/Then acceptance criteria become plan phase exit conditions, ensuring nothing is lost in translation.
 
 ---
 
@@ -332,6 +372,7 @@ Opens a browser with:
 |------|---------|--------|
 | Clarify idea (quick) | `/brainstorm` | Refined concept |
 | Clarify idea (deep) | `/team-brainstorm` | Adversarially tested concept |
+| Define requirements | `/user-story` | Hierarchical stories + acceptance criteria |
 | Create plan | `/create-plan` | Phased plan + tasks |
 | Implement | `/implement-plan [path]` | Working code |
 | Fresh start | `/clear` | Clean context, progress preserved |

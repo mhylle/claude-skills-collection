@@ -6,7 +6,8 @@ A comprehensive guide explaining each step of the workflow and the reasoning beh
 
 1. [The Workflow Philosophy](#the-workflow-philosophy)
 2. [Phase 1: Brainstorming](#phase-1-brainstorming)
-3. [Phase 2: Planning](#phase-2-planning)
+3. [Phase 1.5: Requirements & Decisions](#phase-15-requirements--decisions-optional)
+4. [Phase 2: Planning](#phase-2-planning)
 4. [Phase 3: Implementation](#phase-3-implementation)
 5. [Phase 4: The Clear-and-Continue Pattern](#phase-4-the-clear-and-continue-pattern)
 6. [Understanding Quality Gates](#understanding-quality-gates)
@@ -180,6 +181,78 @@ Two skills are available depending on the depth needed:
 | Bug fix or small change | Skip brainstorming |
 | Complex feature with trade-offs | `/team-brainstorm` |
 | Requirements are crystal clear | Skip or `/brainstorm` |
+
+---
+
+## Phase 1.5: Requirements & Decisions (Optional)
+
+After brainstorming, two parallel activities formalize the output:
+
+### User Stories (`/user-story`)
+
+Generates hierarchical requirements from brainstorm output or standalone input:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           USER STORY FLOW                                    │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  Input: Brainstorm file (auto-detected or explicit) or standalone           │
+│                                                                              │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │ STEP 1: Input Detection                                              │   │
+│  │ • Check for brainstorm file argument                                │   │
+│  │ • Auto-scan docs/brainstorms/ for recent files                     │   │
+│  │ • Or proceed to standalone clarification                           │   │
+│  └──────────────────────────────────────┬──────────────────────────────┘   │
+│                                         │                                    │
+│                                         ▼                                    │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │ STEP 2-3: Context Gathering + Clarification                         │   │
+│  │ • Read brainstorm, ADRs, existing stories                          │   │
+│  │ • Socratic questioning (standalone mode)                           │   │
+│  └──────────────────────────────────────┬──────────────────────────────┘   │
+│                                         │                                    │
+│                                         ▼                                    │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │ STEP 4: Story Generation                                            │   │
+│  │ • Identify epics (major capabilities)                              │   │
+│  │ • Decompose into features (max 5 per epic)                         │   │
+│  │ • Decompose into tasks (max 5 per feature)                         │   │
+│  │ • Write Given/When/Then acceptance criteria                        │   │
+│  │ • Add exit conditions in shared create-plan format                 │   │
+│  └──────────────────────────────────────┬──────────────────────────────┘   │
+│                                         │                                    │
+│                                         ▼                                    │
+│  Output: docs/user-stories/EPIC-01-slug.md (one file per epic)            │
+│          docs/user-stories/INDEX.md (master overview)                      │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Hierarchy
+
+| Level | Format | Represents | Example |
+|-------|--------|-----------|---------|
+| Epic | `EPIC-01` | Major capability | User Authentication |
+| Feature | `EPIC-01.F-01` | Deliverable function | Password Reset Flow |
+| Task | `EPIC-01.F-01.T-01` | Implementable unit | Email Validation |
+
+### Integration with Create-Plan
+
+Task-level stories share the same structure as create-plan phases (Objective, Tasks, Exit Conditions). This means:
+- No translation step when moving from stories to plan
+- Given/When/Then acceptance criteria become exit conditions
+- Story IDs provide traceability from requirements to implementation
+
+### When to Use
+
+| Situation | Recommendation |
+|-----------|---------------|
+| After brainstorm, before planning | `/user-story` (recommended) |
+| Well-understood requirements | Skip user stories |
+| Formal project with traceability needs | `/user-story` (strongly recommended) |
+| Quick bug fix or small feature | Skip user stories |
 
 ---
 
