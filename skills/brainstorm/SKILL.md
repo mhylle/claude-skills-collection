@@ -9,17 +9,19 @@ agent: Explore
 
 ## Overview
 
-This skill provides structured brainstorming through Socratic questioning, multi-perspective analysis (Six Thinking Hats, SCAMPER), and proactive research. It helps users refine raw ideas into well-structured concepts ready for implementation planning.
+This skill provides structured single-session brainstorming through Socratic questioning and targeted analytical frameworks. It helps users refine raw ideas into well-structured concepts ready for implementation planning.
+
+The key philosophy: **adapt the analysis to the idea, not the idea to the analysis.** Different types of ideas benefit from different frameworks. A risk-heavy initiative needs premortem analysis, not SCAMPER. A product feature needs SCAMPER, not just risk tables. Select the right tools for the job rather than running everything mechanically.
 
 ## Initial Response
 
-When this skill is invoked, respond:
+When this skill is invoked, don't use a canned response. Instead, acknowledge the user's idea naturally and start engaging immediately. If the user has already described their idea, summarize your understanding and begin asking clarifying questions. If they haven't, ask them to share what they're thinking about.
 
-> "I'm ready to help you explore and refine your idea. Share what you're thinking about, and I'll ask questions to help clarify, challenge assumptions, and identify opportunities. We'll continue the exploration until you're satisfied, then I'll research relevant patterns and structure the concept."
+Avoid scripted openings like "I'm ready to help you explore and refine your idea." Just start the conversation.
 
-## Workflow (6 Phases)
+## Workflow (5 Phases)
 
-### Phase 1: Idea Capture
+### Phase 1: Idea Capture & Classification
 
 Parse the user's initial idea/concept and identify:
 
@@ -29,12 +31,31 @@ Parse the user's initial idea/concept and identify:
 | **Stated Goals** | What the user explicitly wants to achieve |
 | **Implied Constraints** | Limitations mentioned or implied |
 | **Project Context** | Whether this relates to an existing codebase |
+| **Idea Type** | Classification (see below) |
 
-**Project Context Detection** - Flag for codebase research when:
+**Idea Type Classification** — Classify the idea to guide framework selection later:
+
+| Type | Signals | Example |
+|------|---------|---------|
+| **Product/Feature** | New feature, UX change, user-facing capability | "Add a dashboard for metrics" |
+| **Architecture/Technical** | System design, refactoring, infrastructure | "Migrate to microservices" |
+| **Strategy/Business** | Market approach, pricing, partnerships | "Enter the enterprise segment" |
+| **Process/Workflow** | How work gets done, tooling, automation | "Automate our deploy pipeline" |
+| **Creative/Open** | Vague idea, exploration, "what if" | "What if we made it social?" |
+| **Risk/Problem** | Something's broken, risky, or concerning | "Our auth system worries me" |
+
+**Complexity Check** — Flag ideas that may be too complex for a single-session brainstorm:
+- Multiple distinct problem domains
+- More than 5-6 major components or stakeholders
+- Spans organizational boundaries
+- Multi-month timeline with phases
+
+If complexity is high, mention it: "This has a lot of dimensions — we can cover the key angles in this session, but if you want to go really deep, the `deep-brainstorm` skill spreads exploration across multiple sessions and builds a persistent knowledge structure."
+
+**Project Context Detection** — Flag for codebase research when:
 - User mentions specific files, modules, or features
 - User references "the current system" or "our codebase"
 - User mentions extending/modifying existing functionality
-- Context includes technical terms specific to a project domain
 
 After parsing, summarize understanding and begin Phase 2.
 
@@ -44,42 +65,31 @@ Engage in iterative questioning until the user signals readiness to proceed.
 
 **Question Categories** (reference: `references/questioning-frameworks.md`):
 
-1. **Scope Questions**
-   - "What boundaries should this have?"
-   - "What's explicitly out of scope?"
-   - "How does this fit with existing systems?"
+1. **Scope Questions** — What boundaries should this have? What's out of scope?
+2. **Assumption Questions** — What are we taking for granted? What must be true?
+3. **Alternative Questions** — What other approaches exist? What's the opposite?
+4. **Consequence Questions** — What happens if this succeeds? Fails? Second-order effects?
+5. **Evidence Questions** — What supports this? How could we test it?
 
-2. **Assumption Questions**
-   - "What are we taking for granted here?"
-   - "What would happen if [assumption] wasn't true?"
-   - "What implicit dependencies exist?"
+**How to question well**:
+- Ask 2-4 questions per round, mixing categories
+- Build on previous answers — don't just cycle through a list
+- Use "what" and "how" more than "why" (less confrontational)
+- Acknowledge insights before probing deeper
+- Don't criticize during clarification — that's for analysis
 
-3. **Alternative Questions**
-   - "What other approaches could achieve this?"
-   - "What's the opposite of this approach?"
-   - "What would [different stakeholder] suggest?"
-
-4. **Consequence Questions**
-   - "What happens if this succeeds?"
-   - "What happens if this fails?"
-   - "What are the second-order effects?"
-
-5. **Evidence Questions**
-   - "What supports this approach?"
-   - "How could we test this assumption?"
-   - "What evidence would change your mind?"
+**Parking Lot** — When the user mentions tangential ideas, interesting threads, or "oh and we could also..." thoughts that aren't central to the core concept, note them. Keep a mental running list and include them in the output. Good ideas shouldn't get lost just because they're not the main topic.
 
 **Continuation Protocol**:
-- Ask 2-4 questions per round
-- After each round, offer: "I have more questions if you'd like to continue exploring, or we can move to research and analysis. Your call."
-- Continue until user explicitly signals readiness (e.g., "let's move on", "I'm ready", "that's enough questions")
-- Do NOT rush this phase - thorough questioning produces better outcomes
+- After each round, give a signal about depth: "There are some interesting threads around [X] and [Y] I'd like to probe — want to keep going, or is the picture clear enough to move to analysis?"
+- Continue until user explicitly signals readiness
+- Don't rush this phase — thorough questioning produces better outcomes
 
-### Phase 3: Context Gathering
+### Phase 3: Targeted Research
 
-Spawn parallel agents to gather context. Execute all relevant research in a single message with multiple Task tool calls.
+Spawn research agents only when they'll add genuine value. Don't research for the sake of researching.
 
-**Always spawn - Web Research**:
+**Web Research** — Spawn when the idea would benefit from external context (most ideas do, but very internal/project-specific ones may not):
 ```
 Task(subagent_type="web-search-researcher",
      prompt="Research best practices, common patterns, and pitfalls for [idea topic].
@@ -91,7 +101,7 @@ Task(subagent_type="web-search-researcher",
              Focus on actionable insights, not just general information.")
 ```
 
-**Spawn when project context detected - Codebase Research**:
+**Codebase Research** — Spawn only when project context was detected in Phase 1:
 ```
 Task(subagent_type="codebase-locator",
      prompt="Find all files related to [relevant feature area]. Include:
@@ -113,268 +123,167 @@ Task(subagent_type="codebase-pattern-finder",
              - Testing approaches used")
 ```
 
-Wait for all agents to complete using AgentOutputTool before proceeding.
+Don't wait idly for agents — move to Phase 4 and incorporate findings when they arrive.
 
-### Phase 4: Multi-Perspective Analysis
+### Phase 4: Focused Analysis
 
-Apply structured frameworks to analyze the refined idea systematically.
+**Select 1-2 frameworks** based on idea type. Applying all frameworks to every idea produces noise. Pick the ones that will generate the most useful insights.
 
-**Six Thinking Hats Analysis**:
+| Idea Type | Primary Framework | When to Add Secondary |
+|-----------|-------------------|----------------------|
+| **Product/Feature** | SCAMPER | Add Six Hats if stakeholder complexity is high |
+| **Architecture/Technical** | Six Thinking Hats | Add Premortem if high-risk |
+| **Strategy/Business** | Six Thinking Hats | Add Premortem if reversibility is low |
+| **Process/Workflow** | SCAMPER | Add Six Hats if cross-team impact |
+| **Creative/Open** | SCAMPER | Add Six Hats (Green + Blue) for direction |
+| **Risk/Problem** | Premortem | Add Six Hats (Black + White + Yellow) |
 
-| Hat | Focus | Questions to Apply |
-|-----|-------|-------------------|
-| **White** | Facts | What facts do we have? What data is missing? What do we need to know? |
-| **Red** | Intuition | What's the gut reaction? What feels risky? What's exciting about this? |
-| **Black** | Risks | What could go wrong? What obstacles exist? What are the failure modes? |
-| **Yellow** | Benefits | What benefits does this bring? What opportunities exist? What's the best case? |
-| **Green** | Creativity | What creative alternatives exist? What's an unconventional approach? What if we combined this with something else? |
-| **Blue** | Process | Is this the right problem to solve? Are we approaching this correctly? What's the next step? |
+#### Six Thinking Hats (when selected)
 
-**SCAMPER Enhancement Scan**:
+| Hat | Focus | Key Questions |
+|-----|-------|---------------|
+| **White** | Facts | What do we know? What data is missing? |
+| **Red** | Intuition | What's the gut reaction? What feels risky or exciting? |
+| **Black** | Risks | What could go wrong? What obstacles exist? |
+| **Yellow** | Benefits | What benefits does this bring? What's the best case? |
+| **Green** | Creativity | What creative alternatives exist? What's unconventional? |
+| **Blue** | Process | Is this the right problem? Are we approaching it right? |
 
-| Letter | Question | Application |
-|--------|----------|-------------|
-| **S**ubstitute | What could be replaced? | Alternative technologies, patterns, approaches |
-| **C**ombine | What could be merged? | Related features, existing capabilities |
-| **A**dapt | What could be adjusted from elsewhere? | Patterns from other domains |
-| **M**odify | What could be amplified or reduced? | Scope, complexity, features |
-| **P**ut to other use | What alternative applications exist? | Reusability, generalization |
-| **E**liminate | What could be removed? | Unnecessary complexity, redundant features |
-| **R**everse | What could be reorganized? | Order of operations, dependencies |
+Don't force all six hats if only 3-4 are producing meaningful insights.
 
-**Premortem Analysis**:
+#### SCAMPER (when selected)
 
-Apply this framework to identify preventable failure modes:
+| Letter | Question |
+|--------|----------|
+| **S**ubstitute | What could be replaced with something better? |
+| **C**ombine | What could be merged with existing capabilities? |
+| **A**dapt | What patterns from other domains could apply? |
+| **M**odify | What could be amplified, reduced, or changed? |
+| **P**ut to other use | What alternative applications exist? |
+| **E**liminate | What unnecessary complexity could be removed? |
+| **R**everse | What could be reorganized or inverted? |
 
-1. "Imagine this idea has completely failed 6 months from now."
-2. "What went wrong?"
+Skip letters that don't produce meaningful insights for this particular idea.
+
+#### Premortem (when selected)
+
+1. "Imagine this has completely failed 6 months from now."
+2. "What went wrong?" — technical, people, process, external
 3. "What warning signs did we ignore?"
 4. "What did we underestimate?"
-5. "What external factors contributed?"
-6. "Now: How do we prevent each of these?"
+5. "How do we prevent each failure mode?"
 
-Document findings for each framework.
+Focus on the 3-5 most realistic failure modes, not an exhaustive list.
 
-### Phase 5: Synthesis
+### Phase 5: Synthesis & Output
 
-Consolidate all findings into actionable insights:
-
-**Validated Strengths**
-- List strengths confirmed by analysis
-- Include supporting evidence from research
-
-**Identified Gaps**
-- List gaps discovered through questioning and analysis
-- Include suggested approaches for each gap
-
-**Enhancement Opportunities**
-- List improvements identified through SCAMPER
-- Prioritize by impact and feasibility
-
-**Risk Assessment**
-- List risks from Black Hat and Premortem analysis
-- Include mitigation strategies for each
-
-**Key Decisions Required**
-- List open questions that need user decision
-- Provide options with trade-offs
-
-### Phase 5b: Document Key Decisions (ADR)
-
-**Before creating new ADRs**, check for existing related decisions:
-
-```
-# Tiered ADR reading (context conservation)
-1. Read("docs/decisions/INDEX.md")              # Scan existing decisions
-2. Read("docs/decisions/ADR-NNNN.md", limit=10) # Quick Reference of relevant ones
-3. Only create new ADR if decision is genuinely new or supersedes existing
-```
-
-**When significant architectural decisions emerge** from the brainstorm analysis, invoke the ADR skill to document them:
-
-```
-Skill(skill="adr"): Document key decision from brainstorm.
-
-Title: [Decision title]
-Context: [Why this decision is needed - from brainstorm context]
-Options Considered: [Alternatives from analysis]
-Decision: [The recommended or chosen approach]
-Rationale: [From Six Hats/SCAMPER analysis]
-Consequences: [From premortem and risk assessment]
-Status: Proposed (or Accepted if user confirmed)
-```
-
-The ADR skill will create the ADR file and update INDEX.md.
-
-**Triggers for creating ADRs during brainstorming:**
-- Clear winner emerges from option analysis
-- User makes a definitive choice between approaches
-- Technology or architecture decision crystallizes
-- Pattern or convention is established for the project
-
-**Multiple ADRs**: If the brainstorm identifies several distinct decisions, create separate ADRs for each. Reference them in the output's "Key Decisions" section.
-
-**ADR Status**: Set to "Proposed" unless the user has explicitly confirmed the decision, in which case set to "Accepted".
-
-### Phase 6: Structure & Output
-
-Structure the concept into logical components and write results.
+Consolidate findings into actionable insights and write the output document.
 
 **Determine Output Location**:
 - Default: `docs/brainstorms/YYYY-MM-DD-{topic-slug}.md`
 - Create directory if it doesn't exist
-- Use descriptive slug from core concept
 
-**Write Structured Output** using this format:
+**Write the output** — include only sections with meaningful content. The template below shows all possible sections; omit any that would just contain filler.
 
 ```markdown
 # Brainstorm: [Idea Name]
 
 **Date**: YYYY-MM-DD
 **Status**: Ready for Planning | Needs More Exploration
+**Type**: [Product/Feature | Architecture | Strategy | Process | Creative | Risk]
 
 ## Executive Summary
-[2-3 sentence refined description of the idea after Socratic exploration]
+[2-3 sentence refined description of the idea after exploration]
 
 ## Idea Evolution
 
 ### Original Concept
-[What the user initially described - preserve their words]
+[What the user initially described — preserve their words]
 
 ### Refined Understanding
-[How the idea evolved through questioning - what became clearer]
+[How the idea evolved through questioning — what became clearer]
 
-### Key Clarifications Made
+### Key Clarifications
 - [Clarification 1]
 - [Clarification 2]
 
-## Analysis Results
+## Analysis
 
-### Strengths (Yellow Hat)
-- [Strength 1 with supporting evidence]
-- [Strength 2 with supporting evidence]
+### Strengths
+[Validated strengths with supporting evidence. Source these from
+Yellow Hat findings or SCAMPER opportunities, depending on which
+framework was used.]
 
-### Risks & Concerns (Black Hat + Premortem)
+### Risks & Concerns
 | Risk | Likelihood | Impact | Mitigation |
 |------|------------|--------|------------|
-| [Risk 1] | High/Med/Low | High/Med/Low | [Strategy] |
-| [Risk 2] | High/Med/Low | High/Med/Low | [Strategy] |
+| [Risk 1] | H/M/L | H/M/L | [Strategy] |
 
-### Gaps Identified
-- [ ] **[Gap 1]** - Suggested approach: [...]
-- [ ] **[Gap 2]** - Suggested approach: [...]
+[Source from Black Hat, Premortem, or both.]
 
-### Enhancement Opportunities (SCAMPER)
-- **Substitute**: [Enhancement if applicable]
-- **Combine**: [Enhancement if applicable]
-- **Adapt**: [Enhancement if applicable]
-- **Modify**: [Enhancement if applicable]
-- **Put to other use**: [Enhancement if applicable]
-- **Eliminate**: [Enhancement if applicable]
-- **Reverse**: [Enhancement if applicable]
+### Gaps
+- [ ] **[Gap 1]** — Suggested approach: [...]
+
+### Enhancement Opportunities
+[Only if SCAMPER was used. List the meaningful findings, not all 7 letters.]
 
 ### Premortem Findings
+[Only if Premortem was used.]
 - **Failure mode**: [Description] → **Prevention**: [Strategy]
-- **Failure mode**: [Description] → **Prevention**: [Strategy]
-
-## Structured Concept
-
-### Component 1: [Name]
-**Purpose**: [What it does]
-**Scope**: [Boundaries]
-**Dependencies**: [What it needs]
-**Key Decisions**: [Decisions made or needed]
-
-### Component 2: [Name]
-[Continue pattern for each logical component...]
 
 ## Research Findings
 
 ### External Best Practices
-[Synthesized findings from web-search-researcher]
-- [Best practice 1 with source]
-- [Best practice 2 with source]
+[Only if web research was conducted]
 
-### Anti-Patterns to Avoid
-- [Anti-pattern 1]
-- [Anti-pattern 2]
-
-### Codebase Context (if applicable)
-[Findings from codebase agents]
+### Codebase Context
+[Only if codebase research was conducted]
 - Relevant files: [file:line references]
-- Existing patterns to follow: [patterns]
+- Existing patterns: [patterns]
 - Integration points: [components]
 
-## Architectural Decisions
-
-### Documented ADRs
-| ADR | Title | Status |
-|-----|-------|--------|
-| [ADR-NNNN](../decisions/ADR-NNNN-title.md) | [Title] | Proposed/Accepted |
-
-### Pending Decisions (not yet documented)
-- [Decision 1]: [Options being considered]
-- [Decision 2]: [Options being considered]
+## Parking Lot
+[Tangential ideas captured during the session that are worth revisiting]
+- [Idea 1]
+- [Idea 2]
 
 ## Recommended Next Steps
 1. [Immediate next step]
 2. [Follow-up step]
-3. [Future consideration]
 
 ## Ready for Create-Plan
 **[Yes/No]**
 
-**If Yes**: The concept is well-defined and ready for implementation planning.
-**If No**: [Specific reason - what needs more exploration]
+**If Yes**: Well-defined and ready for implementation planning.
+**If No**: [What needs more exploration]
 
 ### Suggested Plan Scope
-[Brief description of what create-plan should focus on, including:
-- Primary deliverables
-- Key phases to consider
-- Critical success factors]
+[What create-plan should focus on]
 ```
 
-**After Writing**:
-1. Confirm file was saved successfully
-2. Present summary to user
-3. Offer to invoke create-plan skill if status is "Ready for Planning"
+**After writing**:
+1. Confirm file was saved
+2. Present a concise summary to the user
+3. If status is "Ready for Planning", offer to invoke create-plan
+4. If the idea proved complex, suggest deep-brainstorm for areas that need more exploration
+
+**ADR Integration** — Only invoke the ADR skill when a significant architectural or strategic decision clearly crystallized during the session (e.g., the user chose between competing approaches, a technology decision was made). Don't force ADR creation when no real decision was made.
 
 ## Quality Checklist
 
 Before finalizing output, verify:
 
-- [ ] All Socratic clarifications were documented
-- [ ] Web research was conducted and synthesized
-- [ ] Codebase research was conducted (if project context detected)
-- [ ] All six thinking hats were applied
-- [ ] SCAMPER analysis was completed
-- [ ] Premortem was conducted with prevention strategies
+- [ ] Socratic clarifications were thorough (not rushed)
+- [ ] Framework selection matched the idea type
+- [ ] Only relevant frameworks were applied
+- [ ] Research was conducted where valuable (not mechanically)
 - [ ] Risks have mitigation strategies
 - [ ] Gaps have suggested approaches
-- [ ] Concept is structured into logical components
-- [ ] Output file was successfully written
+- [ ] Parking lot captured tangential ideas
+- [ ] Output includes only meaningful sections (no filler)
+- [ ] Output file was written successfully
 - [ ] Ready-for-plan status is accurate
-
-## Best Practices
-
-### Effective Questioning
-- Ask open-ended questions, not yes/no
-- Use "what" and "how" more than "why" (less confrontational)
-- Build on previous answers
-- Acknowledge good insights before probing deeper
-
-### Avoiding Common Pitfalls
-- Don't rush the Socratic phase - depth matters
-- Don't criticize ideas during clarification - that's for analysis
-- Don't skip frameworks - each provides unique perspective
-- Don't present analysis without actionable next steps
-
-### Integration with Create-Plan
-The output format is designed to feed directly into create-plan:
-- "Structured Concept" maps to implementation phases
-- "Gaps" become tasks to address
-- "Risks" become items in "Risks and Mitigations"
-- "Research Findings" inform design decisions
+- [ ] Complexity escalation to deep-brainstorm was suggested if warranted
 
 ## Resources
 
