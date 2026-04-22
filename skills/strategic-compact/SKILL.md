@@ -1,6 +1,6 @@
 ---
 name: strategic-compact
-description: Strategic compaction suggestion framework that monitors session complexity and suggests context compaction at optimal logical boundaries rather than arbitrary thresholds.
+description: Suggest context compaction at optimal logical boundaries — between phases, after a research burst, after a debugging session ends — rather than waiting for the automatic compaction threshold to hit mid-task. Use when the user asks whether to compact, mentions context is getting long, wants to checkpoint before a big task, or when you notice the session is approaching a natural transition where compacting would preserve the next phase's context. Complements (doesn't replace) Claude Code's built-in auto-compaction. Triggers on "/strategic-compact", "should I compact", "when should I clear context", "getting long", or proactively at phase boundaries and session transitions.
 allowed-tools: Read, Bash
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: workflow-guide
-description: Helps choose between solo, small team, and full team workflow modes
+description: Recommend which workflow mode fits the task at hand — solo (implement-plan), small team (team-implement-plan with Implementer + Reviewer), or full team (team-implement-plan-full with parallel per-phase implementers + shared Reviewer). Factors in task complexity, risk, parallelism of the work, and token budget. Use when the user asks which workflow to pick, is unsure whether to go solo or team-based, mentions "which mode should I use", asks "solo or team for this", or is about to kick off execution without having chosen a mode. Triggers on "/workflow-guide", "which workflow mode", "solo or team", "pick a workflow".
 context: fork
 ---
 

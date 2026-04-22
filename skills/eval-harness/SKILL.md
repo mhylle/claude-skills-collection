@@ -1,6 +1,6 @@
 ---
 name: eval-harness
-description: Comprehensive evaluation framework for systematic testing, measurement, and quality assurance of AI-assisted implementations. Supports capability evals, regression testing, multiple grader types, and standardized metrics.
+description: Build evaluation harnesses for AI-assisted implementations — capability evals, regression tests, graders (exact-match, LLM-judge, code-exec, rubric), and standardized metrics (pass@k, accuracy, latency, cost). Use when the user wants to set up or run evals, benchmark agents/skills, create regression test suites for prompts or AI features, compare model/prompt variants, or measure implementation quality. Triggers on "set up evals", "create eval harness", "benchmark this skill", "regression test the prompt", "run evals", "/eval-harness", or any request to systematically measure AI output quality.
 argument-hint: "[mode: create|run|report]"
 ---
 
