@@ -1,0 +1,53 @@
+{
+  "skill_name": "code-quality-audit",
+  "evals": [
+    {
+      "id": 1,
+      "name": "on-demand-ts-repo",
+      "prompt": "Can you audit the code quality on this repo? It's a TypeScript service, a few hundred files. I want to know where the worst complexity hotspots are, whether we have any dependency cycles, and honestly whether our tests are actually testing anything or just executing code. Give me a prioritized list of what to fix first.",
+      "expected_output": "A report following the SKILL.md format: summary table across all five axes, findings grouped by fail/warn/skipped, and a recommendations section prioritized by impact.",
+      "files": [],
+      "assertions": [
+        {"name": "stack-detected-as-typescript", "description": "Report identifies the stack as TypeScript."},
+        {"name": "on-demand-mode-no-verdict", "description": "No PASS/FAIL verdict (on-demand mode)."},
+        {"name": "recommendations-section-present", "description": "Recommendations section is present."},
+        {"name": "complexity-hotspot-detected", "description": "processOrder in orders.ts flagged for complexity."},
+        {"name": "dependency-cycle-detected", "description": "audit.ts ↔ logger.ts cycle flagged as fail."},
+        {"name": "five-axis-summary-table", "description": "Summary table lists all five axes."},
+        {"name": "weak-tests-or-mutation-finding", "description": "Addresses user's 'tests actually testing' concern via mutation or coverage commentary."}
+      ]
+    },
+    {
+      "id": 2,
+      "name": "phase-gate-pass-fail-verdict",
+      "prompt": "I'm about to mark phase 3 of my implementation plan complete. Before I do, run the quality gate so I know whether this is actually shippable or whether I'm fooling myself. Give me a clear PASS or FAIL at the end.",
+      "expected_output": "Gate-mode report: explicit PASS/FAIL verdict at top, no recommendations section.",
+      "files": [],
+      "assertions": [
+        {"name": "gate-mode-verdict-present", "description": "Explicit Verdict: PASS or FAIL line."},
+        {"name": "gate-mode-no-recommendations", "description": "No Recommendations section (gate mode)."},
+        {"name": "stack-detected-as-python", "description": "Stack identified as Python."},
+        {"name": "five-axis-summary-table", "description": "Summary table lists all five axes."},
+        {"name": "findings-section-structured", "description": "Findings grouped into Fails / Warnings / Skipped."},
+        {"name": "verdict-matches-findings", "description": "Verdict is logically consistent with Fails section contents."}
+      ]
+    },
+    {
+      "id": 3,
+      "name": "partial-audit-missing-tool",
+      "prompt": "Run a code quality audit on my Python package. Fair warning — I don't think we have mutation testing set up yet, but I want coverage, complexity, and the dependency structure checked anyway.",
+      "expected_output": "On-demand report. Mutation axis reported as skipped with install hint. Other axes actually run.",
+      "files": [],
+      "assertions": [
+        {"name": "stack-detected-as-python", "description": "Stack identified as Python."},
+        {"name": "mutation-reported-as-skipped", "description": "Mutation axis is ⊘ skipped, not failed."},
+        {"name": "mutmut-install-hint-present", "description": "Install command (pip install mutmut) present in Skipped section."},
+        {"name": "coverage-axis-attempted", "description": "Coverage axis is actually run, not skipped."},
+        {"name": "complexity-axis-attempted", "description": "Complexity axis is actually run, not skipped."},
+        {"name": "dependency-cycle-detected", "description": "audit.py ↔ logger.py cycle flagged."},
+        {"name": "on-demand-mode-no-verdict", "description": "No PASS/FAIL verdict."},
+        {"name": "recommendations-section-present", "description": "Recommendations section present."}
+      ]
+    }
+  ]
+}
