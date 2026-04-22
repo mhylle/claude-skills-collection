@@ -312,6 +312,7 @@ Automatically invoke `/security-review` when implementing:
 | verification-loop | Verify implementation | `/verification-loop` |
 | code-review | Review code quality | `/code-review` |
 | security-review | Security audit | `/security-review` |
+| code-quality-audit | Coverage, complexity, deps, mutation metrics | `/code-quality-audit` |
 | adr | Document decisions | `/adr [title]` |
 | codebase-research | Understand codebase | `/codebase-research` |
 | e2e-testing | Test web applications | `/e2e-testing [mode]` |

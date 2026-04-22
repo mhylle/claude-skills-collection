@@ -11,3 +11,6 @@ Thumbs.db
 
 # Zip archives (generated exports)
 *.zip
+
+# Skill development workspaces (fixtures, iteration outputs, node_modules)
+*-workspace/

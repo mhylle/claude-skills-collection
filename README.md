@@ -139,6 +139,7 @@ The core workflow for implementing features follows this hierarchy:
 | **Quality** | `code-review` | Verify code quality, patterns, ADR compliance |
 | **Security** | `security-review` | OWASP-aligned security audit (optional step) |
 | **Verification** | `verification-loop` | 6-phase verification: build, type, lint, test, security, diff |
+| **Metrics Gate** | `code-quality-audit` | Coverage, complexity, module size, deps, mutation — gate or on-demand |
 | **Decisions** | `adr` | Document architectural decisions |
 | **Testing** | `e2e-testing` | End-to-end validation with Playwright |
 | **Evaluation** | `eval-harness` | Formal capability/regression testing with metrics |
@@ -173,6 +174,7 @@ Skills are invoked via the `Skill` tool or `/skill-name` shorthand.
 | **e2e-testing** | `/e2e-testing`, "test my webapp" | E2E testing with Playwright MCP |
 | **security-review** | `/security-review`, auth/input code | 10-category OWASP-aligned security audit |
 | **verification-loop** | `/verification-loop`, "verify implementation" | 6-phase verification: build, type, lint, test, security, diff |
+| **code-quality-audit** | `/code-quality-audit`, "audit code quality", "run mutation testing" | Coverage + complexity + module size + dependency cycles + mutation score. Gate or on-demand modes |
 | **eval-harness** | `/eval-harness`, "run evals" | Formal evaluation framework with pass@k metrics |
 
 ### Research & Context
@@ -451,6 +453,7 @@ claude-skills-collection/
 │   ├── adr/
 │   ├── agent-creator/
 │   ├── brainstorm/
+│   ├── code-quality-audit/       # NEW: Metrics gate (coverage, complexity, size, deps, mutation)
 │   ├── code-review/
 │   ├── codebase-research/
 │   ├── context-saver/

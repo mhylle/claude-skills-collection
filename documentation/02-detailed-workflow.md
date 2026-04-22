@@ -958,6 +958,7 @@ This creates a D3.js force-directed graph showing:
 | code-review | Read-only | - | - | Read, Grep, Glob, Bash |
 | verification-loop | Read-only | - | - | Read, Glob, Bash |
 | security-review | Read-only | - | - | Read, Glob, Grep, Bash |
+| code-quality-audit | Read-only | - | - | Read, Glob, Grep, Bash, Write |
 | strategic-compact | Read-only | - | - | Read, Bash |
 | adr | Hybrid | - | - | All |
 | e2e-testing | Hybrid | - | - | All |

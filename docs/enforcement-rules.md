@@ -180,7 +180,7 @@ Step 8: Complete       → DONE
 Ideation:    /brainstorm
 Planning:    /create-plan
 Execution:   /implement-plan [path]
-Quality:     /verification-loop, /code-review, /security-review
+Quality:     /verification-loop, /code-review, /security-review, /code-quality-audit
 Decisions:   /adr [title]
 ```
 
