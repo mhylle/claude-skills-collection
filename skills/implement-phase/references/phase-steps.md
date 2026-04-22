@@ -9,12 +9,15 @@ The default pipeline executes these steps in order:
 | Step | Name | Required | Skill Dependency | Gate Criteria |
 |------|------|----------|------------------|---------------|
 | 1 | implementation | Yes | None | All tasks complete, tests pass |
-| 2 | exit_conditions | Yes | None | Build, runtime, functional all pass |
-| 3 | code_review | Yes | code-review | PASS or PASS_WITH_NOTES |
-| 4 | adr_compliance | Yes | adr | All applicable ADRs followed |
-| 5 | plan_sync | Yes | None | Plan file updated correctly |
-| 6 | prompt_archival | No | None | Prompt moved to completed/ (if provided) |
-| 7 | completion_report | Yes | None | Report generated |
+| 2 | exit_conditions | Yes | verification-loop | All 6 verification checks pass |
+| 3 | integration_testing | Yes | None (orchestrator + browser-verification-agent) | API/UI tests pass end-to-end |
+| 4 | code_review | Yes | code-review | Clean PASS (no PASS_WITH_NOTES) |
+| 5 | adr_compliance | Yes | adr | All applicable ADRs followed |
+| 6 | plan_sync | Yes | None | Task status updated via TaskUpdate |
+| 7 | prompt_archival | No | None | Prompt moved to completed/ (if provided) |
+| 8 | completion_report | Yes | None | Report generated, continuous-learning invoked |
+
+Optional steps (enable via plan metadata) are documented in `optional-steps.md`. Per-step subagent patterns and output formats are in `step-details.md`.
 
 ## Step Configuration Schema
 

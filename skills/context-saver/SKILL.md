@@ -1,15 +1,24 @@
 ---
 name: context-saver
-description: Save session context to disk for seamless continuation in new chat sessions. This skill should be used when the user asks to save context, preserve work state, checkpoint progress, or prepare for session handoff. Triggers on "save context", "checkpoint", "save progress", "preserve state", or when explicitly asked to create a context file for later resumption. Optimizes for correctness, completeness, minimal size, and trajectory preservation.
+description: Write the current session's in-flight work state to a human-readable handoff doc on disk (docs/context/CONTEXT-{topic}.md) so a future chat session — or another person — can pick up exactly where this one stops. Distinct from Claude Code's built-in memory system, which captures long-lived facts and preferences; this skill captures **active session context** (what's being built right now, which files are mid-edit, what's been tried, what's next). Use when the user says "save context", "checkpoint", "save progress", "preserve state", "save before I step away", "dump this so I can continue tomorrow", or before ending a long session with incomplete work. Optimizes for correctness, completeness, minimal size, and trajectory preservation.
 disable-model-invocation: true
 argument-hint: "[topic?]"
 ---
 
 # Context Saver
 
-## Overview
+Preserve in-flight session state to disk for seamless continuation in another session. Extracts signal from noise — captures the essential state (trajectory, decisions, active files, blockers, next steps) while discarding ephemeral details (exploratory reads, rejected paths, verbose tool output).
 
-This skill enables structured preservation of working context to disk, allowing seamless continuation of complex tasks across chat sessions. It extracts signal from noise, capturing essential state while discarding ephemeral details.
+## Scope — how this differs from auto-memory
+
+Claude Code has a built-in memory system at `~/.claude/projects/.../memory/` that captures long-lived, typed entries (`user`, `feedback`, `project`, `reference`). That handles *persistent knowledge*: facts about you, validated preferences, project-state that's true across sessions.
+
+This skill handles what memory doesn't: **the snapshot of what you're actively doing right now.** It's the answer to "I need to step away mid-task — capture where I am so a new session can pick up seamlessly."
+
+- **Memory:** "This user prefers pytest over unittest." (always true, loads into every session)
+- **This skill:** "Currently refactoring `src/auth/token.service.ts:45-78` — tried approach A (failed, see line 60), now trying approach B, next step is to update the test at `__tests__/token.service.spec.ts:120`." (true right now, for this specific task)
+
+Memory grows bigger over months; context-save docs are ephemeral — delete them once the work they describe lands.
 
 ## When to Use
 

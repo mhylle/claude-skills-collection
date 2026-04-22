@@ -7,6 +7,12 @@
 
 > **Revised finding (2026-04-22, same day):** After reading each agent file, I revised the recommendation on the 6 "redundant" agents. Do **not** delete them. The overlap with built-in `Explore` / `WebSearch` is real at the what-they-do level, but each agent encodes non-trivial prompt engineering the built-ins don't provide — in particular the documentarian discipline that suppresses Claude's default urge to critique and suggest improvements. 7 skills reference these agents. Deletion would cost real value. See §2 and §7 for the corrected stance.
 
+> **Work shipped against this audit (2026-04-22, commits on master):**
+> - `commit bfa7b74` — fixed vague descriptions (`eval-harness`, `workflow-guide`, `strategic-compact`); added `skills/references/README.md` to disambiguate; added `*-workspace/` to `.gitignore`.
+> - `commit [next]` — Progressive Disclosure split for the 4 biggest skills and repositioning of the session/context trio against Claude Code's built-in memory system. SKILL.md reductions: implement-phase 1744 → 380 (78%), eval-harness 1415 → 323 (77%), verification-loop 1243 → 556 (55%), continuous-learning 1057 → 214 (80%), strategic-compact 693 → 161 (77%). context-saver (261 lines) repositioned with a new Scope section that distinguishes it from auto-memory. Total SKILL.md lines across the collection: 13873 → 9364 (32% reduction). No skills are now >1000 lines; only four are >500 and each is justified by content density.
+>
+> **Still outstanding:** consolidating the three `codebase-*` agents into one multi-mode agent (§7 Tier 1); building the gap-filling skills (`test-author`, `refactor`, `debug`); periodic pruning of `continuous-learning` stale patterns as framework versions move.
+
 ## Executive summary
 
 The collection contains **27 skills** and **7 agents** totaling ~13,900 lines of SKILL.md content. Three findings dominate this audit:
