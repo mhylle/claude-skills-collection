@@ -45,9 +45,11 @@ trigger:
     status: in_progress
   conditions:
     - previous_task_completed
-    - feature_boundary_detected
+    - feature_boundary_detected    # see definition below
     - tool_count.significant >= threshold * 0.5
 ```
+
+**`feature_boundary_detected`** is true when the new task's `subject` or `description` clearly belongs to a different feature area than the most recently completed task. Heuristics: task subjects don't share any non-stopword noun in common, or the new task is marked with a different `feature_tag` / parent-epic than the previous one. If the caller can't distinguish features, fall back to treating every task-completion → new-task transition as `false` — this trigger just won't fire, and the stronger task-completion trigger above still applies.
 
 ### Context about to overflow (warning signal)
 

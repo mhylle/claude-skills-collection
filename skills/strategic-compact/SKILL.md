@@ -74,11 +74,12 @@ Both must be yes before suggesting. The full rule set is in `references/boundary
 
 Default: **50 weighted tool calls between logical boundaries.**
 
-Weights (why count "significant" vs. raw):
-- Edit / Write / Bash / NotebookEdit / TaskUpdate — weight 1.0
-- Read — 0.5
-- Glob / Grep — 0.3
-- WebFetch / WebSearch — 0.5
+**"Significant" means the weighted count** — raw tool calls multiplied by the weight table below. A tool call with weight 1.0 contributes 1 significant call; a Read with weight 0.5 contributes 0.5. Weights:
+
+- Edit / Write / Bash / NotebookEdit / TaskUpdate — weight 1.0 (state-modifying or complex)
+- Read — 0.5 (inspection, lower cognitive load)
+- Glob / Grep — 0.3 (searches, low cost)
+- WebFetch / WebSearch — 0.5 (external lookups)
 
 Scenario-tuned thresholds (standard dev 50, debugging 75, quick fixes 30, large refactor 40, docs 60). Full config + dynamic adjustment rules → `references/hook-setup.md`.
 

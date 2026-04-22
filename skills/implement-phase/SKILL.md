@@ -198,7 +198,7 @@ implement-plan (orchestrates full plan)
 Full subagent-spawning patterns and per-step output formats live in `references/step-details.md`. Read that file when you're about to execute a step. Summary here:
 
 ### Step 1 — Implementation
-Spawn test subagents first (verification-first pattern), then implementation subagents with a coding-standards pointer embedded. Monitor, collect changed files.
+Spawn test subagents first (verification-first pattern), then implementation subagents with a coding-standards pointer embedded. Monitor, collect changed files. **If TDD mode is enabled, the order reverses and adds a RED → GREEN → REFACTOR cycle — see `references/tdd-mode.md`.**
 **Output:** `IMPLEMENTATION_STATUS`, `FILES_CREATED/MODIFIED`, `TEST_RESULTS`. **Gate:** PASS. **Next:** Step 2.
 
 ### Step 2 — Exit Condition Verification (verification-loop)
@@ -261,7 +261,7 @@ PHASE_STEPS = [
 ]
 ```
 
-Adding a new step: define gate criteria, insert at the right position, implement the logic or delegate to a skill. Steps can be conditional (e.g., phase-type-based, metadata-flag-gated).
+Adding a new step: define gate criteria, insert at the right position, implement the logic or delegate to a skill. Steps can be conditional (e.g., phase-type-based, metadata-flag-gated). Full step-config schema, gate-criteria field definitions, retry/timeout semantics, and worked examples for security-scan / performance-check / docs-update → `references/phase-steps.md`.
 
 ---
 
@@ -377,4 +377,15 @@ Future extensibility: the step design allows adding `security-scan`, `performanc
 **For step developers:**
 1. A new step must define: its gate criteria, its output format, whether it's `required`, whether it wraps a skill.
 2. Insert at the correct position (after the step it depends on, before any step that depends on it).
-3. Update `references/step-details.md` with the subagent pattern.
+3. Update `references/step-details.md` with the subagent pattern and `references/phase-steps.md` with the step's config entry.
+
+---
+
+## References (loaded on demand)
+
+- `references/subagent-protocol.md` — mandatory response-format block, concise-response examples, disk-based communication patterns, coding-standards pointer template
+- `references/step-details.md` — detailed subagent-spawning patterns and per-step output formats for all 8 default steps
+- `references/tdd-mode.md` — optional Step 1 inversion: RED → GREEN → REFACTOR cycle, TDD subagent prompts, coverage verification
+- `references/optional-steps.md` — Step 4.5 Security Review insertion point, enablement via plan metadata, per-phase overrides
+- `references/phase-steps.md` — default pipeline table, step config schema, adding custom steps, conditional execution rules, step insertion points
+- `references/return-value.md` — full PHASE_RESULT schema returned to implement-plan, status values per step, `ready_for_next` semantics
