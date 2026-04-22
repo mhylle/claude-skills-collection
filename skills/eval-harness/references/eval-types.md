@@ -28,7 +28,7 @@ capability_eval:
     content: any                # The actual input data
     context: object             # Additional context if needed
 
-  expected_output:
+  expected:                     # In the YAML file format this field is `expected`
     type: string                # "exact", "contains", "pattern", "semantic"
     value: any                  # Expected result or pattern
     alternatives: list          # Acceptable alternative outputs
@@ -44,6 +44,8 @@ capability_eval:
     retries: number             # Number of retry attempts
     weight: number              # Importance weight for scoring
 ```
+
+> **Field naming:** when authoring actual YAML files, the per-test-case field is `expected` (see `file-format.md`). Older drafts used `expected_output`; prefer `expected` for consistency with the file-format schema.
 
 ### Examples
 
@@ -61,7 +63,7 @@ capability_eval:
       language: "python"
       style: "functional"
 
-  expected_output:
+  expected:
     type: "functional"
     value:
       test_cases:
@@ -99,7 +101,7 @@ capability_eval:
     context:
       extraction_targets: ["dependencies", "api_endpoints", "configuration"]
 
-  expected_output:
+  expected:
     type: "semantic"
     value:
       must_include:

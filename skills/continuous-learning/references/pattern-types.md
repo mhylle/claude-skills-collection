@@ -1,6 +1,8 @@
 # Pattern types — structures and extraction criteria
 
-Five pattern types. Each has specific extraction criteria and a YAML template. Use this when extracting or authoring a new pattern.
+Five pattern types. Each has specific extraction criteria and a YAML template for the **pattern body**. The surrounding file wrapper (metadata, usage tracking, confidence tracking, tags) is defined separately in `storage-format.md` — don't duplicate those fields inside the pattern body.
+
+> **Where fields live:** `id`, `created`, `updated`, `version`, `usage.times_applied`, `usage.times_successful`, `confidence.initial`, `confidence.current`, `tags` — all in the wrapper (`storage-format.md`). The pattern body under the `pattern:` key holds the type-specific fields below.
 
 ---
 
@@ -41,9 +43,9 @@ context:
   framework: "[Framework/library name]"
   version: "[Version if relevant]"
   environment: "[Environment factors]"
-confidence: [0.0-1.0]
-times_applied: 0
 ```
+
+*(`confidence` and `times_applied` live in the wrapper — see `storage-format.md`.)*
 
 ---
 
@@ -73,9 +75,9 @@ applies_when:
   - "[Situation 2]"
 project_specific: [true/false]
 project_identifier: "[Project name/path if specific]"
-confidence: [0.0-1.0]
-times_validated: 0
 ```
+
+*(`confidence` and usage tracking live in the wrapper.)*
 
 ---
 
@@ -114,8 +116,9 @@ better_alternative: "[What to use when limitation is removed]"
 context:
   tool: "[Tool/framework name]"
   version: "[Version with limitation]"
-confidence: [0.0-1.0]
 ```
+
+*(`confidence` and usage tracking live in the wrapper.)*
 
 ---
 
@@ -156,8 +159,9 @@ example_application: |
 effectiveness:
   typical_time_saved: "[Estimate]"
   success_rate: "[Estimate]"
-confidence: [0.0-1.0]
 ```
+
+*(`confidence` and usage tracking live in the wrapper.)*
 
 ---
 
@@ -197,6 +201,7 @@ applies_to:
   - "[Situation 2]"
 anti_patterns:
   - "[What not to do]"
-confidence: [0.0-1.0]
 discovered_date: "[ISO date]"
 ```
+
+*(`confidence` and usage tracking live in the wrapper.)*

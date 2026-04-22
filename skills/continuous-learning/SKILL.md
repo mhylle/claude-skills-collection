@@ -104,8 +104,8 @@ For each pattern that passes threshold:
 1. **Classify type** into one of the five categories.
 2. **Extract context** — framework, version, environment.
 3. **Formulate trigger** — when should this pattern be recalled?
-4. **Structure solution** per the type-specific template (`references/pattern-types.md`).
-5. **Assign confidence** — initial confidence based on validation level.
+4. **Structure solution** per the type-specific template (`references/pattern-types.md`). Pattern-body fields only — the surrounding file wrapper (metadata, `usage:`, `confidence:`, `tags:`) lives in `references/storage-format.md`.
+5. **Assign confidence** — initial confidence based on validation level (goes in the wrapper's `confidence:` block, not the pattern body).
 
 ### Step 4 — Deduplication
 
