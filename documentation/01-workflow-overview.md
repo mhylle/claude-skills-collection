@@ -380,7 +380,8 @@ Opens a browser with:
 | Create plan | `/create-plan` | Phased plan + tasks |
 | Implement | `/implement-plan [path]` | Working code |
 | Adversarial review (diff) | `/adversarial-reviewer` | Second-opinion review from three hostile-persona subagents |
-| Adversarial audit (codebase) | `/adversarial-reviewer --codebase [path]` | Whole-repo risk assessment via strategic per-persona deep-dives |
+| Adversarial audit (codebase sample) | `/adversarial-reviewer --codebase [path]` | Whole-repo risk assessment via strategic per-persona deep-dives |
+| Comprehensive audit (full coverage) | `/codebase-audit [path]` | Long-running full-codebase audit; partitions + delegates to adversarial-reviewer; produces written report |
 | Fresh start | `/clear` | Clean context, progress preserved |
 | Visualize | `/skill-visualizer` | Interactive skill map |
 

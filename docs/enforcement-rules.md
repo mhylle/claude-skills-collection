@@ -182,6 +182,7 @@ Planning:    /create-plan
 Execution:   /implement-plan [path]
 Quality:     /verification-loop, /code-review, /security-review, /code-quality-audit
 Adversarial: /adversarial-reviewer  (opt-in; spawns hostile persona subagents pre-merge)
+Audit:       /codebase-audit         (long-running; delegates to adversarial-reviewer per partition, synthesizes written report)
 Decisions:   /adr [title]
 ```
 

@@ -138,6 +138,7 @@ The core workflow for implementing features follows this hierarchy:
 | **Phase Work** | `implement-phase` | Execute single phase with quality gates |
 | **Quality** | `code-review` | Verify code quality, patterns, ADR compliance |
 | **Adversarial Quality** | `adversarial-reviewer` | Subagent-based hostile review (Saboteur, New Hire, Security Auditor) to break self-review blind spots |
+| **Comprehensive Audit** | `codebase-audit` | Long-running full-codebase audit — partitions the repo, delegates to adversarial-reviewer per partition, synthesizes a written remediation report |
 | **Security** | `security-review` | OWASP-aligned security audit (optional step) |
 | **Verification** | `verification-loop` | 6-phase verification: build, type, lint, test, security, diff |
 | **Metrics Gate** | `code-quality-audit` | Coverage, complexity, module size, deps, mutation — gate or on-demand |
@@ -172,6 +173,7 @@ Skills are invoked via the `Skill` tool or `/skill-name` shorthand.
 |-------|---------|-------------|
 | **code-review** | `/code-review`, Step 3 of implement-phase | Systematic review: SRP, patterns, ADR compliance |
 | **adversarial-reviewer** | `/adversarial-reviewer`, "adversarial review", "critical review", "audit this repo" | Spawns three hostile-persona subagents (Saboteur, New Hire, Security Auditor) in parallel; each must find ≥1 issue; cross-persona findings get severity-promoted. Default mode reviews a diff; `--codebase [path]` reviews a whole repo/subtree with strategic per-persona deep-dives |
+| **codebase-audit** | `/codebase-audit`, "comprehensive codebase review", "thorough audit", "code due diligence" | Long-running full-coverage audit. Partitions the repo, delegates to `/adversarial-reviewer --codebase` per partition, synthesizes systemic findings, produces written remediation report. Resumable. Pairs with `code-quality-audit` for qualitative + quantitative picture |
 | **adr** | `/adr`, "document decision" | Creates Architecture Decision Records |
 | **e2e-testing** | `/e2e-testing`, "test my webapp" | E2E testing with Playwright MCP |
 | **security-review** | `/security-review`, auth/input code | 10-category OWASP-aligned security audit |
@@ -365,6 +367,25 @@ tech-debt checks. Findings are strategic-depth, not exhaustive —
 intentionally, because exhaustive whole-repo review from three personas
 isn't feasible.
 
+### Comprehensive Codebase Audit (Long-Running, Full Coverage)
+
+```bash
+/codebase-audit
+/codebase-audit src/                 # scope to subtree
+/codebase-audit --resume             # pick up from crash / previous session
+/codebase-audit --only api           # re-review just one partition
+> Maps repo → proposes partition plan → STOPS for user approval →
+> sequentially runs /adversarial-reviewer --codebase on each partition →
+> synthesizes systemic findings → produces docs/audits/.../REPORT.md with
+> risk register, architectural themes, and a remediation roadmap.
+```
+
+This is a multi-step orchestrator that delegates each partition review to
+the adversarial-reviewer skill. Expect 200K-500K tokens and 30-60 minutes
+for a typical ~500-file repo. Resumable — losing your session mid-audit
+doesn't lose the work. Pair with `/code-quality-audit` for the quantitative
+complement (coverage, complexity, cycles, mutation).
+
 ### Document a Decision
 
 ```bash
@@ -490,6 +511,7 @@ claude-skills-collection/
 │   ├── brainstorm/
 │   ├── code-quality-audit/       # NEW: Metrics gate (coverage, complexity, size, deps, mutation)
 │   ├── code-review/
+│   ├── codebase-audit/            # NEW: Long-running full-codebase audit orchestrator
 │   ├── codebase-research/
 │   ├── context-saver/
 │   ├── continuous-learning/      # NEW: Pattern extraction
