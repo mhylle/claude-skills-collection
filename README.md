@@ -171,7 +171,7 @@ Skills are invoked via the `Skill` tool or `/skill-name` shorthand.
 | Skill | Trigger | Description |
 |-------|---------|-------------|
 | **code-review** | `/code-review`, Step 3 of implement-phase | Systematic review: SRP, patterns, ADR compliance |
-| **adversarial-reviewer** | `/adversarial-reviewer`, "adversarial review", "critical review" | Spawns three hostile-persona subagents (Saboteur, New Hire, Security Auditor) in parallel; each must find ≥1 issue; cross-persona findings get severity-promoted |
+| **adversarial-reviewer** | `/adversarial-reviewer`, "adversarial review", "critical review", "audit this repo" | Spawns three hostile-persona subagents (Saboteur, New Hire, Security Auditor) in parallel; each must find ≥1 issue; cross-persona findings get severity-promoted. Default mode reviews a diff; `--codebase [path]` reviews a whole repo/subtree with strategic per-persona deep-dives |
 | **adr** | `/adr`, "document decision" | Creates Architecture Decision Records |
 | **e2e-testing** | `/e2e-testing`, "test my webapp" | E2E testing with Playwright MCP |
 | **security-review** | `/security-review`, auth/input code | 10-category OWASP-aligned security audit |
@@ -346,6 +346,24 @@ Use this when `/code-review` came back clean too easily, or before merging
 PRs with no human reviewer. The subagent isolation is what breaks the
 self-review trap — each persona reviews with no knowledge of prior
 conclusions.
+
+### Adversarial Codebase Audit (Inherited / Unfamiliar Repo)
+
+```bash
+/adversarial-reviewer --codebase
+/adversarial-reviewer --codebase src/api
+> Maps the codebase (structure, entry points, churn, tests), then each
+> persona strategically deep-reads 5-10 files chosen by its own lens —
+> Saboteur picks churning/stateful files, New Hire picks entry-point and
+> knowledge-silo files, Security Auditor picks trust boundaries. Produces
+> HIGH-RISK / MEDIUM-RISK / LOW-RISK verdict plus a "most-concerning area"
+> summary.
+```
+
+Use this for onboarding audits, inherited-repo assessments, and periodic
+tech-debt checks. Findings are strategic-depth, not exhaustive —
+intentionally, because exhaustive whole-repo review from three personas
+isn't feasible.
 
 ### Document a Decision
 

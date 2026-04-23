@@ -160,4 +160,6 @@ When to reach for it per mode:
 | Small Team | Already has an adversarial Reviewer per phase; add this pre-merge as a final sanity check on the accumulated diff rather than per-phase. |
 | Full Team | Same as Small Team — use it against the final integrated branch, not per-wave. |
 
-Token cost is ~15-25K per invocation (three persona subagents plus synthesis). Cheap insurance before a merge.
+Token cost is ~15-25K per invocation in diff mode (three persona subagents plus synthesis). Cheap insurance before a merge.
+
+**Codebase mode** (`/adversarial-reviewer --codebase [path]`) is a separate beast: whole-repo audit where each persona strategically deep-reads 5-10 files chosen by its own lens rather than exhausting the codebase. Use for onboarding audits, inherited-repo assessments, and periodic tech-debt checks — not as a pre-merge gate. Produces a HIGH-RISK / MEDIUM-RISK / LOW-RISK verdict (distinct from merge-decision BLOCK/CONCERNS/CLEAN). Token cost scales with repo size during the mapping step; expect ~40-80K for a typical ~300-file repo.
