@@ -311,6 +311,7 @@ Automatically invoke `/security-review` when implementing:
 | implement-plan | Execute a plan | `/implement-plan [path]` |
 | verification-loop | Verify implementation | `/verification-loop` |
 | code-review | Review code quality | `/code-review` |
+| adversarial-reviewer | Hostile-persona pre-merge review | `/adversarial-reviewer` |
 | security-review | Security audit | `/security-review` |
 | code-quality-audit | Coverage, complexity, deps, mutation metrics | `/code-quality-audit` |
 | adr | Document decisions | `/adr [title]` |

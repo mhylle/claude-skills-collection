@@ -181,6 +181,7 @@ Ideation:    /brainstorm
 Planning:    /create-plan
 Execution:   /implement-plan [path]
 Quality:     /verification-loop, /code-review, /security-review, /code-quality-audit
+Adversarial: /adversarial-reviewer  (opt-in; spawns hostile persona subagents pre-merge)
 Decisions:   /adr [title]
 ```
 

@@ -322,6 +322,10 @@ Step 1: Implementation      → Code is written
 Step 2: Verification        → Build, lint, type-check, tests pass
 Step 3: Integration Testing → Claude tests it actually works
 Step 4: Code Review         → Quality check, patterns verified
+                              (optional escalation: adversarial-reviewer
+                              spawns hostile-persona subagents for a
+                              second-opinion hostile pass when automated
+                              review was clean too easily)
 Step 5: ADR Compliance      → Architectural decisions documented
 Step 6: Plan Sync           → Verify work items completed
 Step 7: Prompt Archival     → Clean up used prompts
@@ -375,6 +379,7 @@ Opens a browser with:
 | Define requirements | `/user-story` | Hierarchical stories + acceptance criteria |
 | Create plan | `/create-plan` | Phased plan + tasks |
 | Implement | `/implement-plan [path]` | Working code |
+| Adversarial review | `/adversarial-reviewer` | Second-opinion review from three hostile-persona subagents |
 | Fresh start | `/clear` | Clean context, progress preserved |
 | Visualize | `/skill-visualizer` | Interactive skill map |
 

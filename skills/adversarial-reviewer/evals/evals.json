@@ -1,0 +1,108 @@
+{
+  "skill_name": "adversarial-reviewer",
+  "evals": [
+    {
+      "id": 1,
+      "name": "saboteur-heavy-cache",
+      "prompt": "Run an adversarial review on this file. It is new code added to a production codebase.\n\nFile: cache.ts\n\nProduce the full adversarial-reviewer output (all three personas, final verdict).",
+      "expected_output": "BLOCK verdict. Saboteur finds: (1) null dereference in get() when key is missing (entry.expiresAt accessed before nullcheck), (2) get() returns entry.value after deleting expired entry — returns stale or undefined, (3) race condition in getOrLoad (thundering herd on concurrent misses), (4) no TTL validation allowing negative/zero TTL, (5) memory leak (expired entries never swept unless accessed). New Hire finds: thin names, no tests, no docstring. Security Auditor: cache poisoning risk, invalidate() pattern match is unescaped. Cross-promotion expected on missing tests and input validation.",
+      "files": ["evals/fixtures/test-1-saboteur/cache.ts"],
+      "assertions": [
+        {
+          "text": "Report flags null dereference in get() when key is missing",
+          "type": "llm_judge"
+        },
+        {
+          "text": "Report flags race condition / thundering herd in getOrLoad",
+          "type": "llm_judge"
+        },
+        {
+          "text": "Report flags memory leak from expired entries never being swept",
+          "type": "llm_judge"
+        },
+        {
+          "text": "Report includes all three persona sections (Saboteur, New Hire, Security Auditor)",
+          "type": "llm_judge"
+        },
+        {
+          "text": "Final verdict is BLOCK (has at least one CRITICAL finding)",
+          "type": "llm_judge"
+        },
+        {
+          "text": "Findings include specific file:line references",
+          "type": "llm_judge"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "new-hire-heavy-process",
+      "prompt": "Run an adversarial review on this file. It was just added to a reporting pipeline.\n\nFile: process.py\n\nProduce the full adversarial-reviewer output (all three personas, final verdict).",
+      "expected_output": "CONCERNS or BLOCK verdict. New Hire dominates: function name `process` is meaningless, `mode=1` and `mode=2` are magic numbers, positional indexing `x[0]`..`x[4]` with no documented schema, magic numbers 1.08 / 1.15 / 0.95 / 90 / 30 unexplained, function violates SRP by both transforming data and writing a file. Saboteur: no input validation on src file, file write path is timestamp-based (could collide on concurrent runs), float() could throw on bad CSV data, no error handling. Security: file path written in CWD (directory traversal adjacent, low risk), CSV parsing accepts arbitrary input. Cross-promotion likely on missing types/tests and SRP violation.",
+      "files": ["evals/fixtures/test-2-new-hire/process.py"],
+      "assertions": [
+        {
+          "text": "Report flags meaningless function name `process` and/or parameter name `mode`",
+          "type": "llm_judge"
+        },
+        {
+          "text": "Report flags magic numbers (1.08, 1.15, 0.95, 90, 30) without explanation",
+          "type": "llm_judge"
+        },
+        {
+          "text": "Report flags positional tuple indexing (x[0]..x[4]) without documented schema",
+          "type": "llm_judge"
+        },
+        {
+          "text": "Report flags that process() violates single-responsibility by both transforming and writing a file",
+          "type": "llm_judge"
+        },
+        {
+          "text": "Report includes all three persona sections (Saboteur, New Hire, Security Auditor)",
+          "type": "llm_judge"
+        },
+        {
+          "text": "Final verdict is BLOCK or CONCERNS (not CLEAN)",
+          "type": "llm_judge"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "security-heavy-auth",
+      "prompt": "Run an adversarial review on this file. It is a password reset endpoint just added to the auth service.\n\nFile: auth.js\n\nProduce the full adversarial-reviewer output (all three personas, final verdict).",
+      "expected_output": "BLOCK verdict. Security Auditor dominates: (1) SQL injection via string interpolation into queries (email, user_id, token, hashed), (2) MD5 used for reset token — non-cryptographic and inputs are predictable (user_id + static salt + Date.now()), (3) MD5 used for password hashing (should be bcrypt/argon2), (4) hardcoded secret RESET_SECRET in source, (5) user enumeration via 404 vs 200 response, (6) reset token returned in response body (leaks token to any MITM / logs), (7) no token expiry / single-use enforcement, (8) PII (email) logged to console. Saboteur: crypto.createHash throws on undefined, no rate limiting, token not invalidated after use. New Hire: magic string `reset-salt-v1`, no tests, sparse comments. Cross-promotion expected on SQL injection and token handling.",
+      "files": ["evals/fixtures/test-3-security/auth.js"],
+      "assertions": [
+        {
+          "text": "Report flags SQL injection via string interpolation in at least one query",
+          "type": "llm_judge"
+        },
+        {
+          "text": "Report flags MD5 as unsuitable for reset tokens and/or password hashing",
+          "type": "llm_judge"
+        },
+        {
+          "text": "Report flags reset token being returned in the response body",
+          "type": "llm_judge"
+        },
+        {
+          "text": "Report flags user enumeration via differential 404 vs 200 response",
+          "type": "llm_judge"
+        },
+        {
+          "text": "Report flags hardcoded RESET_SECRET",
+          "type": "llm_judge"
+        },
+        {
+          "text": "Report includes all three persona sections (Saboteur, New Hire, Security Auditor)",
+          "type": "llm_judge"
+        },
+        {
+          "text": "Final verdict is BLOCK (has at least one CRITICAL finding)",
+          "type": "llm_judge"
+        }
+      ]
+    }
+  ]
+}

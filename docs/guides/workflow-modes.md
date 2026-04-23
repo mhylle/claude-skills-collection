@@ -147,3 +147,17 @@ Full team for implementation. Email, push, and in-app channels can be built in p
 ```
 
 Mix modes based on where you need depth.
+
+## Review Escalation: `/adversarial-reviewer`
+
+Available in all three modes. Use it as an opt-in escalation when automated `code-review` came back clean but you want a second-opinion hostile pass before merging. The skill spawns three isolated-context subagent personas (Saboteur, New Hire, Security Auditor) in parallel — each must surface at least one issue, and findings caught by 2+ personas are promoted one severity level.
+
+When to reach for it per mode:
+
+| Mode | When to add adversarial review |
+|------|-------------------------------|
+| Solo | Whenever `code-review` passed suspiciously easily, before merging a self-authored PR with no human reviewer, or after a long session when fatigue is likely. |
+| Small Team | Already has an adversarial Reviewer per phase; add this pre-merge as a final sanity check on the accumulated diff rather than per-phase. |
+| Full Team | Same as Small Team — use it against the final integrated branch, not per-wave. |
+
+Token cost is ~15-25K per invocation (three persona subagents plus synthesis). Cheap insurance before a merge.

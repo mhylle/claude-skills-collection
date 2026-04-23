@@ -33,8 +33,8 @@ This collection uses modern Claude Code skill features (v2.1.16+):
 |---------|-----------------|---------|
 | `context: fork` | brainstorm, team-brainstorm, user-story, create-plan, implement-plan, implement-phase, codebase-research, agent-creator | Run in isolated subagent context |
 | `agent: Explore/Plan` | brainstorm, user-story, create-plan, codebase-research | Specify subagent type for forked context |
-| `allowed-tools` | code-review, verification-loop, security-review, codebase-research, strategic-compact | Restrict available tools (read-only enforcement) |
-| `argument-hint` | implement-plan, implement-phase, adr, e2e-testing, code-review, context-saver, prompt-generator | Show usage hints in autocomplete |
+| `allowed-tools` | code-review, verification-loop, security-review, adversarial-reviewer, codebase-research, strategic-compact | Restrict available tools (read-only enforcement) |
+| `argument-hint` | implement-plan, implement-phase, adr, e2e-testing, code-review, adversarial-reviewer, context-saver, prompt-generator | Show usage hints in autocomplete |
 | `disable-model-invocation` | context-saver, prompt-generator | User-only invocation (no auto-trigger) |
 | `user-invocable: false` | implement-phase | Hide from user menu (internal skill) |
 
@@ -137,6 +137,7 @@ The core workflow for implementing features follows this hierarchy:
 | **Parallel Execution** | `team-implement-plan-full` | Full team: parallel waves + cross-phase Reviewer |
 | **Phase Work** | `implement-phase` | Execute single phase with quality gates |
 | **Quality** | `code-review` | Verify code quality, patterns, ADR compliance |
+| **Adversarial Quality** | `adversarial-reviewer` | Subagent-based hostile review (Saboteur, New Hire, Security Auditor) to break self-review blind spots |
 | **Security** | `security-review` | OWASP-aligned security audit (optional step) |
 | **Verification** | `verification-loop` | 6-phase verification: build, type, lint, test, security, diff |
 | **Metrics Gate** | `code-quality-audit` | Coverage, complexity, module size, deps, mutation — gate or on-demand |
@@ -170,6 +171,7 @@ Skills are invoked via the `Skill` tool or `/skill-name` shorthand.
 | Skill | Trigger | Description |
 |-------|---------|-------------|
 | **code-review** | `/code-review`, Step 3 of implement-phase | Systematic review: SRP, patterns, ADR compliance |
+| **adversarial-reviewer** | `/adversarial-reviewer`, "adversarial review", "critical review" | Spawns three hostile-persona subagents (Saboteur, New Hire, Security Auditor) in parallel; each must find ≥1 issue; cross-persona findings get severity-promoted |
 | **adr** | `/adr`, "document decision" | Creates Architecture Decision Records |
 | **e2e-testing** | `/e2e-testing`, "test my webapp" | E2E testing with Playwright MCP |
 | **security-review** | `/security-review`, auth/input code | 10-category OWASP-aligned security audit |
@@ -331,6 +333,20 @@ This script:
 > Review the changes in src/auth/
 ```
 
+### Adversarial Review (Before Merge)
+
+```bash
+/adversarial-reviewer --diff main...HEAD
+> Spawns Saboteur, New Hire, and Security Auditor subagents in parallel.
+> Each must find at least one issue. Findings caught by 2+ personas are
+> promoted one severity level. Produces BLOCK / CONCERNS / CLEAN verdict.
+```
+
+Use this when `/code-review` came back clean too easily, or before merging
+PRs with no human reviewer. The subagent isolation is what breaks the
+self-review trap — each persona reviews with no knowledge of prior
+conclusions.
+
 ### Document a Decision
 
 ```bash
@@ -451,6 +467,7 @@ Every phase must end clean. Therefore:
 claude-skills-collection/
 ├── skills/
 │   ├── adr/
+│   ├── adversarial-reviewer/      # NEW: Hostile-persona subagent review (Saboteur/New Hire/Security)
 │   ├── agent-creator/
 │   ├── brainstorm/
 │   ├── code-quality-audit/       # NEW: Metrics gate (coverage, complexity, size, deps, mutation)

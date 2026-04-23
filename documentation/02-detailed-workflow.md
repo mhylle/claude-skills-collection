@@ -462,7 +462,10 @@ Functional Verification:
 │  ├── Invoke code-review skill                                              │
 │  ├── Check: Service delegation, framework standards, ADR compliance        │
 │  ├── PASS_WITH_NOTES? → Fix notes, re-run (must achieve clean PASS)        │
-│  └── Optional: security-review for sensitive code                          │
+│  ├── Optional: security-review for sensitive code                          │
+│  └── Optional: adversarial-reviewer when code-review was clean but you     │
+│      want a second-opinion hostile-persona pass (Saboteur / New Hire /     │
+│      Security Auditor) via isolated subagents                              │
 │       │                                                                      │
 │       ▼ PASS → Continue                                                     │
 │                                                                              │
@@ -825,7 +828,8 @@ Skills are categorized by their execution context and tool access:
 │  ├── Can only read, search, and run verification commands                   │
 │  ├── Cannot modify files                                                    │
 │  ├── Safe to run at any time                                                │
-│  └── Examples: code-review, verification-loop, security-review              │
+│  └── Examples: code-review, verification-loop, security-review,             │
+│                 adversarial-reviewer (spawns persona subagents)             │
 │                                                                              │
 │  HYBRID SKILLS                                                              │
 │  ├── Full tool access                                                       │
@@ -956,6 +960,7 @@ This creates a D3.js force-directed graph showing:
 | codebase-research | Orchestrator | fork | Explore | Read, Glob, Grep, Bash |
 | agent-creator | Orchestrator | fork | Explore | All |
 | code-review | Read-only | - | - | Read, Grep, Glob, Bash |
+| adversarial-reviewer | Read-only (orchestrator) | - | - | Read, Grep, Glob, Bash, Agent |
 | verification-loop | Read-only | - | - | Read, Glob, Bash |
 | security-review | Read-only | - | - | Read, Glob, Grep, Bash |
 | code-quality-audit | Read-only | - | - | Read, Glob, Grep, Bash, Write |
