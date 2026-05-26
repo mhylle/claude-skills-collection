@@ -1,0 +1,50 @@
+{
+  "skill_name": "tt-brainstorm",
+  "evals": [
+    {
+      "id": 1,
+      "name": "greenfield-no-project",
+      "prompt": "I want to brainstorm a small idea: a personal expense tracker that auto-categorises transactions from bank CSV exports. I want to track this work in tasktracker. Nothing exists yet — no project, no notes.",
+      "expected_output": "Agent calls listProjects (gets nothing), offers /init-project, then once a project exists calls startBrainstorm, runs a few Socratic rounds writing addBrainstormDocument for capabilities, records at least one BrainstormDecision (chosen vs alternatives), and freezes the brainstorm at the end. No docs/brainstorms/*.md file is written.",
+      "files": [],
+      "assertions": [
+        { "text": "Agent calls tasktracker_listProjects before any brainstorm-write call", "kind": "transcript_contains" },
+        { "text": "Agent invokes /init-project OR calls tasktracker_createProjectFromTemplate when no project exists", "kind": "transcript_contains" },
+        { "text": "Agent calls tasktracker_setActiveTask before any brainstorm-write call", "kind": "transcript_contains" },
+        { "text": "Agent calls tasktracker_startBrainstorm", "kind": "transcript_contains" },
+        { "text": "Agent calls tasktracker_addBrainstormDocument at least twice (master + at least one sub-doc)", "kind": "transcript_contains" },
+        { "text": "Agent calls tasktracker_recordBrainstormDecision at least once", "kind": "transcript_contains" },
+        { "text": "Agent does NOT write any file under docs/brainstorms/", "kind": "filesystem_negative" },
+        { "text": "Agent calls tasktracker_freezeBrainstorm OR offers freeze+promote at the end", "kind": "transcript_contains" }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "existing-project-handoff",
+      "prompt": "Continuing on an existing tasktracker project (search 'expense'). I want to brainstorm whether we should add receipt OCR as a v2 capability or push to v3. Be selective with frameworks — this is a feature scoping question, not a wide-open exploration.",
+      "expected_output": "Agent locates the existing project via listProjects, sets active task on the brainstorm-lifecycle phase, runs a tight Socratic loop, records a deferred decision (with deferTo: 'v2' or 'v3'), and freezes. Picks at most one or two frameworks (SCAMPER and maybe Six Hats) rather than running everything.",
+      "files": [],
+      "assertions": [
+        { "text": "Agent calls tasktracker_listProjects with a search term related to 'expense'", "kind": "transcript_contains" },
+        { "text": "Agent does NOT call tasktracker_createProjectFromTemplate (existing project case)", "kind": "transcript_negative" },
+        { "text": "Agent calls tasktracker_setActiveTask", "kind": "transcript_contains" },
+        { "text": "Agent records a decision with at least one option having status 'deferred' and a deferTo label", "kind": "transcript_contains" },
+        { "text": "Agent uses at most 2 analytical frameworks (not all 4)", "kind": "qualitative" },
+        { "text": "Agent calls tasktracker_pauseActiveTask before user-wait messages", "kind": "transcript_contains" }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "complex-escalate-to-deep",
+      "prompt": "I'm thinking about a full rewrite of our internal trading platform — currently 4 services, spans 3 teams, would take 6+ months. Help me brainstorm. tasktracker is set up.",
+      "expected_output": "Agent recognises the complexity signals (multiple domains, cross-team, multi-month) and suggests /deep-brainstorm for sustained multi-session work, while still capturing the initial framing in a tasktracker brainstorm. Does NOT try to fit it all into a single session.",
+      "files": [],
+      "assertions": [
+        { "text": "Agent recognises the idea is too complex for a single-session brainstorm", "kind": "qualitative" },
+        { "text": "Agent suggests /deep-brainstorm for multi-session continuation", "kind": "transcript_contains" },
+        { "text": "Agent still seeds a tasktracker brainstorm (startBrainstorm) for the initial framing", "kind": "transcript_contains" },
+        { "text": "Agent does NOT write a docs/brainstorms file", "kind": "filesystem_negative" }
+      ]
+    }
+  ]
+}

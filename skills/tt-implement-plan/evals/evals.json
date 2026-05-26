@@ -1,0 +1,50 @@
+{
+  "skill_name": "tt-implement-plan",
+  "evals": [
+    {
+      "id": 1,
+      "name": "fresh-start-from-plan",
+      "prompt": "The expense-tracker tasktracker project has phases ready (5 phases, no implementation started yet). Start implementing. Pause between phases for confirmation.",
+      "expected_output": "Agent calls listProjects → getProjectReadiness → getPrinciples → listTasks (type=phase), identifies phase 1 as the first non-completed, calls setActiveTask + updateTaskStatus(in_progress) on it, then DELEGATES to /implement-phase (does NOT write code itself), pauses for user confirmation when phase 1 finishes, repeats for phase 2.",
+      "files": [],
+      "assertions": [
+        { "text": "Agent calls tasktracker_getPrinciples before starting phase work", "kind": "transcript_contains" },
+        { "text": "Agent calls tasktracker_setActiveTask on the phase task", "kind": "transcript_contains" },
+        { "text": "Agent calls tasktracker_updateTaskStatus to mark phase in_progress", "kind": "transcript_contains" },
+        { "text": "Agent invokes /implement-phase skill (does not write code directly)", "kind": "transcript_contains" },
+        { "text": "Agent does NOT use Write, Edit, or NotebookEdit tools", "kind": "transcript_negative" },
+        { "text": "Agent calls tasktracker_pauseActiveTask before the user-confirmation message", "kind": "transcript_contains" },
+        { "text": "Agent waits for user confirmation before starting phase 2", "kind": "qualitative" }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "resume-mid-phase",
+      "prompt": "Resume implementing the expense-tracker plan. Phases 1 and 2 are completed; phase 3 was in_progress when the previous session ended.",
+      "expected_output": "Agent calls listTasks (type=phase), correctly identifies phase 3 as the resume point (in_progress), shows a status table to the user, sets active task on phase 3, and continues from there. Does NOT redo phases 1 or 2.",
+      "files": [],
+      "assertions": [
+        { "text": "Agent calls tasktracker_listTasks filtering for phase type", "kind": "transcript_contains" },
+        { "text": "Agent identifies phase 3 as the resume point", "kind": "qualitative" },
+        { "text": "Agent displays a status summary showing 1, 2 completed and 3 in-progress", "kind": "qualitative" },
+        { "text": "Agent calls setActiveTask on phase 3 (not phase 1 or 2)", "kind": "transcript_contains" },
+        { "text": "Agent does NOT mark phase 1 or 2 as in_progress again", "kind": "transcript_negative" }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "blocker-during-phase",
+      "prompt": "Continue with phase 4 of expense-tracker. /implement-phase has just returned PHASE_RESULT.status: BLOCKED with this issue: 'Existing CSV parser in src/legacy/csv.js conflicts with planned implementation'. Options it returned: A) New implementation, mark legacy for removal; B) Refactor legacy; C) Abort and revise plan.",
+      "expected_output": "Agent STOPS phase execution, presents the blocker + 3 options + a recommendation to the user, and AWAITS user decision. Does NOT auto-pick an option. Does NOT mark the phase as completed. If the user picks C (abort/revise), agent creates a new follow-up phase via createTask rather than editing the blocked phase's description.",
+      "files": [],
+      "assertions": [
+        { "text": "Agent halts phase execution on receiving BLOCKED", "kind": "qualitative" },
+        { "text": "Agent presents all 3 options to the user with a recommendation", "kind": "qualitative" },
+        { "text": "Agent does NOT mark the phase as completed", "kind": "transcript_negative" },
+        { "text": "Agent does NOT attempt to update the blocked phase's description", "kind": "transcript_negative" },
+        { "text": "If user picks 'revise plan', agent creates a NEW phase task via tasktracker_createTask rather than editing the existing one", "kind": "qualitative" },
+        { "text": "Agent waits for user input before proceeding", "kind": "qualitative" }
+      ]
+    }
+  ]
+}

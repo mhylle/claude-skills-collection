@@ -1,0 +1,51 @@
+{
+  "skill_name": "tt-create-plan",
+  "evals": [
+    {
+      "id": 1,
+      "name": "from-frozen-brainstorm",
+      "prompt": "There's a frozen tasktracker brainstorm for the expense tracker project — search 'expense'. Pick it up and create the implementation plan. The plan should land as phase tasks in tasktracker, not a markdown file.",
+      "expected_output": "Agent finds the project, calls getProjectReadiness (sees brainstorm: satisfied), reads the brainstorm tree, then walks requirements → architecture → plan stages: createRequirement+addAcceptanceCriterion for each capability (Given/When/Then), createArchitectureComponent for major pieces, presents design options, gets approval, then createPhaseFromTemplate per phase with requirementIds linked at the phase level. No docs/plans/*.md file is written.",
+      "files": [],
+      "assertions": [
+        { "text": "Agent calls tasktracker_listProjects with search 'expense'", "kind": "transcript_contains" },
+        { "text": "Agent calls tasktracker_getProjectReadiness before any write", "kind": "transcript_contains" },
+        { "text": "Agent calls tasktracker_getBrainstorm and reads it", "kind": "transcript_contains" },
+        { "text": "Agent creates at least one requirement via tasktracker_createRequirement", "kind": "transcript_contains" },
+        { "text": "Agent adds at least one acceptance criterion via tasktracker_addAcceptanceCriterion (Given/When/Then form)", "kind": "transcript_contains" },
+        { "text": "Agent registers at least one architecture component", "kind": "transcript_contains" },
+        { "text": "Agent presents design options and waits for user approval before creating phases", "kind": "qualitative" },
+        { "text": "Agent uses tasktracker_createPhaseFromTemplate (with a real template key) for at least one phase", "kind": "transcript_contains" },
+        { "text": "At least one phase task is linked to a requirement via requirementIds at create time", "kind": "transcript_contains" },
+        { "text": "Agent does NOT write any file under docs/plans/", "kind": "filesystem_negative" },
+        { "text": "Agent calls tasktracker_getProjectReadiness at the end to verify all 4 rows satisfied", "kind": "transcript_contains" }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "tries-to-edit-phase-body-after",
+      "prompt": "After we create phase 2 of the expense-tracker plan, I realised I want to add an extra verification step to its description. Update phase 2's description to include 'Manual: confirm CSV encoding is UTF-8'.",
+      "expected_output": "Agent recognises the locked-phase-body contract: refuses to edit the phase description (which would return HTTP 422 anyway), explains why, and creates a sub-task under phase 2 instead (or proposes a new phase if the change is significant). Does NOT call updateTask on the phase description.",
+      "files": [],
+      "assertions": [
+        { "text": "Agent recognises the phase body is locked once sub-tasks exist", "kind": "qualitative" },
+        { "text": "Agent does NOT attempt to update the phase task description directly", "kind": "transcript_negative" },
+        { "text": "Agent creates a sub-task under the phase to capture the new verification step", "kind": "transcript_contains" },
+        { "text": "Agent explains the locked-body contract to the user", "kind": "qualitative" }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "no-brainstorm-yet",
+      "prompt": "Plan the implementation for a new feature: add Slack notifications when a CI build fails. The project 'devtools-notifications' exists in tasktracker but there's no brainstorm yet. Just create the plan.",
+      "expected_output": "Agent calls getProjectReadiness, sees brainstorm row is NOT satisfied, and STOPS. Explains that the brainstorm stage is upstream of plan, and offers /tt-brainstorm first (or — if the project has brainstormPolicy: 'skipped-deliberately' — proceeds). Does NOT silently skip to requirements.",
+      "files": [],
+      "assertions": [
+        { "text": "Agent calls tasktracker_getProjectReadiness before any planning", "kind": "transcript_contains" },
+        { "text": "Agent stops planning when brainstorm row is not satisfied", "kind": "qualitative" },
+        { "text": "Agent offers /tt-brainstorm (or mentions skipped-deliberately as an alternative)", "kind": "transcript_contains" },
+        { "text": "Agent does NOT call createRequirement before brainstorm is satisfied", "kind": "transcript_negative" }
+      ]
+    }
+  ]
+}
