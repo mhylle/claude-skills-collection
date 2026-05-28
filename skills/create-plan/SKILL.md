@@ -146,23 +146,36 @@ See [ADR-NNNN](../decisions/ADR-NNNN-title.md) for full rationale and alternativ
 
 ### Phase 5: Phase Structure Review
 
-Before writing the detailed plan, present proposed phases. The right number of phases depends on the scope of work, but a common mistake is creating too few — lumping multiple distinct concerns into a single phase makes implementation harder, verification muddier, and rollback riskier.
+Before writing the detailed plan, validate phase sizing and present the structure.
 
-**Phase granularity guidelines:**
+#### Phase Sizing Guide
 
-- **One concern per phase.** If a phase touches unrelated subsystems (e.g., "set up database AND build API AND add auth"), split it. Each phase should have a single, clear objective that can be verified independently.
-- **Think in layers.** A natural decomposition often follows: foundation/setup → data model → core logic → API/interface → integration → polish/edge cases. Each layer is a phase.
-- **Each phase should be demonstrably working** when complete. If you can't write a concrete verification for a phase in isolation, it's probably bundled with something else.
-- **Prefer more smaller phases over fewer large ones.** Smaller phases are easier to implement, review, test, and debug. They also give the user more checkpoints to course-correct.
+Plans fail during execution when phases are too large or vague. Each phase will be executed by an orchestrator that delegates to subagents — so every task in a phase needs to be concrete enough that an independent agent can implement it without guessing.
+
+**Bias toward smaller phases.** 12 small well-defined phases are far better than 5 large ones. A phase that tries to do too much will overwhelm the implementing agent, cause it to lose focus, or force it to make assumptions about parts it hasn't reached yet. When in doubt, split. A complex feature might need 8-15 phases — that reflects the natural decomposition of the work, not a failure of planning.
+
+A natural layered decomposition often emerges: foundation/setup → data model → core logic → API/interface → integration → polish/edge cases. Each layer is typically one phase.
+
+**Right-sized phase characteristics:**
+- Has **one concern** — a single coherent unit of work
+- Touches a **small number of files** (1-5 is typical, occasionally more for cross-cutting changes)
+- Each task names a **specific file** and describes **what to put in it** (functions, classes, methods, endpoints)
+- Can be described in **2 sentences** — if you need more, split it
+- Has a **clear, testable outcome** — you can verify it works without looking at later phases
+
+**Split signals** — if any of these are true, the phase is too big:
+- It contains the word "and" connecting unrelated concerns (e.g., "implement auth and set up the database schema")
+- Two tasks within it could be developed and tested independently
+- It mixes infrastructure/config work with feature implementation
+
+#### Present the Structure
 
 ```
 Proposed Implementation Phases:
 
-Phase 1: [Name] - [Brief description]
-Phase 2: [Name] - [Brief description]
-Phase 3: [Name] - [Brief description]
-Phase 4: [Name] - [Brief description]
-Phase 5: [Name] - [Brief description]
+Phase 1: [Name] - [2-sentence description] ([N] files)
+Phase 2: [Name] - [2-sentence description] ([N] files)
+Phase 3: [Name] - [2-sentence description] ([N] files)
 ...
 
 Does this structure make sense? Any phases to add/remove/reorder?
@@ -199,14 +212,17 @@ Use this structure:
 
 ### Phase 1: [Name]
 
-**Objective**: [What this phase accomplishes]
+**Objective**: [1-2 sentences — what this phase accomplishes and what it produces]
+
+**Files touched**: [List every file this phase creates or modifies]
 
 **Verification Approach**: [How will we verify this phase works? What tests, commands, or checks will confirm success?]
 
 **Tasks** (tests first, then implementation):
-- [ ] Write tests: [test file] covering [scenarios]
-- [ ] Implement: [file] to make tests pass
-- [ ] Verify: [specific check or command]
+- [ ] Create `[test-file-path]`: test [specific scenarios — name them]
+- [ ] Create `[file-path]`: implement `ClassName` with `method1()`, `method2()` — [what each does, 5-10 words per method]
+- [ ] Modify `[file-path]`: add [what — e.g., "import and register AuthModule"]
+- [ ] Verify: [specific command]
 
 **Exit Conditions**:
 
@@ -313,18 +329,51 @@ Every phase in the plan MUST include:
 2. **Tests before implementation** - Task lists must show test creation BEFORE implementation
 3. **Specific test scenarios** - Not just "write tests" but what scenarios to cover
 
-Example:
+### Phase Granularity
+
+Phases are executed by an orchestrator that delegates each task to an independent subagent. If a task is vague, the subagent has to guess — and it often guesses wrong. The key question for each task: *could a developer who's never seen this codebase complete this task based solely on this description?*
+
+**Bad — too vague, too large:**
 ```markdown
-**Verification Approach**: Unit tests verify password hashing and comparison.
-Integration test confirms login endpoint accepts valid credentials and rejects invalid ones.
+### Phase 1: Authentication
+
+**Objective**: Add authentication to the application
+
+**Tasks**:
+- [ ] Write tests for auth
+- [ ] Implement auth service
+- [ ] Implement auth controller
+- [ ] Add auth middleware
+- [ ] Verify: `npm test` passes
+```
+
+Problems: "auth service" doing what exactly? How many methods? What library? "Add auth middleware" — where, protecting which routes? A subagent receiving "Implement auth service" will either ask clarifying questions (stalling the orchestrator) or make assumptions that conflict with later tasks.
+
+**Good — specific, delegatable:**
+```markdown
+### Phase 1: Password Hashing and Token Generation
+
+**Objective**: Create the core auth utilities — password hashing via bcrypt and JWT token generation. No HTTP layer yet.
+
+**Files touched**: `src/auth/auth.service.ts`, `src/auth/auth.service.spec.ts`, `src/auth/auth.module.ts`
+
+**Verification Approach**: Unit tests verify bcrypt hashing round-trips correctly and JWT tokens contain expected claims (sub, iat, exp).
 
 **Tasks** (tests first, then implementation):
-- [ ] Write tests: `auth.service.spec.ts` covering hash generation, hash comparison, invalid inputs
-- [ ] Write tests: `auth.controller.spec.ts` covering login success, login failure, missing credentials
-- [ ] Implement: `auth.service.ts` - password hashing utilities
-- [ ] Implement: `auth.controller.ts` - login endpoint
-- [ ] Verify: `npm test -- auth` passes
+- [ ] Create `src/auth/auth.service.spec.ts`: test `hashPassword()` produces valid bcrypt hash, `comparePassword()` matches correct password and rejects wrong password, `generateToken()` returns JWT with `sub` and `exp` claims
+- [ ] Create `src/auth/auth.service.ts`: implement `AuthService` with `hashPassword(plain): Promise<string>`, `comparePassword(plain, hash): Promise<boolean>`, `generateToken(userId): string` — uses bcrypt (10 rounds) and jsonwebtoken
+- [ ] Create `src/auth/auth.module.ts`: register `AuthService` as provider, export it
+- [ ] Verify: `npm test -- auth.service` passes
+
+### Phase 2: Login Endpoint
+
+**Objective**: Add POST /auth/login endpoint that validates credentials and returns a JWT. Depends on AuthService from Phase 1.
+
+**Files touched**: `src/auth/auth.controller.ts`, `src/auth/auth.controller.spec.ts`, `src/auth/auth.module.ts`
+...
 ```
+
+Notice: Phase 1 has one concern (crypto utilities), Phase 2 has one concern (HTTP endpoint). Each task names exact files, functions, and behaviors. A feature like auth might have 6-8 phases — that's a strength, not a weakness. Small phases are easier to implement, test, and debug.
 
 ### Be Thorough
 - Read entire files, not partial content
@@ -384,6 +433,9 @@ Before finalizing any plan:
 - [ ] File:line references are accurate and specific
 - [ ] Design fits existing codebase patterns
 - [ ] Phases are incrementally implementable
+- [ ] Each phase has one concern and touches a small number of files
+- [ ] Each task names specific files and describes what goes in them (classes, methods, functions)
+- [ ] No task is so vague that a developer unfamiliar with the project would need to ask clarifying questions
 - [ ] Each phase has a Verification Approach section
 - [ ] Tasks list tests BEFORE implementation
 - [ ] Exit conditions cover all three verification categories
