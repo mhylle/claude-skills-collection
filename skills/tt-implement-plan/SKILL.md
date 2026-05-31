@@ -188,6 +188,7 @@ new sub-task if that one is already closed).
 | Bug discovered during this phase | `tasktracker_logDefect` | Severity + repro steps. Counts toward `getDefectStats`. |
 | Pattern learned, applicable to future work | `tasktracker_logLearning` | E.g., "uuid v14 is ESM-only — trips ts-jest". Becomes searchable via `listInsights`. |
 | Friction encountered (slow build, flaky test, confusing error) | `tasktracker_logFriction` | Use category=workflow when it's process pain, category=code when it's code pain. |
+| Defect / missing capability in **TaskTracker itself** (MCP tool, workflow, a tt-* skill) | `tasktracker_reportToTaskTracker` | Files UPSTREAM into the central TaskTracker project (continual-correction loop), NOT a local insight. |
 
 If a principle should be added based on this phase's experience, propose it to the user — don't silently add. Principles are a charter, not a backlog.
 

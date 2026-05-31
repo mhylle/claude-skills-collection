@@ -74,6 +74,36 @@ tasktracker_logFriction({
 | Friction, low impact | Just log. |
 | Friction, high impact (repeated 3+ times) | Log AND surface as a follow-up task suggestion. |
 
+## Reporting upstream to TaskTracker ITSELF (`reportToTaskTracker`)
+
+`logDefect` / `logFriction` / `logLearning` capture lessons about **the project
+you're building**. When the problem or idea is about **TaskTracker itself** — the
+MCP tooling, the workflow, a missing capability — report it UPSTREAM into the
+central TaskTracker system project instead, so every project that uses TaskTracker
+feeds its continual-correction loop:
+
+```
+tasktracker_reportToTaskTracker({
+  type: "defect" | "improvement",
+  title: "...",
+  body: "repro / expected vs actual, or the proposal + why it helps",
+  howItOccurred: "what you were doing when you hit it"
+})
+```
+
+Active-task-exempt (works from a fresh session). Source project, reporter agent,
+and environment are auto-filled; the central project is resolved server-side. The
+report lands quarantined (`status=new`) for a maintainer to triage.
+
+| Scenario | Action |
+|---|---|
+| A bug in the project you're building | `tasktracker_logDefect` (local). |
+| An MCP tool returns the wrong shape / 500s / is missing data | `tasktracker_reportToTaskTracker({type:'defect'})`. |
+| A workflow rule is confusing or a TaskTracker capability is missing | `tasktracker_reportToTaskTracker({type:'improvement'})`. |
+
+Do NOT smuggle a TaskTracker defect into your own backlog as a `Tasktracker:`-
+prefixed task — that was the pre-loop workaround; the upstream channel replaces it.
+
 ## Resolving vs. wontfix
 
 When a defect is fixed: `tasktracker_resolveInsight({insightId, resolution: "<one-line>"})`.

@@ -307,6 +307,7 @@ Log structured insights for anything non-obvious this phase surfaced. This is th
 | Bug discovered (own code, deps, spec) | `tasktracker_logDefect` | Severity + repro steps. Counts toward `getDefectStats`. |
 | Pattern / gotcha / convention worth knowing | `tasktracker_logLearning` | E.g., "Boolean query params need the BooleanQueryParam decorator." |
 | Slow build, flaky test, confusing error, repeated friction | `tasktracker_logFriction` | Advisory; never blocks. |
+| Defect / missing capability in **TaskTracker itself** (MCP tool, workflow, this skill) | `tasktracker_reportToTaskTracker` | Files UPSTREAM into the central TaskTracker project — the continual-correction loop. NOT a local insight. |
 
 If the phase surfaced a candidate **principle** (durable rule applicable beyond this project), don't auto-add it — surface it in the Step 8 report and let the user decide whether to add it via `tasktracker_logLearning({category: "principle"})`.
 

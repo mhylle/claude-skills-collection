@@ -21,6 +21,8 @@ The skills collection offers three **team-shaped** workflow modes for the ideati
 
 **The first three vary on the same axis** (scope × stakes × parallelism, for *implementing a plan*). **Dynamic workflow is a different axis** — it's about *work shape*: a job that is embarrassingly parallel, mostly read/analyze, with aggregable per-unit output, and benefits from deterministic resumable orchestration. Decide work shape FIRST (Question 0), then — if it's an implement-the-plan job — pick solo/small/full team.
 
+> **Hit a problem with TaskTracker itself while working?** If an MCP tool misbehaves, a workflow rule is confusing, or a capability is missing, report it upstream with `tasktracker_reportToTaskTracker({type:'defect'|'improvement', title, body})` — it files into the central TaskTracker system project (the continual-correction loop), not your own backlog. This is orthogonal to mode selection; do it whenever the friction is about the tooling, not your project.
+
 ## Initial Response
 
 When invoked, respond:
