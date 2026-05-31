@@ -28,23 +28,35 @@ If the phase lives in a markdown plan file, use `/implement-phase`. If the phase
 
 ---
 
-## Orchestrator pattern (non-negotiable)
+## Execution mode — orchestrated vs in-context (decide at Step 0)
 
-**This session is an orchestrator. Never implement code directly.**
+This skill has **two execution modes**. Pick the one your environment supports — the work and the tasktracker discipline are identical either way; only *who holds the context* differs.
 
-| DO (orchestrator) | DON'T (direct implementation) |
+1. **Orchestrated (preferred when available).** A subagent-dispatch tool exists (e.g. `Task` / `Agent`). Offload code-writing, file-creation, test-running, and fixing to subagents so the parent context stays lean. This is the default, and the rest of this doc is written in its voice.
+
+2. **In-context (graceful degradation).** No subagent-dispatch tool is available. **Do the work yourself, directly, with `Edit` / `Write` / `Bash` + the tasktracker MCP.** Writing code in this session is then EXPECTED, not a violation. You still honour every gate (active-task, locked body, per-sub-task status, verification, insight capture) — you just run them inline instead of inside subagents.
+
+**How to decide:** if you can dispatch a subagent, orchestrate. If you cannot (no `Task`/`Agent` tool in this environment), switch to in-context mode and proceed. **Never stall, never no-op, and never "spawn" a subagent that silently degrades into a read-only researcher returning prose instead of doing the work** — that failure (the original Phase 113 friction cluster) is worse than just doing it yourself. Getting the phase DONE and tracked is the contract; the mode is only *how*.
+
+> Throughout this document, read every "spawn a subagent" as **"spawn a subagent (orchestrated) — or do it yourself in-context (degraded)."** The "never write code in this session" rules apply to orchestrated mode ONLY.
+
+## Orchestrator pattern (orchestrated mode)
+
+**In orchestrated mode this session is an orchestrator and does not implement code directly.** In in-context mode the right-hand column is exactly what you DO instead.
+
+| DO (orchestrated mode) | In-context mode does this instead |
 |---|---|
-| Spawn subagents to write code | Write code yourself |
-| Spawn subagents to create files | Use Write/Edit tools directly |
-| Spawn subagents to run tests | Run tests yourself |
+| Spawn subagents to write code | Write code yourself (`Edit`/`Write`) |
+| Spawn subagents to create files | Create files yourself |
+| Spawn subagents to run tests | Run tests yourself (`Bash`) |
 | Spawn subagents to fix issues | Fix code yourself |
-| Read files to understand context | Read files to copy/paste code |
-| Drive sub-task status via tasktracker MCP | Implement while tracking |
-| Coordinate and delegate | Do the work yourself |
+| Read files to understand context | Read files to understand context (same) |
+| Drive sub-task status via tasktracker MCP | Drive sub-task status via tasktracker MCP (same) |
+| Coordinate and delegate | Do the work, still tracking every gate |
 
-**Violations:** using Write/Edit/NotebookEdit directly, creating files without spawning a subagent, fixing code without spawning a subagent, running implementation commands directly.
+**In orchestrated mode, these are violations:** using Write/Edit/NotebookEdit directly, creating files without spawning a subagent, fixing code without spawning a subagent, running implementation commands directly. **In in-context mode they are the expected path** — what stays non-negotiable in BOTH modes is the tasktracker discipline (active-task per sub-task, locked body, status updates, verification gates, insight capture).
 
-**Subagent communication protocol** → `references/subagent-protocol.md`. Every subagent prompt must include a response-format block demanding terse STATUS/FILES/ERRORS output and disk-based logs for large output. Verbose subagent responses are the single biggest context waster this skill faces.
+**Subagent communication protocol** → `references/subagent-protocol.md`. Every subagent prompt must include a response-format block demanding terse STATUS/FILES/ERRORS output and disk-based logs for large output. Verbose subagent responses are the single biggest context waster this skill faces. (In-context mode skips this — there's no subagent to constrain.)
 
 ---
 
@@ -69,7 +81,7 @@ return COMPLETE                      # only stop here
 1. **BLOCKED** — something you cannot fix without user intervention.
 2. **After Step 8** — completion report presented; await user (or `/tt-implement-plan`).
 
-Everything else is a fix loop, not a pause. Verification failed → spawn fix subagent → re-run → PASS → continue. Code review NEEDS_CHANGES → spawn fix subagent → re-run → PASS → continue.
+Everything else is a fix loop, not a pause. Verification failed → spawn fix subagent (or fix in-context) → re-run → PASS → continue. Code review NEEDS_CHANGES → spawn fix subagent (or fix in-context) → re-run → PASS → continue.
 
 After each step, output a progress tracker. NEXT ACTION must describe executing the next step, not "waiting for user confirmation" (before Step 8).
 
@@ -168,7 +180,8 @@ Sub-tasks are the unit of work. Walk them in order:
 For each sub-task in order:
   1. tasktracker_setActiveTask(<sub-task-id>)     # focus shifts; heartbeats fire
   2. tasktracker_updateTaskStatus(<sub-task-id>, "in_progress")
-  3. Spawn implementation subagent(s) for this sub-task
+  3. Spawn implementation subagent(s) for this sub-task — OR, in in-context
+     mode, implement the sub-task yourself with Edit/Write/Bash
      (test sub-tasks BEFORE implementation sub-tasks — verification-first)
   4. On subagent COMPLETE → tasktracker_updateTaskStatus(<sub-task-id>, "completed")
      On subagent ERROR  → spawn fix subagent, retry (up to retry_limit)
@@ -436,7 +449,8 @@ Non-negotiable — phase cannot complete until all are satisfied.
 
 ## Anti-patterns to avoid
 
-- ❌ Writing code in this session. Spawn subagents.
+- ❌ Writing code in this session **when a subagent tool is available** (orchestrated mode — spawn subagents). With no subagent tool, in-context coding is the correct path, not an anti-pattern.
+- ❌ Stalling or no-opping because "I'm only an orchestrator" when no subagent tool exists. Degrade to in-context mode and do the work.
 - ❌ Editing the phase task description. HTTP 422 — and even if it didn't reject, it violates the locked-body contract.
 - ❌ Skipping `setActiveTask` on a sub-task before working it (no heartbeats, no time tracking).
 - ❌ Marking a sub-task `completed` while the actual work is incomplete.
@@ -461,8 +475,7 @@ Non-negotiable — phase cannot complete until all are satisfied.
 - [ ] Step 7: insights logged via tasktracker tools, not chat.
 - [ ] Step 8: phase marked `completed` (or `completeWithCaveat` if appropriate); active task cleared.
 - [ ] **Completion report emitted to main chat at Step 8** (≤ 20 lines, counts/statuses/caveats — not per-file diffs).
-- [ ] No code written in this session.
-- [ ] No `Write`/`Edit`/`NotebookEdit` calls in this session.
+- [ ] **Orchestrated mode only:** no code written in this session; no `Write`/`Edit`/`NotebookEdit` calls (subagents did the work). In in-context mode this item is N/A — you did the work directly, and the gate that matters is that every sub-task was still tracked + verified.
 
 ---
 
@@ -513,7 +526,7 @@ For TDD mode and verification-loop details, read the originals in `~/.claude/ski
 
 ## Key principles
 
-1. **Orchestrate, never implement.** Subagents do the code work.
+1. **Orchestrate when you can; do it in-context when you can't.** Subagents do the code work in orchestrated mode; with no subagent tool, you do it yourself — but the work always gets done and tracked. Never stall on the absence of a subagent tool.
 2. **Active task on every artifact-producing call.** Phase and each sub-task in turn.
 3. **Locked phase body is sacred.** Sub-tasks are the right place for mid-implementation notes.
 4. **Insights belong in tasktracker.** `logDefect` / `logLearning` / `logFriction`, not chat.

@@ -30,13 +30,14 @@ If you just want to execute phases in order with no measured run, use `/tt-imple
 
 ## CRITICAL: Orchestrator pattern (kept from /tt-implement-plan)
 
-> **THIS SESSION IS AN ORCHESTRATOR. NEVER IMPLEMENT CODE DIRECTLY.**
+> **THIS SESSION IS THE RUN ORCHESTRATOR + the SINGLE writer of run state. IT NEVER IMPLEMENTS CODE DIRECTLY — it delegates each slice to `/tt-implement-phase`.** That holds in every environment. One level down, `/tt-implement-phase` writes code via subagents when a subagent-dispatch tool exists, or **in-context itself when none does** (its graceful-degradation mode). Run-state writes (workflow_* MCP calls) are always yours and always main-context, regardless of mode.
 
 ```
-tt-workflow-run (this session — ORCHESTRATOR + the SINGLE writer of run state)
-    │   ⛔ NEVER writes code     ⛔ NEVER uses Write/Edit
-    └── /tt-implement-phase (per-slice orchestrator)
-            └── Subagents (write code, create files, run tests, fix issues)
+tt-workflow-run (this session — RUN ORCHESTRATOR + the SINGLE writer of run state)
+    │   ⛔ NEVER writes code     ⛔ NEVER uses Write/Edit     (in EVERY mode)
+    └── /tt-implement-phase (per-slice executor)
+            ├── orchestrated mode → Subagents write code / create files / run tests
+            └── in-context mode  → tt-implement-phase does it directly (no subagent tool)
 ```
 
 | DO (this session) | DO NOT |
@@ -233,7 +234,7 @@ On any 412 the run sits in `enforcing` (start) or `blocked_on_gate` (advance). `
 - [ ] `pauseActiveTask` before every human-gate message.
 - [ ] No locked-body edits; no invented backend API; no synthesized durations.
 - [ ] Step 3: `completeRun`; projection series populated; `.open` back at baseline; `clearActiveTask`.
-- [ ] No code written in this session (Write/Edit unused); all slice code came from `/tt-implement-phase` subagents.
+- [ ] No code written in this session (Write/Edit unused); all slice code came from `/tt-implement-phase` (via its subagents, or its in-context mode when no subagent tool exists).
 
 ## Resources
 

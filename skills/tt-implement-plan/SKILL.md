@@ -25,21 +25,18 @@ If the plan came from `/create-plan` (file-based), use `/implement-plan`. If the
 
 ## CRITICAL: Orchestrator pattern (kept from /implement-plan)
 
-> **THIS SESSION IS AN ORCHESTRATOR. NEVER IMPLEMENT CODE DIRECTLY.**
+> **THIS SESSION IS A PLAN-LEVEL ORCHESTRATOR. IT NEVER IMPLEMENTS CODE DIRECTLY — it walks phases and delegates each to `/tt-implement-phase`.** That holds in every environment. What varies is one level down: `/tt-implement-phase` writes code via subagents when a subagent-dispatch tool exists, or **in-context itself when none does** (its graceful-degradation mode). Either way, *this* session's job is unchanged — drive the plan, never the code.
 
 ```
-tt-implement-plan (this session — ORCHESTRATOR)
+tt-implement-plan (this session — PLAN ORCHESTRATOR)
     │
-    │   ⛔ NEVER writes code
-    │   ⛔ NEVER uses Write/Edit tools
-    │   ⛔ NEVER creates files (except writing tasktracker calls)
+    │   ⛔ NEVER writes code   ⛔ NEVER uses Write/Edit   (in EVERY mode)
+    │   (creates files only via tasktracker MCP calls)
     │
-    └── tt-implement-phase (orchestrator for one phase)
+    └── tt-implement-phase (per-phase executor)
             │
-            │   ⛔ NEVER writes code
-            │
-            └── Subagents (do the actual work)
-                    ✅ Write code, create files, run tests, fix issues
+            ├── orchestrated mode → Subagents write code / create files / run tests
+            └── in-context mode  → tt-implement-phase does it directly (no subagent tool)
 ```
 
 | DO | DO NOT |
@@ -54,8 +51,10 @@ tt-implement-plan (this session — ORCHESTRATOR)
 If you find yourself about to use Write/Edit/NotebookEdit:
 
 ```
-⛔ STOP — you are violating the orchestrator pattern.
-✅ Delegate to /tt-implement-phase which will spawn subagents.
+⛔ STOP — you are violating the plan-orchestrator pattern.
+✅ Delegate to /tt-implement-phase. (It will spawn subagents, or — with no
+   subagent tool — do the work in-context. Plan-level code-writing is the bug,
+   regardless of which mode the phase runs in.)
 ```
 
 ## Workflow

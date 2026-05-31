@@ -148,7 +148,11 @@ If you find yourself writing "we decided X" in a document body and not recording
 
 ### Step 5: Targeted research (only when valuable)
 
-Spawn research subagents only when the idea would meaningfully benefit. Don't research for the sake of researching.
+Research only when the idea would meaningfully benefit. Don't research for the sake of researching.
+
+> **The brainstorm itself is NEVER delegated.** This skill's actual work — recording documents and decisions via the tasktracker MCP (`addBrainstormDocument`, `recordBrainstormDecision`, …) — always runs in THIS context. Research subagents are an optional *input-gathering* step: they go fetch, they RETURN findings, and **you** fold those findings into the brainstorm by persisting them. A research subagent must never be allowed to stand in for the brainstorm and hand back a prose summary instead of persisted rows (the original Phase 113 friction).
+
+**If a subagent-dispatch tool (`Agent`/`Task`) is available**, fan research out:
 
 ```
 # Web research (most ideas benefit; very internal ones may not)
@@ -162,7 +166,9 @@ Agent(subagent_type="codebase-analyzer", prompt="...")
 Agent(subagent_type="codebase-pattern-finder", prompt="...")
 ```
 
-When findings arrive, add them as `adhoc` documents titled `Research — <topic>` referencing the docs they inform.
+**If no subagent-dispatch tool exists (graceful degradation)**, do the research inline yourself — `WebSearch`/`WebFetch` for external, `Grep`/`Glob`/`Read` for the codebase — then persist the findings exactly the same way. Do not skip the research and do not stall; just gather it in-context.
+
+When findings arrive (from a subagent or your own inline research), add them as `adhoc` documents titled `Research — <topic>` referencing the docs they inform — that persistence step is the point.
 
 ### Step 6: Focused analysis (1–2 frameworks max)
 
