@@ -139,6 +139,8 @@ Before any other work:
      • Optional directional-work block (operation, source, target)
 2. tasktracker_getTask(<phase-task-id>) for full sub-task list.
 3. tasktracker_updateTaskStatus(<phase-task-id>, "in_progress").
+4. tasktracker_scanArchitectureDrift(<projectId>) — capture the BASELINE now.
+   Step 5 re-scans and compares against this to enforce architecture adherence.
 ```
 
 Surface principles that materially constrain this phase. If the directional block is present, treat it as authoritative for source/target/operation.
@@ -196,6 +198,8 @@ For each sub-task in order:
 
 **Subagent collection:** capture `FILES_CREATED` / `FILES_MODIFIED` from every subagent into a running list — used in Step 6 and Step 8.
 
+**Register architecture as you build (principle #8):** when a sub-task introduces or changes a structural piece (service / controller / module / entity / endpoint / significant component), register or update it via `tasktracker_createArchitectureComponent` (+ relationships) in THIS phase — don't defer it. Step 5 gates on zero net-new drift, so registering as you go is cheaper than reconciling at the gate.
+
 **Output:** `STEP_1_STATUS: PASS`, sub-tasks completed count, files-changed list. **Gate:** all required sub-tasks completed. **Next:** Step 2.
 
 ---
@@ -231,9 +235,17 @@ The 6 checks: Build, Type, Lint, Test, Security, Diff.
 | Database migration | query post-state, verify shape |
 | Background job | trigger, poll for completion, verify side effect |
 
-Use the acceptance criteria from the phase's linked requirements as your test scenarios. Each acceptance criterion is one (or more) integration test.
+Use the acceptance criteria from the phase's linked requirements as your test scenarios. Each acceptance criterion is one (or more) integration test — **map EVERY linked AC to at least one test** (a requirement with 6 ACs and 3 tests is a coverage gap, not a pass).
 
-**Output:** `INTEGRATION_TEST_STATUS`, scenarios pass/fail with evidence paths. **Gate:** all PASS. **Next:** Step 4.
+**Record the proof in tasktracker — this is the non-negotiable AC-proof half of the discipline.** Authoring ACs is not enough; each must be *proven* by a passing test AND the proof recorded. For every linked AC whose test passes, mark it satisfied and name the proving task:
+
+```
+tasktracker_updateAcceptanceCriterion({ criterionId: <ac>, satisfied: true, satisfiedByTaskId: <phase or test sub-task id> })
+```
+
+Naming the proving task is what forces the AC↔test mapping (you cannot mark an AC satisfied without pointing at what proved it). An AC with no test, or a failing test, stays unsatisfied and blocks the phase.
+
+**Output:** `INTEGRATION_TEST_STATUS`, scenarios pass/fail with evidence paths, ACs-satisfied count (must equal linked-AC count). **Gate:** every linked AC has a passing test AND is marked satisfied; all scenarios PASS. **Next:** Step 4.
 
 ---
 
@@ -255,13 +267,31 @@ A clean **PASS** is required. `PASS_WITH_NOTES` and `NEEDS_CHANGES` both require
 
 **Why recommendations are blocking, not advisory:** unfixed recommendations indicate pattern violations, missing tests, or technical debt. They accumulate across phases. The Clean Baseline Principle requires each phase to end clean.
 
-**Output:** `CODE_REVIEW_STATUS`. **Gate:** clean PASS. **Next:** Step 5.
+**Output:** `CODE_REVIEW_STATUS`. **Gate:** clean PASS. **Next:** Step 4.5.
 
 ---
 
-## Step 5 — ADR Compliance Check
+## Step 4.5 — Security review (conditional, but mandatory when it applies)
 
-Two parts:
+`code-review` + `verification-loop` Check 5 only grep for hardcoded secrets — that is NOT a security review. **If this phase's changes touch any security-sensitive surface — authentication, authorization/access-control, user input handling, API endpoints, DB queries (injection), secrets/credentials, file uploads, payments, or anything tagged security on a linked requirement — you MUST run `/security-review`:**
+
+```
+Skill(skill="security-review"): Review the changes from Phase <N> (files: [list]; requirements: [linked]).
+```
+
+Detect applicability from the changed files + the linked requirements' tags/ACs. A clean PASS (or all findings fixed + re-reviewed) is required, exactly like Step 4. If the phase touches none of those surfaces, record `SECURITY_REVIEW_STATUS: N/A` and continue — do not skip it silently when it *does* apply.
+
+**Output:** `SECURITY_REVIEW_STATUS` (PASS / N/A). **Gate:** PASS or N/A. **Next:** Step 5.
+
+---
+
+## Step 5 — Architecture adherence & ADR compliance
+
+**Architecture adherence (principle #8 — register the delta in the SAME phase that ships the code).** The architecture lives in tasktracker, so the code must match it. Re-run `tasktracker_scanArchitectureDrift` and compare against the Step-0 baseline:
+- Any NEW or changed structural piece this phase introduced (service, controller, module, entity, endpoint, significant component) must be registered/updated via `tasktracker_createArchitectureComponent` (+ relationships) — do it now if Step 1 didn't.
+- Net-new drift (code structure not reflected in the registered architecture) is a **blocking fix-loop**: register the missing/changed components until a re-scan shows no net-new drift. Never complete a phase with unregistered drift.
+
+**Then the ADR check (two parts):**
 
 **5a — Compliance with existing ADRs.** Read `docs/decisions/INDEX.md`, identify ADRs that apply to this phase, verify the implementation honours them. Tiered reading: INDEX.md → Quick Reference (first 10 lines per ADR) → full ADR only if needed.
 
@@ -278,7 +308,7 @@ tasktracker_updateTaskStatus(<sub-task-id>, "completed")
 
 Why the sub-task too: the phase body is locked, but ADR references discovered mid-implementation need a home in the task tree. Sub-task is the right home.
 
-**Output:** `ADR_COMPLIANCE_STATUS`, applicable ADR list, any new ADR numbers. **Gate:** PASS. **Next:** Step 6.
+**Output:** `ARCHITECTURE_STATUS` (drift clean / deltas registered) + `ADR_COMPLIANCE_STATUS`, applicable ADR list, any new ADR numbers. **Gate:** no net-new architecture drift AND ADR-compliant. **Next:** Step 6.
 
 ---
 
@@ -439,8 +469,11 @@ Non-negotiable — phase cannot complete until all are satisfied.
 |---|---|
 | **verification-loop PASS** | All 6 checks pass (Step 2) |
 | **Integration tests PASS** | All scenarios pass (Step 3) |
+| **Every linked AC proven + recorded** | Each linked acceptance criterion has a passing test AND is marked satisfied via `updateAcceptanceCriterion` (Step 3); zero unsatisfied ACs on linked requirements |
 | **Code review clean PASS** | Step 4 returns PASS, not PASS_WITH_NOTES |
 | **All recommendations fixed** | Recommendations are blocking, not optional |
+| **Security review PASS or N/A** | `/security-review` run + clean when the phase touches a sensitive surface; explicitly N/A otherwise (Step 4.5) |
+| **Architecture adherence** | No net-new `scanArchitectureDrift` vs the Step-0 baseline; all new/changed structural pieces registered as ArchitectureComponents (Step 5, principle #8) |
 | **ADR compliance PASS** | Applicable ADRs honoured; new decisions documented (Step 5) |
 | **Task tree consistent** | Zero open sub-tasks (Step 6) |
 | **Phase task description never edited** | Locked-body contract honoured |
