@@ -245,6 +245,18 @@ When all implementation phases are `completed`:
 ```
 tasktracker_getProjectReadiness({projectId})
 # Verify all four lifecycle rows still satisfied; verify plan row.
+
+# ── Definition-of-Done gate (Phase 115) ──────────────────────────
+# THE authoritative "is the build actually done" check. Server-side,
+# all-pillars: every phase completed, zero unsatisfied ACs on linked
+# approved requirements, zero open defects, zero architecture drift.
+tasktracker_getProjectDoneness({projectId})
+# If done:false — DO NOT declare the build complete. Surface each
+# blocker, resolve it (or open a follow-up phase), and re-run. A
+# "green" completion with open defects / unsatisfied ACs / drift is
+# exactly what this gate exists to stop. readiness=plan formed;
+# doneness=work correct — both must pass before the closing summary.
+
 tasktracker_getDefectStats({projectId})
 tasktracker_getImprovementMetrics({projectId})
 
@@ -345,6 +357,7 @@ This is not bureaucracy — it's the audit trail. The phase body shows "what we 
 
 - [ ] All implementation phases `completed`.
 - [ ] `getProjectReadiness` shows all four lifecycle rows still satisfied.
+- [ ] **`getProjectDoneness` returns `done:true`** — the build was NOT declared complete while any blocker stood (open defects / unsatisfied ACs / incomplete phases / architecture drift).
 - [ ] `getDefectStats` reviewed; open defects either resolved or have a follow-up task.
 - [ ] `clearActiveTask` called.
 - [ ] Closing summary delivered (in chat, not as a file).

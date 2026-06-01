@@ -106,7 +106,7 @@ A gate failure is a fix loop, not a pause. Then: `designNotes` → a NEW sub-tas
 
 ## Terminal DoD gate (parent, when the backlog drains)
 
-Before declaring the build done, assert the whole project is provably complete — not just "no more ready tasks": all implementation phases `completed`, **zero unsatisfied ACs** on linked requirements, `getDefectStats` shows zero open defects, `scanArchitectureDrift` shows no net-new drift vs the run's start, and `getProjectReadiness` passes. (Until the server-side `getProjectDoneness` gate ships — tracked — this is parent-enforced by reading those tools and refusing "done" on any failure.)
+Before declaring the build done, assert the whole project is provably complete — not just "no more ready tasks". The server-side **`getProjectDoneness({projectId})`** gate (Phase 115) is now the authoritative all-pillars check: it returns `{ done, blockers[], pillars[] }` over all implementation phases `completed`, **zero unsatisfied ACs** on linked+approved requirements, `getDefectStats` zero open defects, and zero architecture drift (it walks the repo for the drift pillar itself). The parent **must** call it and **refuse to declare the build done while `done:false`** — surface each blocker, fix it (or open a follow-up phase) and re-run. Also confirm `getProjectReadiness` still passes (plan formed). A `done:false` verdict is a fix loop, never a "ship it anyway".
 
 ## Wave loop + done
 
