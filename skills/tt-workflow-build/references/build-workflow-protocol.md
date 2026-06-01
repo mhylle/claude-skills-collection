@@ -68,13 +68,13 @@ No wall-clock/RNG in the script (contract R5). Bound the wave to ~min(16, cores-
 
 Build agents run in worktrees off the shared stdio MCP, so they can't use the parent's single active-task pointer to clock their build. They measure their OWN time via the per-agent work-lease registry over the REST API:
 
-1. BEFORE the fan-out, the PARENT acquires one lease per slice, each under a DISTINCT agent identity, and passes the lease TOKEN into that slice's agent via `args`:
-   - mint a JWT: `POST <apiBase>/auth/mcp-token`, headers `x-mcp-api-key: <key from ~/.config/tasktracker-mcp/.env>` + `X-TaskTracker-Agent-Id: mcp:wfbuild:<sliceTaskId>` (unique per slice → distinct agentId → its own concurrent lease, AC2/AC3).
-   - acquire: `POST <apiBase>/leases/acquire {taskId:<slice>}`, `Bearer <jwt>` → `{ id, token }`.
+1. BEFORE the fan-out, the PARENT mints one JWT per slice — each under a DISTINCT agent identity — in a SINGLE batched call, acquires one lease per slice, and passes the lease TOKEN into that slice's agent via `args`:
+   - batch-mint the whole wave in ONE throttled call (Phase 116): `POST <apiBase>/auth/mcp-agent-tokens`, header `x-mcp-api-key: <key from ~/.config/tasktracker-mcp/.env>`, body `{ agentIds: ["mcp:wfbuild:<sliceTaskId>", …] }` → `{ tokens: [{ agentId, access_token }, …] }`. Each `access_token` already carries its slice's distinct agentId → its own concurrent lease.
+   - acquire per slice: `POST <apiBase>/leases/acquire {taskId:<slice>}`, `Bearer <that slice's access_token>` → `{ id, token }`.
 2. Each agent heartbeats with its token at start + before return → the build span lands on the slice's OWN `task_time_log` row (AC6).
 3. After integrating the slice, the parent releases the lease (`DELETE <apiBase>/leases/<id>`), closing the row; `getTimeSummary` for the slice then reflects REAL build effort, not just the parent's integration time.
 
-**Throttle caveat (real, being fixed correctly):** `/auth/mcp-token` is rate-limited to ~5 mints/60s, so a wave wider than that can't all be pre-leased at once *today*. That is closed by the tracked backend change (a batch / agent-scoped mint that lifts the cap for agent identities) — NOT by abandoning measurement. Until it lands: pre-lease up to the throttle budget; only for a slice that genuinely could not be leased, log a principle-#11 `logFriction("no data: build time for slice <id> unmeasured — mint throttle")`. That honesty fallback is for the genuinely-unmeasurable remainder ONLY, never a substitute for measuring the slices you can.
+The batch mint (Phase 116) lifts the old ~5/60s ceiling for agent identities: a full `min(16, cores-2)` wave pre-leases in ONE call, no 429. (The bare single `POST /auth/mcp-token` stays 5/60s — brute-force defense on the api-key is unchanged.) So there is no longer a throttle-driven "unmeasured slice" remainder — measure every slice; a principle-#11 `logFriction("no data…")` is now reserved for a genuine lease/heartbeat failure, not a mint-cap shortfall.
 
 ## Selecting a wave (parent, before the run)
 
