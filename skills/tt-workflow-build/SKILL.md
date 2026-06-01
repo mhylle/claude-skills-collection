@@ -74,7 +74,7 @@ The PARENT (this main-loop session) integrates, gates, and writes to
    were only queued.
 ```
 
-If the ready frontier is a single leaf or all slices collide on owned files, this skill has no parallelism to offer — fall back to `/tt-implement-plan`.
+**This skill is Workflow-committed — it has NO non-workflow fallback.** Once you invoke `/tt-workflow-build`, the built-in `Workflow` tool is the *only* execution path; it never silently degrades to a sequential or in-context build. The parallel-vs-sequential choice belongs at **selection time** (that's what `/workflow-guide` is for): if the ready frontier is a single leaf, or all slices collide on owned files, or the work is dependent/adaptive, you should have picked `/tt-implement-plan` or `/tt-workflow-run` instead — so **stop and switch skills**, don't fall back inside this one. And if you ever think the `Workflow` tool "isn't available," you're mistaken: it's a main-loop built-in (it is NOT in `ToolSearch` — see the contract's "Tool availability" section); a genuine inability to run it is a **blocker to surface**, never a silent serialize.
 
 ### Step 1 — Read invariant context once + classify files (parent, inline)
 
@@ -87,7 +87,7 @@ Pass the per-slice `ownedScope` + ACs + invariant context into the agents as **d
 
 ### Step 2 — Fan out the build (the Workflow run, worktree-isolated)
 
-Invoke the `Workflow` tool. One agent per slice, `isolation: 'worktree'`, returning the R6 envelope. **The returned git patch — not the worktree — is the source of truth; worktrees are abandoned after the run.** Skeleton:
+Invoke the **built-in** `Workflow` tool directly — it's a top-level main-loop tool (like `Bash`/`Edit`/`Agent`), **not** an MCP tool, so it never appears in `ToolSearch`; never look for it there and never read its ToolSearch-absence as "unavailable" (see the contract's "Tool availability" section). One agent per slice, `isolation: 'worktree'`, returning the R6 envelope. **The returned git patch — not the worktree — is the source of truth; worktrees are abandoned after the run.** Skeleton:
 
 ```js
 export const meta = {

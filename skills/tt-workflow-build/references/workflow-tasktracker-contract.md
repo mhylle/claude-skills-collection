@@ -6,6 +6,18 @@ The non-negotiable rules for driving **tasktracker** from a Claude Code **dynami
 
 ---
 
+## Tool availability — `Workflow` and `Agent` are BUILT-INS (read this first)
+
+`Workflow` and `Agent` are **top-level built-in tools**, declared directly in the main-loop system prompt alongside `Bash`/`Read`/`Edit`. They are **NOT MCP tools**. A `tt-workflow-*` skill must internalize:
+
+- **They NEVER appear in `ToolSearch`.** `ToolSearch` indexes only *deferred MCP tools*. Searching it for `Workflow`/`Agent` (e.g. `select:Workflow,Agent`) returns nothing — and that silence says **nothing** about availability. Concluding "the Workflow/Agent tool isn't available in this environment" from a ToolSearch miss is a **false-negative bug**, exactly like grepping the MCP catalog for `Edit` and declaring `Edit` gone. **Never detect these tools via ToolSearch; never treat ToolSearch silence as absence.**
+- **In `context: fork` — where every `tt-workflow-*` skill runs — they are ALWAYS present.** Don't probe, don't gate on availability, don't build an "absent-tool" fallback: just invoke `Workflow` (or `Agent`) directly.
+- **`tasktracker_workflow_*` is a DIFFERENT namespace.** The MCP tools `tasktracker_workflow_startRun` / `_recordIteration` / `_completeRun` / … are run-TRACKING tools that merely share the word "workflow" with the built-in orchestration `Workflow` tool. Their presence/absence is **not** evidence about the `Workflow` tool — and `tasktracker_workflow_*` *can* legitimately be missing if the MCP needs a restart, whereas built-in `Workflow`/`Agent` never can.
+
+**How a dynamic workflow is triggered** (Anthropic "dynamic workflows", research preview): (1) **DIRECT** — a `tt-workflow-*` skill invokes the built-in `Workflow` tool directly from the main loop, or the user asks in plain language ("create a workflow"); (2) **ultracode** (effort menu → xhigh) lets Claude auto-decide. The first dynamic-workflow run in a session shows a **confirmation gate**, and dynamic workflows **cost meaningfully more tokens** than a serial run. There is no ToolSearch/MCP "enable" step — the tool is built in; you just call it.
+
+---
+
 ## Why this contract exists (verified facts, not style)
 
 These were measured against the live system (`/home/mhylle/projects/mhylle.com/tasktracker`) and a live probe. They are the reason the rules below are hard, not preferences:

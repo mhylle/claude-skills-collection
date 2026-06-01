@@ -49,7 +49,7 @@ tt-workflow-run (this session — RUN ORCHESTRATOR + the SINGLE writer of run st
 | Run the two start gates + three per-slice gates | Advance past a blocked gate without resolving it |
 | Log the run's own defects/learnings/frictions | Bury insights in chat narrative |
 
-This skill is **main-loop-only**: it calls sibling skills via the `Skill` tool (which stays in the main loop), never via an `Agent` dispatch. The `workflow_*` MCP tools are module-cached at MCP boot — if a tool isn't visible, the MCP needs a restart (mcp-server/CLAUDE.md), not a workaround.
+This skill is **main-loop-only**: it calls sibling skills via the `Skill` tool (which stays in the main loop), never via an `Agent` dispatch. The `tasktracker_workflow_*` MCP tools are module-cached at MCP boot — if one isn't visible, the MCP needs a restart (mcp-server/CLAUDE.md), not a workaround. **This restart caveat applies ONLY to those MCP tools.** The built-in `Workflow` and `Agent` tools are top-level main-loop tools — never MCP, never in `ToolSearch`, never affected by an MCP restart; don't conflate the two.
 
 ## The MCP surface this skill uses (all already shipped, P100/P101)
 
@@ -240,7 +240,7 @@ On any 412 the run sits in `enforcing` (start) or `blocked_on_gate` (advance). `
 
 This skill reuses the tasktracker references already shipped with the sibling skills:
 - `/tt-implement-phase` `references/insight-cookbook.md` — when/how to `logDefect` / `logLearning` / `logFriction`.
-- `/tt-workflow-audit` `references/workflow-tasktracker-contract.md` — the shared `tt-workflow-*` contract (parent owns writes, no Date/RNG in any workflow script, MCP reachability, prod safety). This skill is sequential (single active task) — it does NOT use the parallel `Workflow` tool — but the active-task / locked-body / prod-write rules in that contract still apply.
+- `/tt-workflow-audit` `references/workflow-tasktracker-contract.md` — the shared `tt-workflow-*` contract (parent owns writes, no Date/RNG in any workflow script, MCP reachability, prod safety). This skill is sequential (single active task) — it does NOT use the parallel `Workflow` tool — but the active-task / locked-body / prod-write rules in that contract still apply. **Namespace note:** the `tasktracker_workflow_*` MCP tools this skill uses (`workflow_startRun`, `workflow_recordIteration`, …) are run-TRACKING tools — NOT the built-in `Workflow` orchestration tool; they only share the word "workflow". The siblings `/tt-workflow-audit` and `/tt-workflow-build` are the ones that invoke the built-in `Workflow` tool.
 
 ### Related skills
 - `/tt-implement-phase` — per-slice executor. This skill delegates every slice to it.

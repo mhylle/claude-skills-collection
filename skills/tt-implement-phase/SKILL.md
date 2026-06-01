@@ -30,13 +30,13 @@ If the phase lives in a markdown plan file, use `/implement-phase`. If the phase
 
 ## Execution mode — orchestrated vs in-context (decide at Step 0)
 
-This skill has **two execution modes**. Pick the one your environment supports — the work and the tasktracker discipline are identical either way; only *who holds the context* differs.
+This skill has **two execution modes** — but **orchestrated is the default and almost always the right one.**
 
-1. **Orchestrated (preferred when available).** A subagent-dispatch tool exists (e.g. `Task` / `Agent`). Offload code-writing, file-creation, test-running, and fixing to subagents so the parent context stays lean. This is the default, and the rest of this doc is written in its voice.
+1. **Orchestrated (the default).** The `Agent` (subagent-dispatch) tool is a **top-level BUILT-IN** of the main loop — like `Bash`/`Read`/`Edit`. This skill runs in `context: fork` (the main loop), so **`Agent` is ALWAYS available; there is nothing to detect.** Offload code-writing, file-creation, test-running, and fixing to subagents (`Agent`, optionally `isolation: 'worktree'`) so the parent context stays lean. The rest of this doc is written in its voice.
 
-2. **In-context (graceful degradation).** No subagent-dispatch tool is available. **Do the work yourself, directly, with `Edit` / `Write` / `Bash` + the tasktracker MCP.** Writing code in this session is then EXPECTED, not a violation. You still honour every gate (active-task, locked body, per-sub-task status, verification, insight capture) — you just run them inline instead of inside subagents.
+2. **In-context (true last resort only).** Do the work yourself with `Edit` / `Write` / `Bash` + the tasktracker MCP. Use this **only** if a *direct attempt* to dispatch an `Agent` actually errors — **never** on an *inferred* absence.
 
-**How to decide:** if you can dispatch a subagent, orchestrate. If you cannot (no `Task`/`Agent` tool in this environment), switch to in-context mode and proceed. **Never stall, never no-op, and never "spawn" a subagent that silently degrades into a read-only researcher returning prose instead of doing the work** — that failure (the original Phase 113 friction cluster) is worse than just doing it yourself. Getting the phase DONE and tracked is the contract; the mode is only *how*.
+**How to decide — and the trap to avoid:** orchestrate by default; do NOT "check" whether `Agent` exists. In particular, **`Agent` (and `Workflow`) NEVER appear in `ToolSearch`** — ToolSearch indexes only deferred *MCP* tools, so a `select:Agent` miss is meaningless. Concluding "no subagent tool in this environment" from ToolSearch silence is a **false-negative bug** — it's what wrongly drove the Phase 113 friction cluster, and it silently serializes work that should be parallel. Drop to in-context mode ONLY on a concrete, observed dispatch failure. Either way: **never stall, never no-op, and never let a subagent return prose instead of doing the work.** Getting the phase DONE and tracked is the contract; the mode is only *how*.
 
 > Throughout this document, read every "spawn a subagent" as **"spawn a subagent (orchestrated) — or do it yourself in-context (degraded)."** The "never write code in this session" rules apply to orchestrated mode ONLY.
 
@@ -526,7 +526,7 @@ For TDD mode and verification-loop details, read the originals in `~/.claude/ski
 
 ## Key principles
 
-1. **Orchestrate when you can; do it in-context when you can't.** Subagents do the code work in orchestrated mode; with no subagent tool, you do it yourself — but the work always gets done and tracked. Never stall on the absence of a subagent tool.
+1. **Orchestrate by default — `Agent` is a built-in, always available here.** Don't detect it (it never appears in `ToolSearch`); just dispatch. Drop to in-context work ONLY on a concrete, observed dispatch failure — never on an inferred/ToolSearch absence. Either way the work always gets done and tracked.
 2. **Active task on every artifact-producing call.** Phase and each sub-task in turn.
 3. **Locked phase body is sacred.** Sub-tasks are the right place for mid-implementation notes.
 4. **Insights belong in tasktracker.** `logDefect` / `logLearning` / `logFriction`, not chat.

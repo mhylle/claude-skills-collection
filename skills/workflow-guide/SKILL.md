@@ -108,6 +108,8 @@ Use the answers to recommend a mode:
 
 ### Dynamic Workflow Mode (mechanism C — the Workflow tool)
 
+**How it's triggered (read first):** the `Workflow` tool is a top-level **BUILT-IN** of the main loop (like `Bash`/`Edit`/`Agent`), **not** an MCP tool — it NEVER appears in `ToolSearch`, so never look for it there and never read a ToolSearch miss as "unavailable" (that false negative is the bug this note exists to prevent). Two launch paths: (1) **DIRECT** — a `tt-workflow-*` skill invokes the built-in `Workflow` tool directly, or the user asks in plain language ("create a workflow"); the `tt-workflow-*` skills are a convenience wrapper over the same built-in, not the only entry point. (2) **ultracode** (effort menu → xhigh) lets Claude auto-decide. The first run shows a confirmation gate; dynamic workflows cost meaningfully more tokens.
+
 **Recommend when (from Question 0 = B):**
 - The job is large, **embarrassingly parallel**, and **read/analyze-heavy** with **aggregable per-unit output** — audit every file/component, find all duplicates or architecture drift, research N sources, generate per-phase briefs, classify a backlog.
 - You want **deterministic, resumable** orchestration over tens-to-hundreds of units, governed by a shared token budget, that survives a crash/rate-limit and resumes without re-running completed units.

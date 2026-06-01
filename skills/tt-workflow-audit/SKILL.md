@@ -80,7 +80,7 @@ This is the discover-the-work-list scouting the Workflow tool docs call for: sco
 
 ### Step 2 — Fan out read-only analysis (the Workflow run)
 
-Invoke the `Workflow` tool with a script that `parallel()`s (or `pipeline()`s) one **read-only** agent per partition, each returning schema-checked findings. The agent prompt MUST forbid `setActiveTask` and every write tool. Skeleton:
+Invoke the `Workflow` tool **directly** — it's a top-level main-loop BUILT-IN (like `Bash`/`Edit`/`Agent`), NOT an MCP tool, so it never shows up in `ToolSearch`; don't look for it there and don't read a ToolSearch miss as "unavailable" (see the contract's "Tool availability" section). Give it a script that `parallel()`s (or `pipeline()`s) one **read-only** agent per partition, each returning schema-checked findings. The agent prompt MUST forbid `setActiveTask` and every write tool. Skeleton:
 
 ```js
 export const meta = {
