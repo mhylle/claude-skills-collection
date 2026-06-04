@@ -1,0 +1,26 @@
+{
+  "skill_name": "grumpy-reviewer",
+  "evals": [
+    {
+      "id": 0,
+      "name": "tangled-order-service",
+      "prompt": "Give the file C:/projects/processes/claude-skills-collection/skills/grumpy-reviewer/evals/fixtures/order-service.ts a grumpy structural review. It's supposed to take an incoming order request and turn it into a confirmed, persisted order. I think it's gotten too big but I want a harsh second opinion on how it's factored.",
+      "expected_output": "A grumpy review run via an isolated subagent. Should BLOCK or flag CONCERNS, naming the tangled concerns in handleRequest (validation + product lookup + pricing rules + persistence + email notification all in one method), the 8-parameter buildLineItem (rule of 7), the 9-case nextStatus switch, and the file/method size. Each finding cites file:line, explains the maintenance cost, and proposes a concrete split (e.g. extract a pricing service, a persistence step, a notification step). Should NOT chase bugs/security/whitespace.",
+      "files": ["fixtures/order-service.ts"]
+    },
+    {
+      "id": 1,
+      "name": "god-class-report-builder",
+      "prompt": "/grumpy-reviewer skills/grumpy-reviewer/evals/fixtures/report_builder.py\n\nThis class builds and sends the weekly sales report.",
+      "expected_output": "A grumpy review run via subagent. Should call out ReportBuilder as a god class violating separation of concerns (fetch remote + fetch local + transform + totals + render html + render csv + export + email — many reasons to change), missed service boundaries (fetching, rendering, exporting, emailing should be separate collaborators), magic numbers (currency multipliers, status codes), and propose splitting into focused units. Verdict BLOCK or CONCERNS. Must run in an isolated subagent and stay on structure.",
+      "files": ["fixtures/report_builder.py"]
+    },
+    {
+      "id": 2,
+      "name": "clean-control-token-clock",
+      "prompt": "Run a grumpy structural review on C:/projects/processes/claude-skills-collection/skills/grumpy-reviewer/evals/fixtures/token-clock.ts. It's a small clock abstraction used to check whether auth tokens have expired.",
+      "expected_output": "A grumpy review run via subagent. This file is deliberately clean and single-purpose. A well-behaved reviewer should return CLEAN (or at most NITPICKs), grudgingly acknowledge the structure is sound, and NOT invent BLOCK-level structural problems or hallucinate bugs/security issues to seem busy. Tests that the reviewer ranks honestly and doesn't over-flag.",
+      "files": ["fixtures/token-clock.ts"]
+    }
+  ]
+}
