@@ -12,6 +12,9 @@ Quick reference index for all architectural decisions. Read this file first to i
 | [0004](./ADR-0004-hierarchical-story-numbering.md) | Hierarchical IDs (EPIC-01.F-01.T-01) for user stories | user-story skill, create-plan integration | 2026-02-17 |
 | [0005](./ADR-0005-shared-format-user-stories-create-plan.md) | Task-level stories share structure with create-plan phases | user-story skill, create-plan skill | 2026-02-17 |
 | [0006](./ADR-0006-user-story-workflow-position.md) | User stories upstream of create-plan, parallel to ADRs | user-story, create-plan, brainstorm, workflow | 2026-02-17 |
+| [0007](./ADR-0007-model-tier-pinning-no-mid-task-switching.md) | Pin full model IDs per agent; fix cycles are fresh tasks on the same tier; no mid-task model switching | ship-issue skill, agent roster | 2026-06-11 |
+| [0008](./ADR-0008-prompt-style-policy-by-tier.md) | Prompt style by tier: outcome-style (Fable 5), step-lists (Sonnet 4.6), TDD contract (Opus 4.8) | ship-issue skill, agent prompts | 2026-06-11 |
+| [0009](./ADR-0009-single-orchestrator-file-run-state-polling-dashboard.md) | Single orchestrator skill, file-based run state, read-only polling dashboard | ship-issue skill, dashboard, run state | 2026-06-11 |
 
 ## Superseded Decisions
 
@@ -30,6 +33,11 @@ Quick reference index for all architectural decisions. Read this file first to i
 - [ADR-0003](./ADR-0003-user-story-file-organization.md): One file per epic with central INDEX.md
 - [ADR-0004](./ADR-0004-hierarchical-story-numbering.md): Hierarchical numbering (EPIC-01.F-01.T-01)
 - [ADR-0005](./ADR-0005-shared-format-user-stories-create-plan.md): Shared format contract with create-plan
+
+### Ship-Issue Pipeline
+- [ADR-0007](./ADR-0007-model-tier-pinning-no-mid-task-switching.md): Full model-ID pinning per agent with fresh-task-same-tier fix cycles and no mid-task switching
+- [ADR-0008](./ADR-0008-prompt-style-policy-by-tier.md): Per-tier prompt styles — outcome-style, prescriptive step-lists, TDD contract
+- [ADR-0009](./ADR-0009-single-orchestrator-file-run-state-polling-dashboard.md): Single orchestrator, plain-file run state, read-only polling dashboard
 
 ### Authentication & Security
 (none yet)
