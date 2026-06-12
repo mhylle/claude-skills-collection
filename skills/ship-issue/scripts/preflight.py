@@ -102,10 +102,23 @@ def check_cloud_review(config, violations):
     if not isinstance(cr, dict):
         violations.append("cloud_review: must be an object")
         return
-    if not is_nonempty_str(cr.get("trigger_comment")):
-        violations.append("cloud_review.trigger_comment: missing or not a non-empty string")
+    # trigger_comment is OPTIONAL — when absent the orchestrator applies the
+    # default "@claude review" downstream. When present it must be a non-empty
+    # string (a present-but-empty value is a config error, not a default).
+    if "trigger_comment" in cr and not is_nonempty_str(cr.get("trigger_comment")):
+        violations.append("cloud_review.trigger_comment: present but not a non-empty string")
     if not is_positive_number(cr.get("timeout_minutes")):
         violations.append("cloud_review.timeout_minutes: missing or not a positive number")
+    # skip is OPTIONAL — when present it must be a boolean. When true the
+    # cloud-review stage is skipped cleanly (stage_passed with a skip reason).
+    if "skip" in cr and not isinstance(cr.get("skip"), bool):
+        violations.append("cloud_review.skip: present but not a boolean")
+    # reviewer_login is OPTIONAL — the account login whose PR comment/review
+    # counts as the cloud review's response (the orchestrator passes it to
+    # cloud_review.py --reviewer-login). Defaults to "claude" downstream. When
+    # present it must be a non-empty string.
+    if "reviewer_login" in cr and not is_nonempty_str(cr.get("reviewer_login")):
+        violations.append("cloud_review.reviewer_login: present but not a non-empty string")
 
 
 def check_ci(config, violations):

@@ -24,7 +24,8 @@ Current snapshot of the run. Rewritten (atomically replaced) by the orchestrator
 | `run_id` | string | Unique identifier of this run; matches the directory name. |
 | `issue` | object | `number` (integer), `url` (string), `title` (string) of the GitHub issue being shipped. |
 | `branch` | string | The git branch this run works on; set by preflight. |
-| `pr` | object or null | `number` (integer), `url` (string) of the PR; null until implement opens it. |
+| `pr` | object or null | `number` (integer), `url` (string) of the PR; null until implement opens it. Mutated only by `run_state.py set-pr` — the single sanctioned PR-write path. |
+| `review_cycles` | integer | Count of merge-gate `FIX` verdicts so far (0 at init). The merge-gate loop is bounded at 3: the 3rd `FIX` exhausts the bound and the run exits BLOCKED with a consolidated report (an error exit, not a third gate — see [stage-contracts.md](stage-contracts.md), Stage 4). |
 | `stages` | object | One key per stage, all nine, in pipeline order: `preflight`, `plan`, `implement`, `review`, `ci`, `cloud_review`, `deploy`, `e2e`, `logs`. Each value is an object: `status` — one of `pending`, `running`, `passed`, `failed`, `blocked` — plus timing fields: `started_at` (ISO 8601, null until the stage first starts), `ended_at` (ISO 8601, null until the stage ends; on later work windows, the most recent end), `duration_seconds` (number, null until the stage has ended; **work time only**, accumulated across all of the stage's work windows, excluding gate-wait and crash-gap windows per [Pause semantics](#pause-semantics)). |
 | `gates` | object | Keys `gate_1` and `gate_2`. Each value is an object: `state` — one of `not_reached`, `waiting`, `approved`, `rejected` — plus timing fields: `reached_at` (ISO 8601, null until reached), `decided_at` (ISO 8601, null until decided), `wait_seconds` (number, null until decided; the gate-wait window from `gate_reached` to `gate_decision`). |
 | `timing` | object | Run-level totals: `work_seconds` (sum of all completed stage work windows), `gate_wait_seconds` (sum of all gate-wait windows), `crash_gap_seconds` (sum of all crash-gap windows). The three categories are disjoint: any second of run lifetime is work, gate wait, or crash gap — never more than one. |
@@ -55,6 +56,9 @@ Stage `status` semantics follow [stage-contracts.md](stage-contracts.md): `faile
     "number": 187,
     "url": "https://github.com/acme/widgets/pull/187"
   },
+
+  // Count of merge-gate FIX verdicts so far (0..3). The loop is bounded at 3.
+  "review_cycles": 1,
 
   // All nine stages. status: pending | running | passed | failed | blocked.
   // started_at: null until the stage first starts. ended_at: null until it
@@ -118,7 +122,8 @@ Append-only audit log: one JSON object per line, never rewritten, never reordere
 | `gate_wait_started` | `gate`, `at` | A gate-wait window opens; emitted with `gate_reached`, matching the gate's `reached_at`. |
 | `gate_wait_ended` | `gate`, `at`, `wait_seconds` | A gate-wait window closes; emitted with `gate_decision`, matching the gate's `decided_at`/`wait_seconds`. |
 | `gate_decision` | `gate`, `decision` (`approved` or `rejected`), `feedback` | The human decides at a gate. |
-| `fix_task_dispatched` | `stage`, `target_agent`, `model`, `evidence_summary` | A fresh fix task is dispatched on the same tier (per [model-tiering.md](model-tiering.md), Rule 3). |
+| `fix_task_dispatched` | `stage`, `target_agent`, `model`, `evidence_summary` | A fresh fix task is dispatched on the same tier (per [model-tiering.md](model-tiering.md), Rule 3). `evidence_summary` carries the failure evidence (reviewer blockers, CI output, findings) **verbatim**. The `target_agent`/`model` pair is validated against the fix tier (`tdd-implementer`/`claude-opus-4-8`); a mismatch is rejected. |
+| `implement_evidence` | `red_evidence`, `green_evidence` | The implement stage's tests-first evidence: a summary of the observed failing tests (`red_evidence`) and the passing suite (`green_evidence`). Emitted before the stage's `stage_passed`, it evidences tests-first ordering in the run events (requirement: Opus 4.8 TDD implementation stage). |
 | `crash_gap_recorded` | `stage`, `from`, `to`, `gap_seconds` | On resume after a crash/interrupt, the orchestrator records the dead window between the last persisted event and the resume — `stage` is the stage that was in flight — then opens a new work window with a fresh `timer_started` (see [Pause semantics](#pause-semantics)). |
 | `decision_recorded` | `decision` (`ship` or `fix`), `rationale`, `conflicting_evidence` | The orchestrator resolves conflicting stage evidence with an explicit ship-or-fix decision. |
 | `run_completed` | `merged_pr_url` | Gate 2 confirmed and the merge performed. |
@@ -141,6 +146,7 @@ Append-only audit log: one JSON object per line, never rewritten, never reordere
 {"event":"gate_wait_ended","ts":"2026-06-11T09:40:12Z","gate":"gate_1","at":"2026-06-11T09:40:12Z","wait_seconds":1111}
 {"event":"gate_decision","ts":"2026-06-11T09:40:12Z","gate":"gate_1","decision":"approved","feedback":null}
 {"event":"fix_task_dispatched","ts":"2026-06-11T10:02:15Z","stage":"review","target_agent":"tdd-implementer","model":"claude-opus-4-8","evidence_summary":"2 review blockers: missing null check in exporter; AC-3 untested"}
+{"event":"implement_evidence","ts":"2026-06-11T09:40:30Z","red_evidence":"AC-1..AC-3 export tests: 5 failing (RED)","green_evidence":"full suite 128 passed (GREEN)"}
 {"event":"crash_gap_recorded","ts":"2026-06-11T10:58:03Z","stage":"implement","from":"2026-06-11T10:12:44Z","to":"2026-06-11T10:58:03Z","gap_seconds":2719}
 {"event":"decision_recorded","ts":"2026-06-11T11:50:01Z","decision":"fix","rationale":"Cloud review blocker outweighs green CI: unvalidated user input reaches the CSV writer","conflicting_evidence":"ci=passed, cloud_review=blocking finding"}
 {"event":"run_completed","ts":"2026-06-11T13:05:44Z","merged_pr_url":"https://github.com/acme/widgets/pull/187"}

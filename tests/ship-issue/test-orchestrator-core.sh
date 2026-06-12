@@ -187,19 +187,24 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# T6 — Phase-4 handoff stub is declared
+# T6 — the pipeline boundary stub. Phase 4 SHIPPED the implement/review/ci/
+#      cloud_review stages, so the old "Phase 4 handoff stub" is gone; the
+#      boundary stub now marks the Phase 5 handoff (deploy/e2e/logs/Gate 2).
 # ---------------------------------------------------------------------------
 t6_ok=1
 if [ "$SKILL_BODY_OK" -ne 1 ]; then
   t6_ok=0
 else
-  grep -qiE 'phase[[:space:]]+4' "$SKILL_BODY" || t6_ok=0
+  # The boundary stub now points at Phase 5, not Phase 4.
+  grep -qiE 'phase[[:space:]]+5' "$SKILL_BODY" || t6_ok=0
   grep -qi 'stub' "$SKILL_BODY" || t6_ok=0
+  # The old Phase-4 handoff stub must NOT remain (those stages are real now).
+  grep -qiE 'phase[[:space:]]+4[[:space:]]+handoff[[:space:]]+stub' "$SKILL_BODY" && t6_ok=0
 fi
 if [ "$t6_ok" -eq 1 ]; then
-  record PASS T6 "body declares the Phase 4 handoff stub"
+  record PASS T6 "body declares the Phase 5 handoff stub (Phase 4 stages shipped, old Phase-4 stub gone)"
 else
-  record FAIL T6 "body declares the Phase 4 handoff stub"
+  record FAIL T6 "body declares the Phase 5 handoff stub (Phase 4 stages shipped, old Phase-4 stub gone)"
 fi
 
 # ---------------------------------------------------------------------------

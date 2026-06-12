@@ -43,6 +43,7 @@ EVENT_REQUIRED_FIELDS = {
     "gate_wait_ended": ("gate", "at", "wait_seconds"),
     "gate_decision": ("gate", "decision", "feedback"),
     "fix_task_dispatched": ("stage", "target_agent", "model", "evidence_summary"),
+    "implement_evidence": ("red_evidence", "green_evidence"),
     "crash_gap_recorded": ("stage", "from", "to", "gap_seconds"),
     "decision_recorded": ("decision", "rationale", "conflicting_evidence"),
     "run_completed": ("merged_pr_url",),
@@ -55,6 +56,27 @@ TIER_MAP = (
     ("claude-sonnet-4-6", ("e2e", "logs")),
     ("external", ("ci", "cloud_review", "deploy")),
 )
+
+# The merge-gate review loop is bounded: after this many FIX verdicts the run
+# exits BLOCKED with a consolidated report (an ERROR PATH, not a third human
+# gate). The bound guarantees an unattended run terminates by design rather
+# than burning cycles forever — see references/stage-contracts.md, Stage 4.
+MAX_REVIEW_CYCLES = 3
+
+# Fix work is always a FRESH task on the SAME pinned tier as the work it
+# repairs (references/model-tiering.md, Rule 3). Every dispatched fix — whether
+# triggered by a review FIX verdict, a CI failure, a cloud-review finding, or a
+# staging verifier — is implementation work, so it goes to tdd-implementer on
+# claude-opus-4-8. This pairing is enforced mechanically: a fix-dispatched call
+# naming any other agent/model pair dies, so a mid-task downgrade cannot be
+# logged as if it were legitimate (model-tiering.md Rule 4: no fallback).
+FIX_AGENT = "tdd-implementer"
+FIX_MODEL = "claude-opus-4-8"
+
+# Exit code the 3rd merge-gate FIX uses to signal the bound is exhausted, so
+# the orchestrator can branch to the consolidated-report BLOCKED path. Distinct
+# from die()'s exit 3 (a usage/state error) and from 0/1/2.
+REVIEW_EXHAUSTED_EXIT = 4
 
 
 def die(message):
@@ -164,6 +186,7 @@ def cmd_init(args):
                   "title": args.issue_title},
         "branch": args.branch,
         "pr": None,
+        "review_cycles": 0,
         "stages": stages,
         "gates": {name: new_gate_entry() for name in GATES},
         "timing": {"work_seconds": 0, "gate_wait_seconds": 0, "crash_gap_seconds": 0},
@@ -273,6 +296,112 @@ def cmd_gate_decision(args):
                                           feedback=args.feedback))
 
 
+def cmd_set_pr(args):
+    """Record the PR opened by the implement stage — the ONLY sanctioned path
+    that mutates state.pr."""
+    state = read_state(args.run_dir)
+    ts = args.ts
+    state["pr"] = {"number": args.number, "url": args.url}
+    write_state(args.run_dir, state, ts)
+
+
+def cmd_implement_evidence(args):
+    """Append an implement_evidence event carrying the RED and GREEN summaries.
+    Placed before the stage's stage_passed, it evidences tests-first ordering
+    in the run events (requirement c163650c AC1). Both summaries are required:
+    a green-only "evidence" would not evidence that RED was observed first."""
+    read_state(args.run_dir)  # fail fast if the run is not initialized
+    ts = args.ts
+    append_event(args.run_dir, make_event("implement_evidence", ts,
+                                          red_evidence=args.red,
+                                          green_evidence=args.green))
+
+
+def cmd_review_verdict(args):
+    """Record a merge-gate-reviewer verdict.
+
+    approve: print an approval line carrying the current cycle count; no
+             dispatch, no counter change.
+    fix:     increment state.review_cycles. For cycles 1..MAX_REVIEW_CYCLES-1,
+             append a fix_task_dispatched (fresh tdd-implementer / claude-opus-4-8
+             task carrying the reviewer's blockers VERBATIM) and print
+             REVIEW_CYCLE: n/MAX + DISPATCH_FIX. The MAX-th FIX appends NO
+             dispatch, prints REVIEW_CYCLES_EXHAUSTED: MAX/MAX, and exits
+             REVIEW_EXHAUSTED_EXIT so the orchestrator branches to the
+             consolidated-report BLOCKED path (an error exit, not a third gate).
+    A FIX once the bound is already exhausted is refused (the cap cannot be
+    silently exceeded)."""
+    state = read_state(args.run_dir)
+    ts = args.ts
+    cycles = state.get("review_cycles", 0)
+
+    if args.verdict == "approve":
+        write_state(args.run_dir, state, ts)
+        print("REVIEW_APPROVE: approved after %d fix cycle(s)" % cycles)
+        return
+
+    # verdict == "fix"
+    if cycles >= MAX_REVIEW_CYCLES:
+        die("review bound already exhausted (%d/%d FIX verdicts); no further "
+            "review cycle is permitted — the run is BLOCKED pending human "
+            "intervention" % (cycles, MAX_REVIEW_CYCLES))
+
+    cycles += 1
+    state["review_cycles"] = cycles
+    write_state(args.run_dir, state, ts)
+
+    if cycles >= MAX_REVIEW_CYCLES:
+        # The bound is now exhausted: NO fresh fix dispatch — the run stops
+        # burning cycles and pulls in the human via the consolidated report.
+        # Record the exhaustion in the audit log (every transition is logged):
+        # this is the error-exit transition, so it is a stage_blocked on review,
+        # NOT a fix_task_dispatched (no fresh task is dispatched here).
+        append_event(args.run_dir, make_event(
+            "stage_blocked", ts, stage="review",
+            reason="review cycles exhausted (%d/%d FIX verdicts)"
+                   % (cycles, MAX_REVIEW_CYCLES)))
+        print("REVIEW_CYCLES_EXHAUSTED: %d/%d" % (cycles, MAX_REVIEW_CYCLES))
+        sys.exit(REVIEW_EXHAUSTED_EXIT)
+
+    append_event(args.run_dir, make_event(
+        "fix_task_dispatched", ts, stage="review",
+        target_agent=FIX_AGENT, model=FIX_MODEL,
+        evidence_summary=args.evidence_summary))
+    print("REVIEW_CYCLE: %d/%d" % (cycles, MAX_REVIEW_CYCLES))
+    print("DISPATCH_FIX")
+
+
+def cmd_fix_dispatched(args):
+    """Append a fix_task_dispatched for a non-review fix cycle (ci / cloud_review
+    / e2e / logs). The fix is a fresh task on the same pinned tier as the work
+    it repairs; the agent/model pair is VALIDATED against the fix tier
+    (tdd-implementer / claude-opus-4-8). Any other pairing dies, so a mid-task
+    downgrade cannot be recorded as legitimate (model-tiering.md Rule 4)."""
+    read_state(args.run_dir)  # fail fast if the run is not initialized
+    ts = args.ts
+    if args.target_agent != FIX_AGENT or args.model != FIX_MODEL:
+        die("fix dispatch tier mismatch: fix work for stage %s must go to %s on "
+            "%s (got %s on %s); fresh-task-same-tier is enforced — no fallback "
+            "or downgrade" % (args.stage, FIX_AGENT, FIX_MODEL,
+                              args.target_agent, args.model))
+    append_event(args.run_dir, make_event(
+        "fix_task_dispatched", ts, stage=args.stage,
+        target_agent=args.target_agent, model=args.model,
+        evidence_summary=args.evidence_summary))
+
+
+def cmd_record_decision(args):
+    """Append a decision_recorded event — the Fable orchestrator's explicit
+    ship-or-fix ruling on conflicting stage evidence (e.g. a cloud-review
+    timeout consolidated as an INPUT, never a hard failure)."""
+    read_state(args.run_dir)  # fail fast if the run is not initialized
+    ts = args.ts
+    append_event(args.run_dir, make_event(
+        "decision_recorded", ts, decision=args.decision,
+        rationale=args.rationale,
+        conflicting_evidence=args.conflicting_evidence))
+
+
 def open_window_stage(events):
     """The stage with more timer_started than timer_stopped events, if any."""
     starts = {}
@@ -330,6 +459,14 @@ def is_number(value):
 
 
 def validate_state(state, violations):
+    review_cycles = state.get("review_cycles")
+    if not isinstance(review_cycles, int) or isinstance(review_cycles, bool) \
+            or review_cycles < 0 or review_cycles > MAX_REVIEW_CYCLES:
+        violations.append(
+            "review_cycles must be an integer in 0..%d" % MAX_REVIEW_CYCLES)
+    pr = state.get("pr")
+    if pr is not None and not isinstance(pr, dict):
+        violations.append("pr must be null or an object with number/url")
     stages = state.get("stages")
     if not isinstance(stages, dict) or set(stages.keys()) != set(STAGES):
         violations.append("stages keys must be exactly the nine pipeline stages")
@@ -544,6 +681,54 @@ def build_parser():
     p.add_argument("--feedback", default=None)
     add_ts_argument(p)
     p.set_defaults(func=cmd_gate_decision)
+
+    p = sub.add_parser("set-pr", help="record the PR opened by the implement stage")
+    p.add_argument("--run-dir", required=True)
+    p.add_argument("--number", required=True, type=int)
+    p.add_argument("--url", required=True)
+    add_ts_argument(p)
+    p.set_defaults(func=cmd_set_pr)
+
+    p = sub.add_parser("implement-evidence",
+                       help="record RED+GREEN evidence (tests-first ordering)")
+    p.add_argument("--run-dir", required=True)
+    p.add_argument("--red", required=True,
+                   help="summary of the observed failing (RED) tests")
+    p.add_argument("--green", required=True,
+                   help="summary of the passing (GREEN) suite")
+    add_ts_argument(p)
+    p.set_defaults(func=cmd_implement_evidence)
+
+    p = sub.add_parser("review-verdict",
+                       help="record a merge-gate-reviewer APPROVE/FIX verdict")
+    p.add_argument("--run-dir", required=True)
+    p.add_argument("--verdict", required=True, choices=("approve", "fix"))
+    p.add_argument("--evidence-summary", default="",
+                   help="on fix: the reviewer's itemized blockers, VERBATIM")
+    add_ts_argument(p)
+    p.set_defaults(func=cmd_review_verdict)
+
+    p = sub.add_parser("fix-dispatched",
+                       help="record a non-review fix-cycle dispatch (ci/cloud_review/e2e/logs)")
+    p.add_argument("--run-dir", required=True)
+    p.add_argument("--stage", required=True,
+                   choices=("ci", "cloud_review", "e2e", "logs"))
+    p.add_argument("--evidence-summary", required=True)
+    p.add_argument("--target-agent", default=FIX_AGENT,
+                   help="defaults to the fix tier's agent; a mismatch dies")
+    p.add_argument("--model", default=FIX_MODEL,
+                   help="defaults to the fix tier's model; a mismatch dies")
+    add_ts_argument(p)
+    p.set_defaults(func=cmd_fix_dispatched)
+
+    p = sub.add_parser("record-decision",
+                       help="record an explicit ship-or-fix ruling on conflicting evidence")
+    p.add_argument("--run-dir", required=True)
+    p.add_argument("--decision", required=True, choices=("ship", "fix"))
+    p.add_argument("--rationale", required=True)
+    p.add_argument("--conflicting-evidence", required=True)
+    add_ts_argument(p)
+    p.set_defaults(func=cmd_record_decision)
 
     p = sub.add_parser("resume-check", help="find the resume point; record crash gaps")
     p.add_argument("--run-dir", required=True)

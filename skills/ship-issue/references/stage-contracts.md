@@ -49,8 +49,9 @@ Stage statuses and transitions are recorded in run state per [run-state-schema.m
 - **Inputs:** The **full PR diff** (all files, all hunks), the approved plan with acceptance criteria, the issue.
 - **Outputs:** A recorded verdict: `APPROVE`, or `FIX` with itemized blockers (each: location, defect, definition of fixed).
 - **Pass semantics:** Verdict is `APPROVE`. The run advances to ci.
-- **Fail semantics:** Verdict is `FIX`. The orchestrator dispatches a fresh fix task to tdd-implementer on `claude-opus-4-8` (same tier as the implementation work it repairs) whose work order is exactly the itemized blockers, then re-runs review with a fresh review task on `claude-fable-5` over the updated full diff. This loop repeats until `APPROVE`; the loop has no built-in iteration cap — it is bounded only by human intervention (aborting the run).
-- **BLOCKED semantics:** The review cannot be performed — e.g. the PR or its diff is unreachable. Verdict-level disagreement is never BLOCKED; it is the FIX loop.
+- **Fail semantics:** Verdict is `FIX`. The orchestrator dispatches a fresh fix task to tdd-implementer on `claude-opus-4-8` (same tier as the implementation work it repairs) whose work order is exactly the itemized blockers, then re-runs review with a fresh review task on `claude-fable-5` over the updated full diff. This loop is **bounded at 3 FIX verdicts**: the 1st and 2nd `FIX` each dispatch a fresh fix task as above (`run_state.py review-verdict --verdict fix` increments `review_cycles` and emits the `fix_task_dispatched`, printing `REVIEW_CYCLE: n/3`). The **3rd** `FIX` dispatches nothing further: it prints `REVIEW_CYCLES_EXHAUSTED: 3/3`, the stage is recorded `blocked`, and the orchestrator presents a **consolidated report** of every round's blockers for a human. This exhausted-bound stop is an **error exit (BLOCKED)** — not a third human gate; the pipeline still has exactly two gates.
+  - **On the "no arbitrary caps" principle:** the bound of 3 is **not** an arbitrary cap. The prior contract said the loop was "bounded only by human intervention" — which is the same human backstop, only without a guaranteed-termination point, so an unattended run could burn fix cycles indefinitely. The bound is the contractual point at which an unattended run stops re-spending implementer cycles on a diff the reviewer keeps rejecting and pulls the human in with a complete record. It makes unattended runs terminate **by design**; it does not cap anything a human would otherwise want unbounded.
+- **BLOCKED semantics:** The review cannot be performed — e.g. the PR or its diff is unreachable — or the FIX loop's 3-cycle bound is exhausted (consolidated report). Verdict-level disagreement within the bound is never BLOCKED; it is the FIX loop.
 - **Executing tier:** merge-gate-reviewer agent, pinned `claude-fable-5`.
 
 ## Stage 5: ci
@@ -64,12 +65,13 @@ Stage statuses and transitions are recorded in run state per [run-state-schema.m
 
 ## Stage 6: cloud-review
 
-- **Inputs:** The open PR; `cloud_review.trigger_comment` and `cloud_review.timeout_minutes` from config.
-- **Outputs:** The cloud review's findings (or a clean result) recorded in run state.
-- **Pass semantics:** The orchestrator posts the configured trigger comment on the PR; the cloud review responds within the configured `timeout_minutes` and raises no blocking findings.
-- **Fail semantics:** The cloud review raises findings. The orchestrator dispatches a fresh fix task to tdd-implementer on `claude-opus-4-8` with the findings as the work order, then re-triggers the cloud review on the updated PR (re-entering review and ci first, since the diff changed).
-- **BLOCKED semantics:** The cloud review does not respond within `timeout_minutes` (config-driven bound), or the trigger comment cannot be posted. A human must investigate the cloud-review integration.
-- **Executing tier:** external system (cloud review service), triggered and awaited by the orchestrator (Fable 5 main session).
+- **Inputs:** The open PR; `cloud_review.trigger_comment` (optional — defaults to `@claude review`), `cloud_review.timeout_minutes`, `cloud_review.reviewer_login` (optional — the login whose response the poll waits for, default `claude`), and `cloud_review.skip` (optional boolean) from config.
+- **Outputs:** The cloud review's findings, a clean result, or a recorded timeout-consolidation decision, recorded in run state.
+- **Pass semantics:** If `cloud_review.skip` is `true`, the stage is skipped cleanly (recorded `passed` with a skip reason). Otherwise the orchestrator posts the configured trigger comment on the PR; the cloud review responds within `timeout_minutes` and raises no blocking findings. (A timeout that the orchestrator consolidates into a `ship` decision also passes the stage — see below.)
+- **Fail semantics:** The cloud review raises findings. The orchestrator dispatches a fresh fix task to tdd-implementer on `claude-opus-4-8` with the findings as the work order, then re-triggers the cloud review on the updated PR (re-entering review and ci first, since the diff changed). A timeout consolidated into a `fix` decision also enters this fix path.
+- **Timeout semantics (NOT BLOCKED):** When the cloud review does not respond within `timeout_minutes`, the stage does **not** block. The timeout is consolidated by the Fable 5 orchestrator as a recorded **ship-or-fix input**: the orchestrator weighs it against the other stage evidence (e.g. green CI, an APPROVE review) and records an explicit `decision_recorded` (`ship` or `fix`) with rationale and the conflicting evidence (see [Conflicting evidence](#conflicting-evidence)). `ship` passes the stage; `fix` enters the fix path. A timeout is never `stage_blocked`.
+- **BLOCKED semantics:** Reserved for the **trigger comment failing to post** (`CLOUD_REVIEW_ERROR` from `cloud_review.py` — gh error, unreachable). A timeout is explicitly NOT BLOCKED.
+- **Executing tier:** external system (cloud review service), triggered and awaited by the orchestrator (Fable 5 main session); the mechanical post+poll+timeout is `skills/ship-issue/scripts/cloud_review.py`.
 
 ## Stage 7: deploy
 

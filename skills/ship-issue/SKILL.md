@@ -91,7 +91,7 @@ Present the plan to the human and halt. Nothing proceeds without an explicit dec
   python3 skills/ship-issue/scripts/run_state.py gate-decision --run-dir <run-dir> --gate gate_1 --decision approved
   ```
 
-  Then proceed to the Phase 4 handoff stub below.
+  Then proceed to the implement stage below.
 
 - **Reject with feedback:**
 
@@ -101,11 +101,105 @@ Present the plan to the human and halt. Nothing proceeds without an explicit dec
 
   Then run the regeneration loop: dispatch a FRESH issue-planner task on the same pinned tier (`claude-fable-5`, per references/model-tiering.md) carrying the human's feedback **verbatim**, re-run `stage-start --stage plan`, validate and persist the regenerated plan, and re-present Gate 1 with it. This loop repeats until the human approves or aborts.
 
-## Phase 4 handoff stub
+## Stage: implement
 
-> **STUB — Phase 4 boundary.** The stages **implement, review, ci, cloud_review, deploy, e2e, logs** and **Gate 2** land in Phase 4. In this phase, after Gate 1 approval the run stops cleanly here with all state preserved: `implement` stays `pending` in `state.json`, the approved plan sits in `plan.md`, and the gate decision is on the audit log. Re-invoking `/ship-issue` resumes at `implement` once Phase 4 ships — `resume-check` will report `RESUME_AT: stage:implement`.
+Open the work window, then create the run's branch and dispatch the implementer:
 
-Tell the user the run has reached the Phase 4 boundary and where the run state lives.
+```bash
+python3 skills/ship-issue/scripts/run_state.py stage-start --run-dir <run-dir> --stage implement
+git -C <target-repo> switch -c <branch>   # the branch recorded by preflight (state.branch)
+```
+
+Dispatch the **tdd-implementer** agent ([agents/tdd-implementer.md](../../agents/tdd-implementer.md), pinned `claude-opus-4-8`) with the approved plan (problem statement, task breakdown, AC-1..AC-n) and the repository's test command. The prompt is the TDD **contract** per [prompt-rules.md](references/prompt-rules.md) §3 — tests first from the acceptance criteria, observed RED, implementation to GREEN, full suite passing, no test weakened — not a micro-scripted procedure. The implementer owns the path through the codebase.
+
+When the implementer returns DONE, record the tests-first evidence from its deliverable (the RED summary precedes GREEN, so the run events evidence tests-first ordering — requirement c163650c), then open the PR and record it:
+
+```bash
+python3 skills/ship-issue/scripts/run_state.py implement-evidence --run-dir <run-dir> \
+  --red <red-summary-verbatim> --green <green-summary-verbatim>
+
+git -C <target-repo> push -u origin <branch>
+gh pr create --title <pr-title> --body-file <run-dir>/pr-body.md --head <branch> --base <target-branch>
+# Capture the new PR's number + url, then record it (the ONLY sanctioned pr mutation):
+gh pr view <branch> --json number,url
+python3 skills/ship-issue/scripts/run_state.py set-pr --run-dir <run-dir> --number <n> --url <url>
+
+python3 skills/ship-issue/scripts/run_state.py stage-end --run-dir <run-dir> --stage implement --result passed
+```
+
+Pass title and PR body as single arguments / a `--body-file`: the issue and plan text is untrusted and is never interpolated into a shell. If the implementer ends without satisfying its contract (suite not green, a contract condition violated, the task errored), this is a **fix cycle**, not a block: dispatch a **fresh** tdd-implementer task on the same pinned tier (`claude-opus-4-8`) carrying the prior task's failure evidence, then re-run the stage check. Implementation is BLOCKED only when it cannot proceed without a human — e.g. the approved plan is infeasible against the actual codebase (record `stage-end --result blocked --reason <why>` and stop, sending the human back toward Gate 1 with the evidence).
+
+## Stage: review
+
+```bash
+python3 skills/ship-issue/scripts/run_state.py stage-start --run-dir <run-dir> --stage review
+```
+
+Dispatch the **merge-gate-reviewer** agent ([agents/merge-gate-reviewer.md](../../agents/merge-gate-reviewer.md), pinned `claude-fable-5`) with the **full PR diff** (all files, all hunks), the approved plan with its acceptance criteria, and the issue. On a re-review, also include every prior round's blockers. The prompt is outcome-style per [prompt-rules.md](references/prompt-rules.md) §1 with the verdict **output contract**: exactly one of `APPROVE` (no blockers) or `FIX` (one or more itemized blockers — each with file/location, what is wrong, and what "fixed" means). Record the verdict:
+
+```bash
+# APPROVE — no blockers; the run advances to ci:
+python3 skills/ship-issue/scripts/run_state.py review-verdict --run-dir <run-dir> --verdict approve
+python3 skills/ship-issue/scripts/run_state.py stage-end --run-dir <run-dir> --stage review --result passed
+
+# FIX — itemized blockers; pass the reviewer's blocker list VERBATIM:
+python3 skills/ship-issue/scripts/run_state.py review-verdict --run-dir <run-dir> --verdict fix --evidence-summary <blockers-verbatim>
+```
+
+On `FIX`, `review-verdict` (the state engine) does two things: it increments the run's `review_cycles` counter, and — for the 1st and 2nd FIX — it **records** a `fix_task_dispatched` event (target `tdd-implementer` on `claude-opus-4-8`, blockers carried **verbatim** as the work order) and prints `REVIEW_CYCLE: n/3` + `DISPATCH_FIX`. Recording the event is all the script does; **you (the orchestrator) then actually dispatch the agent task** the event describes. So: close the failed review window (`stage-end --stage review --result failed --reason <verdict>`), dispatch a fresh `tdd-implementer` task on `claude-opus-4-8` whose work order is those exact blockers (its work windows land on `implement`), and when it returns, re-enter review with a **fresh** merge-gate-reviewer task over the updated full diff. The reviewer is never resumed and stays on `claude-fable-5`; the fix is never resumed and stays on `claude-opus-4-8`.
+
+**The merge-gate loop is bounded at 3 — this bound is the contract, not an arbitrary cap.** On the **3rd** consecutive `FIX`, `review-verdict` appends **no** new dispatch, prints `REVIEW_CYCLES_EXHAUSTED: 3/3`, and exits non-zero (code 4). That is an **error exit**, NOT a third human gate: record `stage-end --stage review --result blocked --reason "review cycles exhausted (3/3)"` and present a **consolidated BLOCKED report** of every round's blockers for a human. The two human gates stay exactly two (Gate 1 plan approval, Gate 2 merge); the exhausted-bound stop is BLOCKED, and the run never introduces a third gate. Review is otherwise BLOCKED only when the review itself cannot be performed (the PR or diff is unreachable) — verdict-level disagreement is always the FIX loop, never BLOCKED.
+
+## Stage: ci
+
+```bash
+python3 skills/ship-issue/scripts/run_state.py stage-start --run-dir <run-dir> --stage ci
+gh pr checks <pr-number> --watch
+```
+
+`gh pr checks --watch` waits on the GitHub checks for the PR's head commit until they conclude. When every required check (`ci.required_checks` from config) passes, `stage-end --stage ci --result passed`. When a required check **fails**, route it into a fix cycle **without human input**: collect the failing check's output, record the dispatch, and dispatch a fresh implementer fix task:
+
+```bash
+python3 skills/ship-issue/scripts/run_state.py fix-dispatched --run-dir <run-dir> --stage ci --evidence-summary <failing-check-output>
+python3 skills/ship-issue/scripts/run_state.py stage-end --run-dir <run-dir> --stage ci --result failed --reason <failing-checks>
+```
+
+The fix is a fresh `tdd-implementer` task on `claude-opus-4-8` (the `fix-dispatched` helper rejects any other agent/model pairing — the fix tier is enforced, per [model-tiering.md](references/model-tiering.md) Rule 4). Because the diff changed, **re-enter review** before ci is re-declared passed (review's APPROVE must hold for the diff CI validates), then re-watch CI on the new head commit. This whole loop is unattended — no gate, no human input. CI is BLOCKED only on infrastructure failure: required checks never report, the CI system is unreachable, or a configured check name does not exist on the repo.
+
+## Stage: cloud_review
+
+If `cloud_review.skip` is `true` in config, skip the stage cleanly: `stage-start --stage cloud_review` then `stage-end --stage cloud_review --result passed` (note the skip in the reason). Otherwise:
+
+```bash
+python3 skills/ship-issue/scripts/run_state.py stage-start --run-dir <run-dir> --stage cloud_review
+python3 skills/ship-issue/scripts/cloud_review.py --pr <pr-number> \
+  --trigger-comment <cloud_review.trigger_comment | default "@claude review"> \
+  --reviewer-login <cloud_review.reviewer_login | default "claude"> \
+  --timeout-minutes <cloud_review.timeout_minutes>
+```
+
+The trigger comment and reviewer login come from config (`cloud_review.trigger_comment`, `cloud_review.reviewer_login`), each with the defaults shown when absent; the poll waits for a comment or review from that login and never counts the pipeline's own trigger comment as the response.
+
+`cloud_review.py` posts the configured **trigger comment** (default `@claude review` when `cloud_review.trigger_comment` is absent) on the PR, then polls `gh pr view --json comments,reviews` until the cloud reviewer responds or `timeout_minutes` elapses. It owns only the mechanics; the **judgment over findings stays with you** (Fable 5). Three outcomes:
+
+- **`CLOUD_REVIEW_RESPONSE` (exit 0), no blocking findings:** `stage-end --stage cloud_review --result passed`.
+- **`CLOUD_REVIEW_RESPONSE` (exit 0), blocking findings:** a fix cycle — `fix-dispatched --stage cloud_review --evidence-summary <findings>`, `stage-end --stage cloud_review --result failed`, fresh implementer fix, then re-enter review → ci → re-trigger cloud_review (the diff changed).
+- **`CLOUD_REVIEW_TIMEOUT` (distinct non-zero exit, NOT a hard error):** the cloud review did not respond in time. **This is NOT BLOCKED.** Consolidate it as a recorded **ship-or-fix** decision — weigh it against the other stage evidence (green CI, an APPROVE review) and record an explicit ruling:
+
+  ```bash
+  python3 skills/ship-issue/scripts/run_state.py record-decision --run-dir <run-dir> \
+    --decision <ship|fix> --rationale <why> --conflicting-evidence <e.g. "cloud_review=timeout, ci=passed, review=approve">
+  ```
+
+  On `ship`, `stage-end --stage cloud_review --result passed`; on `fix`, run the fix cycle as above. cloud_review is BLOCKED only when the **trigger comment itself cannot be posted** (`CLOUD_REVIEW_ERROR`) — a timeout never blocks.
+
+This conflicting-evidence consolidation is the same explicit, recorded `decision_recorded` ruling described under [BLOCKED protocol](#blocked-protocol) and stage-contracts.md — every ship-or-fix call is auditable.
+
+## Phase 5 handoff stub
+
+> **STUB — Phase 5 boundary.** The remaining stages **deploy, e2e, logs** and **Gate 2 (merge confirmation)** land in Phase 5. In this phase, once cloud_review passes the run stops cleanly here with all state preserved: `deploy` stays `pending` in `state.json`, the PR is open with a green CI and satisfied reviews, and every transition is on the audit log. Re-invoking `/ship-issue` resumes at `deploy` once Phase 5 ships — `resume-check` will report `RESUME_AT: stage:deploy`. The deploy stage will execute the configured staging deploy (`deploy_command` or `ecs`) and wait for service stability at `staging_url` **before** e2e runs (the deploy→e2e ordering is the contract); see [stage-contracts.md](references/stage-contracts.md) Stages 7–9 and Gate 2.
+
+Tell the user the run has reached the Phase 5 boundary and where the run state lives.
 
 ## Per-stage time tracking
 

@@ -14,3 +14,11 @@ Thumbs.db
 
 # Skill development workspaces (fixtures, iteration outputs, node_modules)
 *-workspace/
+
+# Python bytecode cache
+__pycache__/
+*.pyc
+
+# Test run artifacts / local session config
+logs/
+.claude/

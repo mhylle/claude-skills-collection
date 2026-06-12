@@ -66,6 +66,7 @@ write_fixture_state() {
   "issue": { "number": 1, "url": "https://example.com/issues/1", "title": "Fixture issue" },
   "branch": "ship-issue/1-fixture",
   "pr": null,
+  "review_cycles": 0,
   "stages": {
     "preflight":    { "status": "passed", "started_at": "2026-06-11T09:00:00Z", "ended_at": "2026-06-11T09:00:18Z", "duration_seconds": 18 },
     "plan":         { "status": "${plan_status}", "started_at": "2026-06-11T09:00:19Z", "ended_at": "2026-06-11T09:05:19Z", "duration_seconds": ${plan_dur} },

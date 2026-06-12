@@ -39,8 +39,10 @@ Same mutual-exclusivity rule as deploy: exactly one of the two must be present; 
 
 Controls the cloud-review stage.
 
-- `trigger_comment` (string, required): the exact comment body the orchestrator posts on the PR to trigger the cloud review.
-- `timeout_minutes` (number, required): how long the orchestrator waits for the cloud review to respond before the stage exits BLOCKED. This is the config-driven bound for the cloud-review wait — the pipeline imposes no bound of its own.
+- `trigger_comment` (string, **optional**): the exact comment body the orchestrator posts on the PR to trigger the cloud review. When absent, the orchestrator applies the default `@claude review`. When present it must be a non-empty string (a present-but-empty value is a config error, not a request for the default).
+- `timeout_minutes` (number, required): how long the orchestrator waits for the cloud review to respond. This is the config-driven bound for the cloud-review wait — the pipeline imposes no bound of its own. **A timeout is NOT a BLOCKED condition:** the orchestrator consolidates it as a recorded ship-or-fix input (`decision_recorded`), not a hard failure — see [stage-contracts.md](stage-contracts.md), Stage 6.
+- `skip` (boolean, **optional**, default `false`): when `true`, the cloud-review stage is skipped cleanly (recorded `passed` with a skip reason). When present it must be a boolean.
+- `reviewer_login` (string, **optional**, default `claude`): the GitHub account login whose PR comment or review counts as the cloud review's response. The orchestrator passes it to `cloud_review.py --reviewer-login`; the poll loop ignores the pipeline's own trigger comment and waits specifically for a response from this login. When present it must be a non-empty string.
 
 ### `ci` (object, required)
 
@@ -106,8 +108,10 @@ Additive mirroring of the pipeline's native file-based timing (see [run-state-sc
 | `staging_url` present, non-empty string | BLOCKED |
 | Exactly one of `deploy_command` / `ecs` (with `cluster` and `service`) | BLOCKED |
 | Exactly one of `log_command` / `cloudwatch` (with `log_group`) | BLOCKED |
-| `cloud_review.trigger_comment` present, non-empty string | BLOCKED |
+| `cloud_review.trigger_comment` — optional; when present, a non-empty string (default `@claude review` applied downstream when absent) | BLOCKED |
 | `cloud_review.timeout_minutes` present, positive number | BLOCKED |
+| `cloud_review.skip` — optional; when present, a boolean (default `false`) | BLOCKED |
+| `cloud_review.reviewer_login` — optional; when present, a non-empty string (default `claude`) | BLOCKED |
 | `ci.required_checks` present, non-empty array of strings | BLOCKED |
 | `tasktracker`, when present: object with boolean `time_integration` | BLOCKED |
 | No unknown top-level fields — known fields are `staging_url`, `deploy_command`, `ecs`, `log_command`, `cloudwatch`, `cloud_review`, `ci`, `tasktracker` (guards against typos silently disabling config) | BLOCKED |
