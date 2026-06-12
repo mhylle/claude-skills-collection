@@ -1,0 +1,341 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ship-issue — issue-to-merge pipeline</title>
+<style>
+  :root {
+    --bg: #f6f7f9;
+    --ink: #161a22;
+    --muted: #5b6675;
+    --card: #ffffff;
+    --line: #e2e6ec;
+    --fable: #6d4aff;  --fable-bg: #efeaff;
+    --opus:  #0e9f6e;  --opus-bg:  #e2f6ee;
+    --sonnet:#2563eb;  --sonnet-bg:#e6eefc;
+    --ext:   #64748b;  --ext-bg:   #eef1f5;
+    --gate:  #c2710c;  --gate-bg:  #fdeed6;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 40px 24px 80px; }
+  header.hero { border-bottom: 1px solid var(--line); padding-bottom: 28px; margin-bottom: 36px; }
+  .eyebrow { font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+  h1 { font-size: 38px; line-height: 1.15; margin: 8px 0 10px; letter-spacing: -.02em; }
+  h1 code { font-size: .85em; background: #11151c; color: #fff; padding: 2px 12px; border-radius: 8px; }
+  .lede { font-size: 18px; color: var(--muted); max-width: 760px; margin: 0; }
+  .facts { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 22px; }
+  .fact { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; font-size: 14px; }
+  .fact b { display: block; font-size: 20px; letter-spacing: -.01em; }
+  .fact span { color: var(--muted); }
+  h2 { font-size: 24px; letter-spacing: -.01em; margin: 48px 0 6px; }
+  h2 .num { color: var(--muted); font-weight: 600; margin-right: 8px; }
+  .section-sub { color: var(--muted); margin: 0 0 20px; }
+
+  /* tier chips */
+  .chip { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 700;
+          padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
+  .chip::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+  .t-fable  { color: var(--fable);  background: var(--fable-bg); }
+  .t-opus   { color: var(--opus);   background: var(--opus-bg); }
+  .t-sonnet { color: var(--sonnet); background: var(--sonnet-bg); }
+  .t-ext    { color: var(--ext);    background: var(--ext-bg); }
+  .t-gate   { color: var(--gate);   background: var(--gate-bg); }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 10px; margin: 0 0 18px; }
+
+  figure { margin: 0; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px; overflow-x: auto; }
+  figure svg { display: block; margin: 0 auto; max-width: 100%; height: auto; }
+  figcaption { color: var(--muted); font-size: 14px; margin-top: 12px; text-align: center; }
+
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px; }
+  .card .top { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
+  .card h3 { margin: 0; font-size: 17px; }
+  .card h3 code { font-size: .92em; }
+  .card p { margin: 6px 0 0; font-size: 14.5px; color: #2b333f; }
+  .card .file { font-size: 12.5px; color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; margin-top: 10px; }
+
+  .rules { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 16px; }
+  .rule { background: var(--card); border: 1px solid var(--line); border-left: 4px solid var(--fable); border-radius: 10px; padding: 16px 18px; }
+  .rule h3 { margin: 0 0 4px; font-size: 16px; }
+  .rule p { margin: 0; font-size: 14.5px; color: #2b333f; }
+
+  .run { background: #11151c; color: #e7ebf2; border-radius: 12px; padding: 18px 20px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 14px; }
+  .run .c { color: #7ee2a8; }
+  .run .muted { color: #8a93a6; }
+  footer { margin-top: 56px; padding-top: 22px; border-top: 1px solid var(--line); color: var(--muted); font-size: 13.5px; }
+  a { color: var(--fable); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="hero">
+    <div class="eyebrow">Claude Code skill set · model-tiered</div>
+    <h1><code>/ship-issue</code> — issue-to-merge pipeline</h1>
+    <p class="lede">One command takes a GitHub issue the whole distance — plan, TDD implementation, review cycles, CI, cloud review, staging deploy, live E2E, log checks, and merge — pausing for a human exactly twice. Each phase runs on the model tier where its quality compounds, and every agent pins its model so a prompt cache is never silently re-read mid-task.</p>
+    <div class="facts">
+      <div class="fact"><b>9</b><span>pipeline stages</span></div>
+      <div class="fact"><b>2</b><span>human gates</span></div>
+      <div class="fact"><b>3</b><span>model tiers</span></div>
+      <div class="fact"><b>5</b><span>pinned-model agents</span></div>
+      <div class="fact"><b>1</b><span>orchestrator skill</span></div>
+    </div>
+  </header>
+
+  <!-- ============ FLOW DIAGRAM ============ -->
+  <section>
+    <h2><span class="num">01</span>The flow</h2>
+    <p class="section-sub">Top to bottom is the happy path. A failed verification stage never advances the run — it dispatches a fresh fix task and re-enters at review. The two amber bars are the only places a human is asked anything.</p>
+
+    <div class="legend">
+      <span class="chip t-fable">Fable 5 — plan · orchestrate · merge-gate review</span>
+      <span class="chip t-opus">Opus 4.8 — implement (TDD)</span>
+      <span class="chip t-sonnet">Sonnet 4.6 — staging E2E · logs</span>
+      <span class="chip t-ext">external — CI · cloud review · deploy</span>
+      <span class="chip t-gate">human gate</span>
+    </div>
+
+    <figure>
+      <svg viewBox="0 0 820 760" role="img" aria-label="ship-issue pipeline flow diagram">
+        <defs>
+          <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="#9aa4b2"></path>
+          </marker>
+          <marker id="arrowfix" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="#c2710c"></path>
+          </marker>
+        </defs>
+
+        <!-- vertical connectors (drawn first, behind nodes) -->
+        <g stroke="#9aa4b2" stroke-width="2" fill="none" marker-end="url(#arrow)">
+          <line x1="290" y1="80"  x2="290" y2="96"></line>
+          <line x1="290" y1="136" x2="290" y2="152"></line>
+          <line x1="290" y1="192" x2="290" y2="208"></line>
+          <line x1="290" y1="248" x2="290" y2="264"></line>
+          <line x1="290" y1="304" x2="290" y2="320"></line>
+          <line x1="290" y1="360" x2="290" y2="376"></line>
+          <line x1="290" y1="416" x2="290" y2="432"></line>
+          <line x1="290" y1="472" x2="290" y2="488"></line>
+          <line x1="290" y1="528" x2="290" y2="544"></line>
+          <line x1="290" y1="584" x2="290" y2="600"></line>
+          <line x1="290" y1="640" x2="290" y2="656"></line>
+        </g>
+
+        <!-- fix-cycle back-arc: logs ... review  ->  implement (fresh Opus task) -->
+        <path d="M 460,564 C 730,540 730,232 462,224" fill="none" stroke="#c2710c" stroke-width="2"
+              stroke-dasharray="6 5" marker-end="url(#arrowfix)"></path>
+        <text x="742" y="392" fill="#c2710c" font-size="12.5" font-weight="700" text-anchor="middle" transform="rotate(90 742 392)">FIX → fresh Opus 4.8 task</text>
+        <text x="690" y="380" fill="#9a6a1c" font-size="11" text-anchor="middle">review · ci · cloud_review</text>
+        <text x="690" y="396" fill="#9a6a1c" font-size="11" text-anchor="middle">e2e · logs all loop here</text>
+
+        <!-- gate-1 reject back-arc: gate1 -> plan -->
+        <path d="M 120,160 C 64,150 64,106 118,100" fill="none" stroke="#c2710c" stroke-width="2"
+              stroke-dasharray="6 5" marker-end="url(#arrowfix)"></path>
+        <text x="44" y="130" fill="#9a6a1c" font-size="11" text-anchor="middle" transform="rotate(-90 44 130)">reject → regen</text>
+
+        <!-- nodes: each <g> has a left tier-stripe rect + body rect + label + tier chip text -->
+        <!-- helper visual: stripe x=120 w=8 ; body x=128 w=332 (ends 460) -->
+
+        <!-- preflight (Fable) -->
+        <g>
+          <rect x="120" y="40" width="340" height="40" rx="9" fill="#fff" stroke="#e2e6ec"></rect>
+          <rect x="120" y="40" width="8" height="40" rx="4" fill="#6d4aff"></rect>
+          <text x="144" y="65" font-size="15" font-weight="600" fill="#161a22">preflight</text>
+          <text x="448" y="65" font-size="12" font-weight="700" fill="#6d4aff" text-anchor="end">Fable 5</text>
+          <text x="144" y="-0" font-size="0"> </text>
+        </g>
+        <!-- plan (Fable) -->
+        <g>
+          <rect x="120" y="96" width="340" height="40" rx="9" fill="#fff" stroke="#e2e6ec"></rect>
+          <rect x="120" y="96" width="8" height="40" rx="4" fill="#6d4aff"></rect>
+          <text x="144" y="121" font-size="15" font-weight="600">plan</text>
+          <text x="300" y="121" font-size="11.5" fill="#5b6675">issue-planner → AC + E2E scenarios</text>
+          <text x="448" y="121" font-size="12" font-weight="700" fill="#6d4aff" text-anchor="end">Fable 5</text>
+        </g>
+        <!-- GATE 1 -->
+        <g>
+          <rect x="112" y="152" width="356" height="40" rx="9" fill="#fdeed6" stroke="#c2710c" stroke-width="2"></rect>
+          <text x="290" y="177" font-size="14.5" font-weight="800" fill="#9a4f06" text-anchor="middle">◆ GATE 1 — approve the plan (human)</text>
+        </g>
+        <!-- implement (Opus) -->
+        <g>
+          <rect x="120" y="208" width="340" height="40" rx="9" fill="#fff" stroke="#e2e6ec"></rect>
+          <rect x="120" y="208" width="8" height="40" rx="4" fill="#0e9f6e"></rect>
+          <text x="144" y="233" font-size="15" font-weight="600">implement</text>
+          <text x="300" y="233" font-size="11.5" fill="#5b6675">tdd-implementer · tests-first · opens PR</text>
+          <text x="448" y="233" font-size="12" font-weight="700" fill="#0e9f6e" text-anchor="end">Opus 4.8</text>
+        </g>
+        <!-- review (Fable) -->
+        <g>
+          <rect x="120" y="264" width="340" height="40" rx="9" fill="#fff" stroke="#e2e6ec"></rect>
+          <rect x="120" y="264" width="8" height="40" rx="4" fill="#6d4aff"></rect>
+          <text x="144" y="289" font-size="15" font-weight="600">review</text>
+          <text x="300" y="289" font-size="11.5" fill="#5b6675">merge-gate · APPROVE / FIX (max 3)</text>
+          <text x="448" y="289" font-size="12" font-weight="700" fill="#6d4aff" text-anchor="end">Fable 5</text>
+        </g>
+        <!-- ci (external) -->
+        <g>
+          <rect x="120" y="320" width="340" height="40" rx="9" fill="#fff" stroke="#e2e6ec"></rect>
+          <rect x="120" y="320" width="8" height="40" rx="4" fill="#64748b"></rect>
+          <text x="144" y="345" font-size="15" font-weight="600">ci</text>
+          <text x="300" y="345" font-size="11.5" fill="#5b6675">wait on GitHub checks · fail → fix</text>
+          <text x="448" y="345" font-size="12" font-weight="700" fill="#64748b" text-anchor="end">external</text>
+        </g>
+        <!-- cloud_review (external) -->
+        <g>
+          <rect x="120" y="376" width="340" height="40" rx="9" fill="#fff" stroke="#e2e6ec"></rect>
+          <rect x="120" y="376" width="8" height="40" rx="4" fill="#64748b"></rect>
+          <text x="144" y="401" font-size="15" font-weight="600">cloud_review</text>
+          <text x="300" y="401" font-size="11.5" fill="#5b6675">trigger + poll · timeout → ship-or-fix</text>
+          <text x="448" y="401" font-size="12" font-weight="700" fill="#64748b" text-anchor="end">external</text>
+        </g>
+        <!-- deploy (external) -->
+        <g>
+          <rect x="120" y="432" width="340" height="40" rx="9" fill="#fff" stroke="#e2e6ec"></rect>
+          <rect x="120" y="432" width="8" height="40" rx="4" fill="#64748b"></rect>
+          <text x="144" y="457" font-size="15" font-weight="600">deploy</text>
+          <text x="300" y="457" font-size="11.5" fill="#5b6675">ECS / command → staging · wait stable</text>
+          <text x="448" y="457" font-size="12" font-weight="700" fill="#64748b" text-anchor="end">external</text>
+        </g>
+        <!-- e2e (Sonnet) -->
+        <g>
+          <rect x="120" y="488" width="340" height="40" rx="9" fill="#fff" stroke="#e2e6ec"></rect>
+          <rect x="120" y="488" width="8" height="40" rx="4" fill="#2563eb"></rect>
+          <text x="144" y="513" font-size="15" font-weight="600">e2e</text>
+          <text x="300" y="513" font-size="11.5" fill="#5b6675">staging-e2e-verifier · Playwright</text>
+          <text x="448" y="513" font-size="12" font-weight="700" fill="#2563eb" text-anchor="end">Sonnet 4.6</text>
+        </g>
+        <!-- logs (Sonnet) -->
+        <g>
+          <rect x="120" y="544" width="340" height="40" rx="9" fill="#fff" stroke="#e2e6ec"></rect>
+          <rect x="120" y="544" width="8" height="40" rx="4" fill="#2563eb"></rect>
+          <text x="144" y="569" font-size="15" font-weight="600">logs</text>
+          <text x="300" y="569" font-size="11.5" fill="#5b6675">staging-log-verifier · clean / errors</text>
+          <text x="448" y="569" font-size="12" font-weight="700" fill="#2563eb" text-anchor="end">Sonnet 4.6</text>
+        </g>
+        <!-- GATE 2 -->
+        <g>
+          <rect x="112" y="600" width="356" height="40" rx="9" fill="#fdeed6" stroke="#c2710c" stroke-width="2"></rect>
+          <text x="290" y="625" font-size="14.5" font-weight="800" fill="#9a4f06" text-anchor="middle">◆ GATE 2 — merge brief + confirm (human)</text>
+        </g>
+        <!-- merge -->
+        <g>
+          <rect x="120" y="656" width="340" height="40" rx="9" fill="#11151c" stroke="#11151c"></rect>
+          <text x="290" y="681" font-size="14.5" font-weight="700" fill="#7ee2a8" text-anchor="middle">✓ merge · run_completed</text>
+        </g>
+      </svg>
+      <figcaption>Run state lives in files (<code>.ship-issue/runs/&lt;id&gt;/state.json</code> + <code>events.jsonl</code>), so a crashed or interrupted run resumes losslessly. The dashed amber arcs are the only backward edges: a rejected plan regenerates, and any failed verification dispatches a fresh Opus fix task that re-enters at review.</figcaption>
+    </figure>
+  </section>
+
+  <!-- ============ COMPONENTS ============ -->
+  <section>
+    <h2><span class="num">02</span>The skill &amp; its agents</h2>
+    <p class="section-sub">The orchestrator runs in the Fable 5 main session and is the single writer of run state. It dispatches each stage to a pinned-model agent and consolidates the results.</p>
+    <div class="cards">
+
+      <div class="card">
+        <div class="top"><h3><code>ship-issue</code> orchestrator</h3><span class="chip t-fable">Fable 5</span></div>
+        <p>The skill itself. Owns routing, the two gates, conflicting-evidence ship-or-fix rulings, the merge brief, and every run-state write. Outcome-prompted — it is told the goal and constraints, never a step-by-step script.</p>
+        <div class="file">skills/ship-issue/SKILL.md</div>
+      </div>
+
+      <div class="card">
+        <div class="top"><h3>issue-planner</h3><span class="chip t-fable">Fable 5</span></div>
+        <p>Turns the GitHub issue + codebase into the plan shown at Gate 1: problem statement, acceptance criteria, staging E2E scenarios, and log-verification expectations.</p>
+        <div class="file">agents/issue-planner.md · claude-fable-5</div>
+      </div>
+
+      <div class="card">
+        <div class="top"><h3>merge-gate-reviewer</h3><span class="chip t-fable">Fable 5</span></div>
+        <p>The last line of defence on the full PR diff. Returns exactly one verdict — APPROVE, or FIX with itemized blockers. The loop is bounded at three cycles; exhausting it is a BLOCKED error exit, never a third gate.</p>
+        <div class="file">agents/merge-gate-reviewer.md · claude-fable-5</div>
+      </div>
+
+      <div class="card">
+        <div class="top"><h3>tdd-implementer</h3><span class="chip t-opus">Opus 4.8</span></div>
+        <p>Writes failing tests from the acceptance criteria first, then the implementation to green — UI components, API routes, the lot. Every fix cycle is a fresh task on this same tier, carrying the reviewer/CI/E2E blockers verbatim.</p>
+        <div class="file">agents/tdd-implementer.md · claude-opus-4-8</div>
+      </div>
+
+      <div class="card">
+        <div class="top"><h3>staging-e2e-verifier</h3><span class="chip t-sonnet">Sonnet 4.6</span></div>
+        <p>Runs the plan's E2E scenarios against the live staging URL via Playwright MCP, mapping each acceptance criterion to at least one scenario. Returns PASS / FAIL / FLAKY / BLOCKED with screenshot evidence.</p>
+        <div class="file">agents/staging-e2e-verifier.md · claude-sonnet-4-6</div>
+      </div>
+
+      <div class="card">
+        <div class="top"><h3>staging-log-verifier</h3><span class="chip t-sonnet">Sonnet 4.6</span></div>
+        <p>Scans staging service logs over the deploy window for errors and regression signatures. Returns CLEAN or ERRORS_FOUND with the offending lines cited — a passing verdict is earned only over logs actually fetched.</p>
+        <div class="file">agents/staging-log-verifier.md · claude-sonnet-4-6</div>
+      </div>
+
+      <div class="card">
+        <div class="top"><h3>dashboard</h3><span class="chip t-ext">read-only</span></div>
+        <p>A single stdlib Python file that reads run state and serves a live view: per-stage status, model tier, and duration; gate states; run totals; and live-elapsed for the in-flight stage. It only reads — the orchestrator stays the single writer.</p>
+        <div class="file">skills/ship-issue/scripts/dashboard.py</div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ============ DESIGN RULES ============ -->
+  <section>
+    <h2><span class="num">03</span>The rules that make it hold</h2>
+    <div class="rules">
+      <div class="rule" style="border-left-color:var(--gate)">
+        <h3>Exactly two human gates</h3>
+        <p>Plan approval and merge confirmation — nothing else asks for input. A cloud-review timeout or an exhausted review loop is a recorded decision or a BLOCKED exit, never a third gate.</p>
+      </div>
+      <div class="rule" style="border-left-color:var(--opus)">
+        <h3>No mid-task model switch</h3>
+        <p>Prompt caches are model-scoped; one switch re-reads the whole context at full price. Each agent pins a full model ID, and a fix is always a fresh task on the same tier — never a resumed task on a different model.</p>
+      </div>
+      <div class="rule" style="border-left-color:var(--fable)">
+        <h3>Outcome prompts for Fable 5</h3>
+        <p>Fable-tier agents are given the goal, constraints, inputs, and output contract — not a numbered procedure. Prescriptive step-lists (great for the Sonnet verifiers) measurably degrade Fable 5, so the planner and reviewer never get them.</p>
+      </div>
+      <div class="rule" style="border-left-color:var(--sonnet)">
+        <h3>File-based run state → lossless resume</h3>
+        <p>Every transition is written to <code>state.json</code> + <code>events.jsonl</code> before anything else happens. Re-invoking <code>/ship-issue</code> on an interrupted run resumes at the last incomplete stage; nothing lives only in conversation memory.</p>
+      </div>
+      <div class="rule" style="border-left-color:var(--ext)">
+        <h3>Per-stage time tracking</h3>
+        <p>Work, gate-wait, and crash-gap windows are tracked disjointly (mirroring tasktracker's pause semantics). The Gate 2 merge brief embeds a per-stage / total / per-model-tier rollup, and the dashboard shows it live.</p>
+      </div>
+      <div class="rule" style="border-left-color:#11151c">
+        <h3>Plain config, no magic</h3>
+        <p>Markdown skill + agent files, Python stdlib scripts, and one per-repo <code>.claude/ship-issue.config.json</code> (staging URL, deploy mechanism, log source, cloud-review settings). Preflight BLOCKs naming any missing key before a plan is ever made.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ RUN IT ============ -->
+  <section>
+    <h2><span class="num">04</span>Running it</h2>
+    <div class="run">
+      <span class="muted"># take issue 142 the whole distance</span><br>
+      <span class="c">/ship-issue</span> 142<br>
+      <span class="muted"># …or a full URL</span><br>
+      <span class="c">/ship-issue</span> https://github.com/acme/widgets/issues/142<br><br>
+      <span class="muted"># watch every run live (separate terminal)</span><br>
+      python3 skills/ship-issue/scripts/dashboard.py <span class="muted">--dir .ship-issue/runs --port 8770</span>
+    </div>
+  </section>
+
+  <footer>
+    Part of the Claude Code skills collection. Model IDs — Fable 5: <code>claude-fable-5</code> · Opus 4.8: <code>claude-opus-4-8</code> · Sonnet 4.6: <code>claude-sonnet-4-6</code>.
+    Contracts: <code>skills/ship-issue/references/</code> · decisions: ADR-0007…0010.
+  </footer>
+
+</div>
+</body>
+</html>

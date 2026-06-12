@@ -23,3 +23,6 @@ __pycache__/
 logs/
 .claude/
 docs/evidence/
+
+# Playwright MCP scratch output
+.playwright-mcp/

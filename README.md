@@ -209,6 +209,8 @@ Skills are invoked via the `Skill` tool or `/skill-name` shorthand.
 |-------|---------|-------------|
 | **ship-issue** | `/ship-issue <issue-number-or-url>` | One-command GitHub issue → merged PR pipeline across nine stages (preflight, plan, implement, review, ci, cloud_review, deploy, e2e, logs) with **exactly two human gates** — plan approval and merge confirmation. Model-tiered: **Fable 5** plans, orchestrates, and runs the merge-gate review; **Opus 4.8** implements (TDD); **Sonnet 4.6** runs staging E2E and log checks. File-based run state gives lossless crash-resume; per-stage time tracking (work / gate-wait / crash-gap, with a per-model-tier rollup) is embedded in the Gate 2 merge brief. Pair with the single-file `dashboard.py` for a live view. |
 
+> **Overview page:** open [`skills/ship-issue/pipeline.html`](skills/ship-issue/pipeline.html) in a browser for a one-page tour — the skill, its five agents, and the full stage-flow diagram with model-tier colour-coding (self-contained, no dependencies).
+
 ## Agents
 
 Agents are specialized sub-agents launched via the `Task` tool for parallel execution.
