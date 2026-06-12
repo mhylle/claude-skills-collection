@@ -1,0 +1,77 @@
+# Implementation Plan — Issue #7: Pagination resets to page 1 whenever a filter changes
+
+## 1. Problem statement
+
+On the orders list at `/orders`, when the user is on any page greater than 1 (e.g., page 3) and changes the status filter, the pagination silently resets to page 1. The expected behavior is absent: the current page should be preserved when it is still valid under the new filter's result set, and clamped to the last valid page when it is not. The defect is reproduced on staging. Root context from triage: the list is rendered by the `OrdersList` component using the `usePagination` and `useFilters` hooks; pagination state lives in component state while filter state lives in URL query params, and a filter change currently discards the page state.
+
+## 2. Approach summary
+
+The change is confined to the frontend (`web`): the orders list feature — the coordination between `usePagination` and `useFilters` as consumed by `OrdersList` — so that a filter change no longer unconditionally resets the page, and instead preserves or clamps it per the acceptance criteria below. Test coverage is extended in `orders-list.spec.ts` (React Testing Library) for the filter–pagination interaction, plus Playwright E2E coverage for the user-visible behavior. No `api` service changes are required.
+
+## 3. Task breakdown
+
+- **T1 — Preserve page across filter changes when still valid.** Changing a filter keeps the current page when the new result set still contains that page. Satisfies: AC-1.
+- **T2 — Clamp page when the new result set is smaller.** Changing a filter clamps the page to the last valid page of the new result set, with an empty result set clamping to page 1 and showing the empty state. Satisfies: AC-2, AC-3.
+- **T3 — Guard against regression in plain pagination.** Page navigation without a filter change continues to work exactly as before. Satisfies: AC-4.
+- **T4 — Unit/integration tests for the filter–pagination interaction.** Extend `orders-list.spec.ts` (React Testing Library, per repo conventions) so the interaction between filter changes and pagination state is covered; the existing gap is that filter changes are tested but their effect on pagination is not. Satisfies: AC-1, AC-2, AC-3, AC-4 (test derivation itself belongs to tdd-implementer).
+- **T5 — Playwright E2E coverage.** Add E2E specs mirroring staging scenarios S-1 through S-4 to the Playwright suite, per repo conventions. Satisfies: AC-1, AC-2, AC-3, AC-4.
+
+Each task is independently implementable; T1 and T2 will likely touch the same seam but are separately verifiable behaviors.
+
+## 4. Acceptance criteria
+
+- **AC-1 (page preserved when valid):** Given the orders list at `/orders` with the user on page P (P > 1) under filter state F1, when the user changes the status filter to F2 and the F2 result set contains at least P pages, then the list displays page P of the F2 results, the pagination control shows P as the active page, and every order row displayed matches filter F2.
+- **AC-2 (page clamped when invalid):** Given the orders list at `/orders` with the user on page P under filter state F1, when the user changes the status filter to F2 and the F2 result set has L pages where 1 <= L < P, then the list displays page L of the F2 results, the pagination control shows L as the active page, and every order row displayed matches filter F2.
+- **AC-3 (empty result set clamps to page 1 with empty state):** Given the orders list at `/orders` with the user on page P (P > 1), when the user changes the status filter to a value whose result set is empty, then zero order rows are rendered, the list's empty-state message is visible, and the pagination control — if rendered at all — shows page 1 as the active page.
+- **AC-4 (no regression in plain pagination):** Given the orders list at `/orders` with any status filter applied and a result set spanning more than one page, when the user clicks a visible page number N different from the current page without changing any filter, then the list displays page N of the current filter's results and the pagination control shows N as the active page.
+
+A revision of this plan may add or amend criteria but must never renumber AC-1 through AC-4.
+
+## 5. Staging E2E scenarios
+
+All scenarios run against `https://staging.shop.example.com/orders`. "Status filter" means the filter control for order status rendered by the orders list (locate by its accessible label or visible label text "Status"). "Active page" means the page number marked current in the pagination control. If a scenario's data precondition is unmet, report the scenario as NOT-EXECUTABLE (data precondition unmet) — do not report it as failed.
+
+**S-1 (verifies AC-1 — page preserved):**
+1. Navigate to `https://staging.shop.example.com/orders`.
+2. Set the status filter to "Completed". Record the highest page number visible in the pagination control as `L_completed`. Precondition: `L_completed >= 3`.
+3. Set the status filter back to "All". Click page "3" in the pagination control and confirm the active page reads "3".
+4. Set the status filter to "Completed".
+5. Expected: the active page reads "3"; at least one order row is rendered; every rendered order row shows status "Completed"; the URL path is still `/orders` with the status query param reflecting "Completed".
+
+**S-2 (verifies AC-2 — page clamped):**
+1. Navigate to `https://staging.shop.example.com/orders` with the status filter at "All". Record the highest visible page number as `L_all`. Precondition: `L_all >= 2`.
+2. Iterate the status filter options; for each, record the highest visible page number. Pick an option `S_small` whose page count `L_small` satisfies `1 <= L_small < L_all`. Precondition: such an option exists.
+3. Set the status filter back to "All" and click the highest page number `L_all`; confirm the active page reads `L_all`.
+4. Set the status filter to `S_small`.
+5. Expected: the active page reads `L_small`; at least one order row is rendered; every rendered order row shows status `S_small`; no empty-state message is visible.
+
+**S-3 (verifies AC-3 — empty result set):**
+1. Navigate to `https://staging.shop.example.com/orders` with the status filter at "All". Click page "2" (precondition: page 2 exists) and confirm the active page reads "2".
+2. Iterate the status filter options to find one that yields zero results (zero order rows). Precondition: such an option exists on staging.
+3. Set the status filter to that option.
+4. Expected: zero order rows are rendered; the list's empty-state message is visible; the pagination control either is not rendered or shows "1" as the active page.
+
+**S-4 (verifies AC-4 — plain pagination regression check):**
+1. Navigate to `https://staging.shop.example.com/orders` with the status filter at "All". Precondition: the pagination control shows at least 2 pages.
+2. Note the first visible order row's identifying text on page 1. Click page "2" in the pagination control.
+3. Expected: the active page reads "2"; at least one order row is rendered; the first visible order row's identifying text differs from the one noted on page 1.
+
+## 6. Log-verification expectations
+
+- **Services to watch:** `web` (frontend logs) and `api`, for the duration of scenarios S-1 through S-4.
+- **Regression signatures:** any ERROR-level JSON log line emitted by `web` or `api` during scenario execution is a regression, in particular lines referencing `OrdersList`, `usePagination`, `useFilters`, or the `/orders` route/endpoint, and any HTTP 4xx/5xx responses from the orders list data endpoint triggered by a filter change or page change.
+- **Baseline rule:** an ERROR signature demonstrably present on staging before this change, reproduced by the same steps, is pre-existing and must be reported as such, not as a regression. Everything else ERROR-level inside the scenario window blocks.
+
+## 7. Risks and explicit non-goals
+
+**Risks:**
+- Clamping requires knowing the new filter's total page count, which arrives asynchronously after the filter changes; a transient incorrect page between filter change and data arrival must settle to the preserved/clamped page once loading completes. The acceptance criteria are judged on the settled state.
+- Filters live in URL query params while page state is component state; synchronizing the two risks duplicate fetches or render flicker on filter change. Watch S-1/S-2 for repeated requests in `api` logs.
+- Staging data variability: S-1, S-2, and S-3 carry data preconditions (enough pages under "Completed"; a smaller-result status; a zero-result status). If unmet, scenarios report NOT-EXECUTABLE and the orchestrator must arrange staging data rather than waive the criteria.
+
+**Explicit non-goals:**
+- Persisting the page number in the URL query params (deep-linkable pagination) is NOT required by this issue. The implementer may choose it as a means to the fix, but it is not an acceptance criterion and will not be verified.
+- No changes to any list page other than `/orders`.
+- No `api` service or endpoint changes.
+- No refactoring of `usePagination` or `useFilters` beyond what the fix requires; if the fix does require touching the hooks' shared behavior, the change must be limited to the filter–pagination interaction described here.
+- No visual redesign of the pagination control or filter controls.

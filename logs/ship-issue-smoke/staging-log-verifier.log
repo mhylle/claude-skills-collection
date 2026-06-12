@@ -1,0 +1,6 @@
+STATUS: BLOCKED
+EXCERPT_FILE: logs/staging-log-verifier/2026-06-12-153000-excerpts.log
+SERVICES_SCANNED: none — validation failed before any fetch
+MATCH_SUMMARY: n/a
+TOP_EXCERPTS: n/a
+ERRORS: invalid deploy_window: start (2026-06-12T15:30:00Z) is after end (2026-06-12T14:00:00Z); window must have start < end

@@ -1,0 +1,14 @@
+FAIL T1: all five agent files exist in agents/ (missing: issue-planner.md merge-gate-reviewer.md tdd-implementer.md staging-e2e-verifier.md staging-log-verifier.md)
+FAIL T2: frontmatter model: exactly pinned per file (bad/missing: issue-planner.md merge-gate-reviewer.md tdd-implementer.md staging-e2e-verifier.md staging-log-verifier.md)
+PASS T2d: pin checker rejects 'model: sonnet' alias and missing model field
+FAIL T3: fable bodies have Goal/Inputs/Constraints/Output contract and no imperative procedures (bad: issue-planner.md merge-gate-reviewer.md)
+PASS T3d: outcome-contract checker rejects body with sections + think-verb numbered list
+FAIL T4: tdd-implementer body has RED-before-GREEN and no-test-weakening rule
+PASS T4d: tdd checker rejects tests-after-implementation body
+FAIL T5: verdict contracts (APPROVE/FIX+blocker, PASS/FAIL/FLAKY/BLOCKED+screenshot, CLEAN/ERRORS_FOUND+excerpt) (bad: merge-gate-reviewer.md staging-e2e-verifier.md staging-log-verifier.md)
+PASS T5d: e2e verdict checker rejects PASS/FAIL-only set missing FLAKY+BLOCKED
+FAIL T6: install.sh --dry-run exits 0, lists all five agents, copies nothing (missing-in-output:issue-planner.md missing-in-output:merge-gate-reviewer.md missing-in-output:tdd-implementer.md missing-in-output:staging-e2e-verifier.md missing-in-output:staging-log-verifier.md dry-run-copied-files)
+FAIL T7: frontmatter parses with non-empty name/description/model/color (bad: issue-planner.md merge-gate-reviewer.md tdd-implementer.md staging-e2e-verifier.md staging-log-verifier.md)
+PASS T8: no fallback/downgrade/model-switch language in agent bodies
+FAIL T9: every body defines BLOCKED semantics and a retry policy (bad: issue-planner.md merge-gate-reviewer.md tdd-implementer.md staging-e2e-verifier.md staging-log-verifier.md)
+5/13 passed

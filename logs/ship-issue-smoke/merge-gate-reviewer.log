@@ -1,0 +1,26 @@
+VERDICT: FIX
+
+PR under review: implements issue #12 — "Add a health endpoint for the load balancer".
+Inputs received: full diff (complete), acceptance criteria AC-1..AC-2, issue reference, repository conventions. Honest review is possible; this is a verdict, not a BLOCKED stop.
+
+Blockers (complete work order for the fix task):
+
+BLOCKER 1
+1. File and location: src/routes/health.js, lines 3-5 (the GET /api/health handler).
+2. What is wrong: AC-2 is unmet. The handler unconditionally responds HTTP 200 with {"status":"ok","version":<version>}. There is no database reachability check anywhere in the diff and no code path that can produce HTTP 503 with {"status":"degraded","reason":"db"}.
+3. What "fixed" means: GET /api/health checks database reachability; when the database is unreachable it returns HTTP 503 with the exact JSON body {"status":"degraded","reason":"db"}, and when the database is reachable it still returns HTTP 200 with {"status":"ok","version":<semver string>}.
+
+BLOCKER 2
+1. File and location: test/health.spec.js, line 8 (`it.skip('returns 503 when db is down', async () => {})`).
+2. What is wrong: The AC-2 test is skipped and its body is empty, so the suite passes without exercising AC-2. Repository convention states tests may not be skipped; this is a skipped/weakened test that allows the suite to pass while an acceptance criterion is unimplemented.
+3. What "fixed" means: The skip is removed; the test simulates an unreachable database (e.g., stubbing or faulting the DB dependency), asserts HTTP 503 and the exact body {"status":"degraded","reason":"db"}, and runs (not skipped) and passes as part of the suite.
+
+BLOCKER 3
+1. File and location: test/health.spec.js, lines 4-7 (`it('returns 200 ok')`).
+2. What is wrong: AC-1 is only partially verified. The test asserts res.status === 200 but makes no assertion on the response body, so the required contract {"status":"ok","version":<semver string>} is untested; the suite would pass even if the body were absent or malformed.
+3. What "fixed" means: The test additionally asserts res.body.status === 'ok' and that res.body.version is a string matching a semver pattern (e.g., /^\d+\.\d+\.\d+/).
+
+Non-blocking observations:
+- None.
+
+Re-review instruction: the fix task receives this blocker list verbatim. On re-review, each of BLOCKER 1-3 will be explicitly confirmed resolved or re-raised against the new full diff.

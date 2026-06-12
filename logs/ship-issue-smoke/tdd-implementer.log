@@ -1,0 +1,8 @@
+STATUS: BLOCKED
+BRANCH: fix/issue-7-pagination
+DIFF_SUMMARY: None. No implementation or test code was written because a blocking condition prevents honest TDD from starting.
+TESTS_ADDED: None.
+EVIDENCE_RED: None. RED evidence cannot be produced without a runnable test command.
+EVIDENCE_GREEN: None. GREEN evidence cannot be produced without a runnable test command.
+CONTESTED_TESTS: None.
+ERRORS: Required input `test_command` is missing (explicitly NOT PROVIDED). Per the BLOCKED semantics, a missing `test_command` blocks the task because RED-then-GREEN evidence would be meaningless: there is no command to run the new failing tests against (RED) or to demonstrate the full suite passing afterward (GREEN), and there is no way to confirm the suite is clean on the current checkout before starting. The other required inputs are present and adequate: `task` (implement task 1 — pagination-state preservation on the orders list), `acceptance_criteria` (AC-3 "Changing a filter keeps the current page when still valid"; AC-4 "Page clamps to last valid page when out of range"), and `repo`/`branch` (/tmp/fictional-shop on fix/issue-7-pagination). `conventions` (React Testing Library) is the optional convention hint and does not substitute for the exact suite command. Resolution: re-dispatch this as a fresh task with the exact `test_command` that runs the relevant suite (e.g. the npm/jest/vitest invocation, optionally scoped to the orders-list pagination tests). I will not guess or invent the command, stub the gap, or weaken any test to proceed.

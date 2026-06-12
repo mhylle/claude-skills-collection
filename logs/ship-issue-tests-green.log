@@ -1,0 +1,14 @@
+PASS T1: all five agent files exist in agents/
+PASS T2: frontmatter model: exactly pinned per file
+PASS T2d: pin checker rejects 'model: sonnet' alias and missing model field
+PASS T3: fable bodies have Goal/Inputs/Constraints/Output contract and no imperative procedures
+PASS T3d: outcome-contract checker rejects body with sections + think-verb numbered list
+PASS T4: tdd-implementer body has RED-before-GREEN and no-test-weakening rule
+PASS T4d: tdd checker rejects tests-after-implementation body
+PASS T5: verdict contracts (APPROVE/FIX+blocker, PASS/FAIL/FLAKY/BLOCKED+screenshot, CLEAN/ERRORS_FOUND+excerpt)
+PASS T5d: e2e verdict checker rejects PASS/FAIL-only set missing FLAKY+BLOCKED
+PASS T6: install.sh --dry-run exits 0, lists all five agents, copies nothing
+PASS T7: frontmatter parses with non-empty name/description/model/color
+PASS T8: no fallback/downgrade/model-switch language in agent bodies
+PASS T9: every body defines BLOCKED semantics and a retry policy
+13/13 passed

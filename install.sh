@@ -8,12 +8,26 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CLAUDE_DIR="$HOME/.claude"
 
-echo "Installing Claude Code Skills Collection..."
+# Parse arguments
+DRY_RUN=0
+for arg in "$@"; do
+    if [ "$arg" = "--dry-run" ]; then
+        DRY_RUN=1
+    fi
+done
+
+if [ "$DRY_RUN" -eq 1 ]; then
+    echo "Dry run: listing what would be installed (no files will be created or copied)..."
+else
+    echo "Installing Claude Code Skills Collection..."
+fi
 
 # Create directories if they don't exist
-mkdir -p "$CLAUDE_DIR/skills"
-mkdir -p "$CLAUDE_DIR/agents"
-mkdir -p "$CLAUDE_DIR/skills/learned"
+if [ "$DRY_RUN" -eq 0 ]; then
+    mkdir -p "$CLAUDE_DIR/skills"
+    mkdir -p "$CLAUDE_DIR/agents"
+    mkdir -p "$CLAUDE_DIR/skills/learned"
+fi
 
 # Install skills
 echo "Installing skills..."
@@ -21,7 +35,9 @@ for skill_dir in "$SCRIPT_DIR/skills"/*; do
     if [ -d "$skill_dir" ]; then
         skill_name=$(basename "$skill_dir")
         echo "  - $skill_name"
-        cp -r "$skill_dir" "$CLAUDE_DIR/skills/"
+        if [ "$DRY_RUN" -eq 0 ]; then
+            cp -r "$skill_dir" "$CLAUDE_DIR/skills/"
+        fi
     fi
 done
 
@@ -31,19 +47,29 @@ for agent_file in "$SCRIPT_DIR/agents"/*.md; do
     if [ -f "$agent_file" ]; then
         agent_name=$(basename "$agent_file")
         echo "  - $agent_name"
-        cp "$agent_file" "$CLAUDE_DIR/agents/"
+        if [ "$DRY_RUN" -eq 0 ]; then
+            cp "$agent_file" "$CLAUDE_DIR/agents/"
+        fi
     fi
 done
 
 # Install hooks
 echo "Installing hooks..."
 if [ -f "$SCRIPT_DIR/hooks.json" ]; then
-    if [ -f "$CLAUDE_DIR/hooks.json" ]; then
-        echo "  - Backing up existing hooks.json to hooks.json.backup"
-        cp "$CLAUDE_DIR/hooks.json" "$CLAUDE_DIR/hooks.json.backup"
+    if [ "$DRY_RUN" -eq 0 ]; then
+        if [ -f "$CLAUDE_DIR/hooks.json" ]; then
+            echo "  - Backing up existing hooks.json to hooks.json.backup"
+            cp "$CLAUDE_DIR/hooks.json" "$CLAUDE_DIR/hooks.json.backup"
+        fi
+        cp "$SCRIPT_DIR/hooks.json" "$CLAUDE_DIR/hooks.json"
     fi
-    cp "$SCRIPT_DIR/hooks.json" "$CLAUDE_DIR/hooks.json"
     echo "  - hooks.json (strategic-compact, continuous-learning)"
+fi
+
+if [ "$DRY_RUN" -eq 1 ]; then
+    echo ""
+    echo "Dry run complete. Nothing was installed."
+    exit 0
 fi
 
 echo ""
