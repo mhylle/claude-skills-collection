@@ -402,6 +402,27 @@ def cmd_record_decision(args):
         conflicting_evidence=args.conflicting_evidence))
 
 
+def cmd_run_completed(args):
+    """Append a run_completed event — the terminal event of a merged run. Gate 2
+    was confirmed and the merge performed; this records the merged PR url for the
+    audit log. Append-only: the orchestrator is the single writer of state.json
+    (ADR-0009), so this terminal emitter only writes to the events log."""
+    read_state(args.run_dir)  # fail fast if the run is not initialized
+    ts = args.ts
+    append_event(args.run_dir, make_event(
+        "run_completed", ts, merged_pr_url=args.merged_pr_url))
+
+
+def cmd_run_aborted(args):
+    """Append a run_aborted event — the terminal event of a run that ends without
+    merging (e.g. Gate 2 declined and the human chose to abort). Append-only, for
+    the same single-writer reason as run-completed."""
+    read_state(args.run_dir)  # fail fast if the run is not initialized
+    ts = args.ts
+    append_event(args.run_dir, make_event(
+        "run_aborted", ts, reason=args.reason))
+
+
 def open_window_stage(events):
     """The stage with more timer_started than timer_stopped events, if any."""
     starts = {}
@@ -729,6 +750,22 @@ def build_parser():
     p.add_argument("--conflicting-evidence", required=True)
     add_ts_argument(p)
     p.set_defaults(func=cmd_record_decision)
+
+    p = sub.add_parser("run-completed",
+                       help="emit the run_completed terminal event (merge confirmed)")
+    p.add_argument("--run-dir", required=True)
+    p.add_argument("--merged-pr-url", required=True,
+                   help="url of the PR merged at Gate 2")
+    add_ts_argument(p)
+    p.set_defaults(func=cmd_run_completed)
+
+    p = sub.add_parser("run-aborted",
+                       help="emit the run_aborted terminal event (run ends without merging)")
+    p.add_argument("--run-dir", required=True)
+    p.add_argument("--reason", required=True,
+                   help="why the run ended without merging")
+    add_ts_argument(p)
+    p.set_defaults(func=cmd_run_aborted)
 
     p = sub.add_parser("resume-check", help="find the resume point; record crash gaps")
     p.add_argument("--run-dir", required=True)

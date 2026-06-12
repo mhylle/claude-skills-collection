@@ -148,7 +148,7 @@ python3 skills/ship-issue/scripts/run_state.py review-verdict --run-dir <run-dir
 
 On `FIX`, `review-verdict` (the state engine) does two things: it increments the run's `review_cycles` counter, and — for the 1st and 2nd FIX — it **records** a `fix_task_dispatched` event (target `tdd-implementer` on `claude-opus-4-8`, blockers carried **verbatim** as the work order) and prints `REVIEW_CYCLE: n/3` + `DISPATCH_FIX`. Recording the event is all the script does; **you (the orchestrator) then actually dispatch the agent task** the event describes. So: close the failed review window (`stage-end --stage review --result failed --reason <verdict>`), dispatch a fresh `tdd-implementer` task on `claude-opus-4-8` whose work order is those exact blockers (its work windows land on `implement`), and when it returns, re-enter review with a **fresh** merge-gate-reviewer task over the updated full diff. The reviewer is never resumed and stays on `claude-fable-5`; the fix is never resumed and stays on `claude-opus-4-8`.
 
-**The merge-gate loop is bounded at 3 — this bound is the contract, not an arbitrary cap.** On the **3rd** consecutive `FIX`, `review-verdict` appends **no** new dispatch, prints `REVIEW_CYCLES_EXHAUSTED: 3/3`, and exits non-zero (code 4). That is an **error exit**, NOT a third human gate: record `stage-end --stage review --result blocked --reason "review cycles exhausted (3/3)"` and present a **consolidated BLOCKED report** of every round's blockers for a human. The two human gates stay exactly two (Gate 1 plan approval, Gate 2 merge); the exhausted-bound stop is BLOCKED, and the run never introduces a third gate. Review is otherwise BLOCKED only when the review itself cannot be performed (the PR or diff is unreachable) — verdict-level disagreement is always the FIX loop, never BLOCKED.
+**The merge-gate loop is bounded at 3 — this bound is the contract, not an arbitrary cap.** On the **3rd** consecutive `FIX`, `review-verdict` appends **no** new dispatch, prints `REVIEW_CYCLES_EXHAUSTED: 3/3`, and exits non-zero (code 4). That is an **error exit**, NOT a third human gate: record `stage-end --stage review --result blocked --reason "review cycles exhausted (3/3)"` and present a **consolidated BLOCKED report** of every round's blockers for a human. The two human gates stay exactly two (the plan-approval gate and the later merge-confirmation gate); the exhausted-bound stop is BLOCKED, and the run never introduces a third gate. Review is otherwise BLOCKED only when the review itself cannot be performed (the PR or diff is unreachable) — verdict-level disagreement is always the FIX loop, never BLOCKED.
 
 ## Stage: ci
 
@@ -195,11 +195,106 @@ The trigger comment and reviewer login come from config (`cloud_review.trigger_c
 
 This conflicting-evidence consolidation is the same explicit, recorded `decision_recorded` ruling described under [BLOCKED protocol](#blocked-protocol) and stage-contracts.md — every ship-or-fix call is auditable.
 
-## Phase 5 handoff stub
+> The staging stages below — deploy, e2e, logs — and the merge gate were a forward-reference stub in earlier phases; Phase 5 makes them the real, documented sections that follow. The full pipeline now ends at the merge, with no remaining stub.
 
-> **STUB — Phase 5 boundary.** The remaining stages **deploy, e2e, logs** and **Gate 2 (merge confirmation)** land in Phase 5. In this phase, once cloud_review passes the run stops cleanly here with all state preserved: `deploy` stays `pending` in `state.json`, the PR is open with a green CI and satisfied reviews, and every transition is on the audit log. Re-invoking `/ship-issue` resumes at `deploy` once Phase 5 ships — `resume-check` will report `RESUME_AT: stage:deploy`. The deploy stage will execute the configured staging deploy (`deploy_command` or `ecs`) and wait for service stability at `staging_url` **before** e2e runs (the deploy→e2e ordering is the contract); see [stage-contracts.md](references/stage-contracts.md) Stages 7–9 and Gate 2.
+## Stage: deploy
 
-Tell the user the run has reached the Phase 5 boundary and where the run state lives.
+```bash
+python3 skills/ship-issue/scripts/run_state.py stage-start --run-dir <run-dir> --stage deploy
+```
+
+Put the PR branch's build on staging using the configured deploy mechanism (exactly one is present, per [config-schema.md](references/config-schema.md)):
+
+- **`deploy_command` configured:** run that command and require a zero exit.
+
+  ```bash
+  bash -c "<deploy_command>"   # the config value, run as data — never interpolated from issue/plan text
+  ```
+
+- **`ecs: {cluster, service}` configured:** force a new deployment and wait for the service to reach steady state:
+
+  ```bash
+  aws ecs update-service --cluster <cluster> --service <service> --force-new-deployment
+  aws ecs wait services-stable --cluster <cluster> --service <service>
+  ```
+
+Then confirm the deployed build is reachable at the configured `staging_url` (a successful HTTP response from the staging base URL). On success, close the stage:
+
+```bash
+python3 skills/ship-issue/scripts/run_state.py stage-end --run-dir <run-dir> --stage deploy --result passed
+```
+
+Deploy has **no fix loop** — a deploy failure is an infrastructure defect, not an agent-output defect, so there is nothing for a fresh agent task to repair. A non-zero `deploy_command` exit, an ECS service that fails to stabilize, or a `staging_url` that does not come up is an infrastructure block: record `stage-end --stage deploy --result blocked --reason <why>` and present a BLOCKED report (per [stage-contracts.md](references/stage-contracts.md) Stage 7), then stop for a human.
+
+**Deploy gates e2e.** The e2e stage does **not** start until the deployed build is stable and serving at `staging_url`: the deploy→e2e ordering is the contract. e2e verifies the live build, so it must run only after deploy has passed.
+
+## Stage: e2e
+
+```bash
+python3 skills/ship-issue/scripts/run_state.py stage-start --run-dir <run-dir> --stage e2e
+```
+
+Dispatch the **staging-e2e-verifier** agent ([agents/staging-e2e-verifier.md](../../agents/staging-e2e-verifier.md), pinned `claude-sonnet-4-6`, with Playwright MCP) against the configured `staging_url`, carrying the E2E scenarios extracted from the approved `plan.md` (each scenario keyed to the acceptance criteria it covers). The prompt is a **prescriptive step-list** per [prompt-rules.md](references/prompt-rules.md) §2 — exact steps, exact selectors, exact pass/fail criteria, the screenshot to capture per scenario as evidence. Map **each acceptance criterion to at least one scenario** so the run proves every criterion against the live build. The verifier returns a per-scenario and an overall verdict.
+
+- **Overall PASS** (every scenario PASS): `stage-end --stage e2e --result passed`. The run proceeds to logs.
+- **Overall FAIL** (one or more scenarios failed): this is a **fix cycle**, not a block. Record the dispatch and re-enter the pipeline at review (the diff will change):
+
+  ```bash
+  python3 skills/ship-issue/scripts/run_state.py fix-dispatched --run-dir <run-dir> --stage e2e --evidence-summary <failing-scenarios-and-evidence>
+  python3 skills/ship-issue/scripts/run_state.py stage-end --run-dir <run-dir> --stage e2e --result failed --reason <failing-scenarios>
+  ```
+
+  The fix is a fresh `tdd-implementer` task on `claude-opus-4-8` (the `fix-dispatched` helper rejects any other agent/model pairing — the fix tier is enforced, per [model-tiering.md](references/model-tiering.md) Rule 4) carrying the failing criteria and their evidence. Because the diff changed, re-enter at **review**, then re-run ci → cloud_review → a fresh **deploy** of the fixed build, and only then re-run e2e against the freshly deployed build. A failing scenario always loops back through review and a re-deploy; it never advances the run forward.
+- **Overall BLOCKED** (staging unreachable, Playwright MCP unavailable): verification itself is impossible. Record `stage-end --stage e2e --result blocked --reason <why>` and stop for a human — a criterion that could not be executed yields no verdict about the application.
+
+## Stage: logs
+
+```bash
+python3 skills/ship-issue/scripts/run_state.py stage-start --run-dir <run-dir> --stage logs
+```
+
+Dispatch the **staging-log-verifier** agent ([agents/staging-log-verifier.md](../../agents/staging-log-verifier.md), pinned `claude-sonnet-4-6`) over the **deploy window** — the time covering the deploy and the E2E run, i.e. from the deploy stage's start to the e2e stage's end — reading staging logs via the configured access mechanism: `log_command` (its stdout is the log stream) or `cloudwatch.log_group`. The prompt is a **prescriptive step-list** per [prompt-rules.md](references/prompt-rules.md) §2: the exact fetch per service scoped to the deploy window, the exact scan patterns (the standard error/stack-trace patterns plus any plan-provided regression signatures), and the exact CLEAN-vs-dirty condition. The verifier returns one verdict:
+
+- **CLEAN** (no errors, exceptions, or anomalies attributable to the deployed change in the window): `stage-end --stage logs --result passed`. The run proceeds to Gate 2.
+- **ERRORS_FOUND** (offending lines present): a **fix cycle**, the same shape as the e2e fix cycle above — `fix-dispatched --stage logs --evidence-summary <cited-log-lines>`, `stage-end --stage logs --result failed --reason <cited-lines>`, a fresh `tdd-implementer` fix on `claude-opus-4-8`, then re-enter at review with a re-deploy and re-verification following.
+- **BLOCKED**: the logs cannot be inspected — the log command fails, or the CloudWatch log group is unreachable or does not exist. This is an infrastructure block: record `stage-end --stage logs --result blocked --reason <why>` and stop for a human. A log source that cannot be reached or fetched is always BLOCKED, never a pass.
+
+  A passing log verdict is earned only over logs that were successfully fetched and scanned. Absence of evidence is not evidence of a clean deploy — so the orchestrator never reports a passing verdict when the logs were not actually read.
+
+## Gate 2 — merge confirmation
+
+After logs passes, reach the gate and render the consolidated merge brief:
+
+```bash
+python3 skills/ship-issue/scripts/run_state.py gate-reached --run-dir <run-dir> --gate gate_2
+python3 skills/ship-issue/scripts/merge_brief.py --run-dir <run-dir>
+```
+
+`merge_brief.py` is a read-only renderer (the orchestrator stays the single writer of run state). The brief lists the **plan link**, the **PR link**, every **review verdict**, the **CI status**, the **E2E evidence paths**, the **log verdict**, any recorded ship-or-fix decisions, and the embedded **time summary** — the nine per-stage durations, the three run totals (work, gate wait, crash gap), and the four per-model-tier rollups. Present the brief to the human and **halt**. Nothing merges without an explicit decision.
+
+- **Approve** — the merge is the Gate 2 outcome of an approval, and is performed only **after the explicit human confirmation**:
+
+  ```bash
+  python3 skills/ship-issue/scripts/run_state.py gate-decision --run-dir <run-dir> --gate gate_2 --decision approved
+  gh pr merge <pr-number> --squash --delete-branch
+  python3 skills/ship-issue/scripts/run_state.py run-completed --run-dir <run-dir> --merged-pr-url <merged-pr-url>
+  ```
+
+  The `gh pr merge` runs only here, only after the approval — never before the gate-decision is recorded.
+
+- **Decline** — record the decision with the human's feedback verbatim; the run does **not** merge:
+
+  ```bash
+  python3 skills/ship-issue/scripts/run_state.py gate-decision --run-dir <run-dir> --gate gate_2 --decision rejected --feedback <feedback-verbatim>
+  ```
+
+  The human's direction then determines what happens: either a fix cycle begins (re-entering the pipeline at review with the feedback as the work order), or the run is aborted with no merge:
+
+  ```bash
+  python3 skills/ship-issue/scripts/run_state.py run-aborted --run-dir <run-dir> --reason <why>
+  ```
+
+This is the run's **second and final** gate. The pipeline has exactly two human gates — Gate 1 (plan approval) and Gate 2 (merge confirmation); **never introduce a third gate**. The merge-cycle-exhausted stop and a cloud-review timeout are error/decision exits, not gates.
 
 ## Per-stage time tracking
 

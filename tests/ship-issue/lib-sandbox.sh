@@ -182,6 +182,19 @@ case "$cmd" in
     printf 'build\tpass\t1m2s\thttps://ci/run/1\n'
     exit 0
     ;;
+  "pr merge")
+    # Record the FULL argv, one arg per line. Args are data, never executed.
+    # Mirrors the "pr create" arm exactly: the merge is a recorded fake so
+    # tests can assert WHEN (and whether) a merge was invoked, without ever
+    # touching the network. Seed files do not gate it; the orchestrator is
+    # expected to only call this after a Gate 2 approval.
+    : > "$STATE_DIR/pr-merge.argv"
+    for arg in "$@"; do
+      printf '%s\n' "$arg" >> "$STATE_DIR/pr-merge.argv"
+    done
+    printf '%s\n' 'Merged pull request #57 (squash)'
+    exit 0
+    ;;
 esac
 exit 0
 STUB

@@ -22,3 +22,4 @@ __pycache__/
 # Test run artifacts / local session config
 logs/
 .claude/
+docs/evidence/
