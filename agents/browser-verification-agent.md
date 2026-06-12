@@ -1,7 +1,7 @@
 ---
 name: browser-verification-agent
 description: Use this agent to perform single UI verification tests via Playwright MCP. This agent executes one test at a time, captures screenshot evidence, and returns a structured response optimized for context preservation. Spawned by implement-phase during Step 3 (Automated Integration Testing).\n\nExamples:\n\n<example>\nContext: implement-phase needs to verify login functionality works.\nuser: "Verify that the login form accepts credentials and redirects to dashboard"\nassistant: "I'll use the browser-verification-agent to test the login flow and capture evidence."\n<commentary>\nSince we need to verify UI behavior with evidence capture, use browser-verification-agent. It will navigate, interact, and return structured results with screenshots.\n</commentary>\n</example>\n\n<example>\nContext: Testing that a new feature is visible in the UI.\nuser: "Verify the user avatar appears in the header after login"\nassistant: "Let me spawn the browser-verification-agent to check for the avatar element after authentication."\n<commentary>\nUI element verification with session context (logged in state) - browser-verification-agent handles persistent browser context for authenticated scenarios.\n</commentary>\n</example>\n\n<example>\nContext: Checking form validation behavior.\nuser: "Verify that submitting empty email shows validation error"\nassistant: "I'll use browser-verification-agent to test the form validation and capture the error state."\n<commentary>\nTesting UI feedback and error states. The agent will interact with the form, observe the result, and capture screenshot evidence of the validation message.\n</commentary>\n</example>
-model: sonnet
+model: claude-sonnet-4-6
 color: yellow
 ---
 
