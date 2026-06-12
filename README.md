@@ -203,6 +203,12 @@ Skills are invoked via the `Skill` tool or `/skill-name` shorthand.
 |-------|---------|-------------|
 | **agent-creator** | "create agent", "build agent" | Creates composable AI agent systems in NestJS |
 
+### Pipeline (Issue → Merge)
+
+| Skill | Trigger | Description |
+|-------|---------|-------------|
+| **ship-issue** | `/ship-issue <issue-number-or-url>` | One-command GitHub issue → merged PR pipeline across nine stages (preflight, plan, implement, review, ci, cloud_review, deploy, e2e, logs) with **exactly two human gates** — plan approval and merge confirmation. Model-tiered: **Fable 5** plans, orchestrates, and runs the merge-gate review; **Opus 4.8** implements (TDD); **Sonnet 4.6** runs staging E2E and log checks. File-based run state gives lossless crash-resume; per-stage time tracking (work / gate-wait / crash-gap, with a per-model-tier rollup) is embedded in the Gate 2 merge brief. Pair with the single-file `dashboard.py` for a live view. |
+
 ## Agents
 
 Agents are specialized sub-agents launched via the `Task` tool for parallel execution.
@@ -216,6 +222,18 @@ Agents are specialized sub-agents launched via the `Task` tool for parallel exec
 | **docs-locator** | Finds documentation and research notes |
 | **web-search-researcher** | Web research for APIs, libraries, troubleshooting |
 | **browser-verification-agent** | UI testing via Playwright MCP with screenshot evidence |
+
+### ship-issue pipeline agents
+
+Each agent **pins its model** in frontmatter — the tier is part of the contract, never switched mid-task (prompt caches are model-scoped; ADR-0007). A fix cycle is always a fresh task on the same tier, never a resumed task on a different model.
+
+| Agent | Model | Purpose |
+|-------|-------|---------|
+| **issue-planner** | `claude-fable-5` (Fable 5) | Turns a GitHub issue + codebase into the plan presented at Gate 1. Outcome-prompted (ADR-0008). |
+| **merge-gate-reviewer** | `claude-fable-5` (Fable 5) | Last-line diff review at the merge gate; verdict contract APPROVE / FIX (itemized blockers). Outcome-prompted. |
+| **tdd-implementer** | `claude-opus-4-8` (Opus 4.8) | Tests-first implementation, UI components, API routes; receives reviewer/CI/E2E blockers verbatim on fix cycles. |
+| **staging-e2e-verifier** | `claude-sonnet-4-6` (Sonnet 4.6) | Runs the plan's E2E scenarios against the live staging URL via Playwright MCP; PASS/FAIL/FLAKY/BLOCKED with screenshot evidence. |
+| **staging-log-verifier** | `claude-sonnet-4-6` (Sonnet 4.6) | Scans staging service logs over the deploy window; CLEAN vs ERRORS_FOUND with cited lines. |
 
 ## Installation
 
@@ -531,6 +549,7 @@ claude-skills-collection/
 │   ├── team-implement-plan/      # NEW: Small review team (Implementer + Reviewer)
 │   ├── team-implement-plan-full/ # NEW: Full parallel team (per-phase + shared Reviewer)
 │   ├── workflow-guide/           # NEW: Recommends workflow mode
+│   ├── ship-issue/               # NEW: Issue→merge pipeline (SKILL.md, references/, scripts/dashboard.py)
 │   └── verification-loop/        # 6-phase verification
 ├── agents/
 │   ├── browser-verification-agent.md  # NEW: UI testing
@@ -539,6 +558,11 @@ claude-skills-collection/
 │   ├── codebase-pattern-finder.md
 │   ├── docs-analyzer.md
 │   ├── docs-locator.md
+│   ├── issue-planner.md               # NEW: ship-issue planner (Fable 5)
+│   ├── merge-gate-reviewer.md         # NEW: ship-issue merge-gate review (Fable 5)
+│   ├── tdd-implementer.md             # NEW: ship-issue implementer (Opus 4.8)
+│   ├── staging-e2e-verifier.md        # NEW: ship-issue staging E2E (Sonnet 4.6)
+│   ├── staging-log-verifier.md        # NEW: ship-issue staging logs (Sonnet 4.6)
 │   └── web-search-researcher.md
 ├── docs/
 │   ├── decisions/                # ADRs
