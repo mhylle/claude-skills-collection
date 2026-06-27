@@ -202,6 +202,7 @@ Skills are invoked via the `Skill` tool or `/skill-name` shorthand.
 | Skill | Trigger | Description |
 |-------|---------|-------------|
 | **agent-creator** | "create agent", "build agent" | Creates composable AI agent systems in NestJS |
+| **design-language** | "design my own design language", "build my design system", "I want my own look not the Claude default" | Guided design-brief → living-styleguide compiler. **Reaction-first** elicitation (web research + real references + live archetypes rendered in your own tokens → you react → targeted refinement) with a per-dimension **1–5 "safeness" gradient** (conventional→experimental) across the entire system (color, type, spacing, shape, elevation, motion, imagery, components, patterns, voice). Resumable multi-phase flow; emits a self-contained, portable `./design-system/` (interactive dashboard + `css/tokens.css` single-source-of-truth + W3C `design-tokens.json` + `DESIGN_LANGUAGE.md` contract with an explicit **anti-Claude** reference + pre-ship checklist + a default-vs-yours `compare.html`) that future sessions read and build from. Different from `frontend-design` (which styles one UI in the moment). |
 
 ### Pipeline (Issue → Merge)
 
@@ -224,6 +225,7 @@ Agents are specialized sub-agents launched via the `Task` tool for parallel exec
 | **docs-locator** | Finds documentation and research notes |
 | **web-search-researcher** | Web research for APIs, libraries, troubleshooting |
 | **browser-verification-agent** | UI testing via Playwright MCP with screenshot evidence |
+| **design-researcher** | `claude-sonnet-4-6` — per-dimension inspiration research for the **design-language** skill (WebSearch → Playwright screenshots → cached manifest), steering away from the default Claude look |
 
 ### ship-issue pipeline agents
 

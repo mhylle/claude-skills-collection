@@ -1,0 +1,688 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>design-language questionnaire</title>
+<!--
+  questionnaire.html.tmpl — the data-driven feedback page.
+
+  This template is intentionally STATIC: it ships no question content of its own.
+  On load it fetches /api/questionnaire (the current questionnaire.json) and
+  renders each question by its `type`. The server re-reads that JSON on every
+  request, so a refresh always reflects the questionnaire as it stands — and any
+  live previews are styled by the CURRENT tokens.css, so the user reacts to
+  THEIR emerging language, not a stranger's site.
+
+  In headless --static mode the server injects the JSON + tokens inline (see the
+  two placeholder markers below) and "Submit all" downloads responses.json
+  instead of POSTing it. The same code path renders both ways.
+
+  Deliberately NOT the default Claude/Anthropic aesthetic: no warm beige, no
+  terracotta. This chrome is a neutral, cool, tool-like slate — so it never
+  competes with or contaminates the language being designed in the previews.
+  Everything inline; works fully offline (no CDN / external fonts).
+-->
+<style>
+  /* ---- Tool chrome (deliberately neutral; NOT the design being authored) ---- */
+  :root {
+    --ui-bg: #11151c;
+    --ui-panel: #181d27;
+    --ui-panel-2: #1f2632;
+    --ui-line: #2b3340;
+    --ui-line-strong: #3a4555;
+    --ui-text: #e7ebf2;
+    --ui-muted: #98a2b3;
+    --ui-accent: #4f8cff;
+    --ui-accent-2: #6ee7d8;
+    --ui-good: #3ecf8e;
+    --ui-warn: #e6b450;
+    --ui-radius: 8px;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    font: 15px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--ui-bg);
+    color: var(--ui-text);
+    -webkit-font-smoothing: antialiased;
+  }
+  header.app {
+    position: sticky; top: 0; z-index: 20;
+    display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap;
+    padding: 14px 22px;
+    background: rgba(17, 21, 28, 0.92);
+    backdrop-filter: blur(6px);
+    border-bottom: 1px solid var(--ui-line);
+  }
+  header.app .tag {
+    font: 600 11px/1 ui-monospace, "SF Mono", Menlo, monospace;
+    letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--ui-accent-2);
+    border: 1px solid var(--ui-line-strong); border-radius: 999px;
+    padding: 4px 10px;
+  }
+  header.app h1 { font-size: 17px; margin: 0; font-weight: 650; }
+  header.app .save-state { margin-left: auto; font-size: 12px; color: var(--ui-muted); }
+  main { max-width: 960px; margin: 0 auto; padding: 24px 22px 140px; }
+  .intro { color: var(--ui-muted); margin: 0 0 26px; font-size: 14px; }
+  .intro p { margin: 0 0 10px; }
+  .intro code {
+    font-family: ui-monospace, Menlo, monospace; font-size: 12px;
+    background: var(--ui-panel-2); padding: 1px 5px; border-radius: 4px;
+  }
+
+  /* ---- Question card ---- */
+  .q {
+    background: var(--ui-panel);
+    border: 1px solid var(--ui-line);
+    border-radius: var(--ui-radius);
+    padding: 20px 20px 22px;
+    margin: 0 0 22px;
+  }
+  .q > .q-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 4px; }
+  .q .q-type {
+    font: 600 10px/1 ui-monospace, monospace; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--ui-muted); border: 1px solid var(--ui-line); border-radius: 4px; padding: 3px 6px;
+  }
+  .q h2 { font-size: 16px; margin: 0 0 12px; font-weight: 600; }
+  .q .q-prompt-sub { color: var(--ui-muted); font-size: 13px; margin: -6px 0 14px; }
+
+  /* ---- this-or-that ---- */
+  .tot { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .tot .panel {
+    border: 2px solid var(--ui-line); border-radius: var(--ui-radius);
+    background: var(--ui-panel-2); padding: 0; cursor: pointer; overflow: hidden;
+    text-align: left; color: inherit; font: inherit; transition: border-color .12s, transform .08s;
+  }
+  .tot .panel:hover { border-color: var(--ui-line-strong); }
+  .tot .panel.sel { border-color: var(--ui-accent); }
+  .tot .panel .pv { padding: 14px; border-bottom: 1px solid var(--ui-line); background: #fff; color: #111; }
+  .tot .panel .lbl { padding: 12px 14px; display: flex; align-items: center; gap: 8px; }
+  .tot .panel .pick { font: 700 12px/1 ui-monospace, monospace; color: var(--ui-muted); }
+  .tot .panel.sel .pick { color: var(--ui-accent); }
+
+  /* ---- rate-grid ---- */
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 14px; }
+  .cell { border: 1px solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-panel-2); overflow: hidden; }
+  .cell .thumb { width: 100%; aspect-ratio: 16 / 10; object-fit: cover; display: block; background: #0c0f14; }
+  .cell .thumb.ph { display: flex; align-items: center; justify-content: center; color: var(--ui-muted); font-size: 12px; }
+  .cell .meta { padding: 8px 10px 10px; }
+  .cell .meta .name { font-size: 13px; font-weight: 600; word-break: break-word; }
+  .cell .meta a { color: var(--ui-accent); font-size: 11px; text-decoration: none; }
+  .cell .meta a:hover { text-decoration: underline; }
+
+  /* ---- star / scale rating ---- */
+  .scale { display: inline-flex; gap: 4px; margin-top: 8px; }
+  .scale button {
+    width: 30px; height: 30px; border: 1px solid var(--ui-line); border-radius: 6px;
+    background: transparent; color: var(--ui-muted); cursor: pointer; font: 600 13px/1 system-ui;
+    transition: background .1s, color .1s, border-color .1s;
+  }
+  .scale button:hover { border-color: var(--ui-line-strong); }
+  .scale button.on { background: var(--ui-accent); border-color: var(--ui-accent); color: #fff; }
+
+  /* ---- adjective-pick ---- */
+  .adj { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip {
+    border: 1px solid var(--ui-line); border-radius: 999px; background: var(--ui-panel-2);
+    color: var(--ui-text); padding: 7px 14px; cursor: pointer; font-size: 13px;
+    display: inline-flex; align-items: center; gap: 7px; transition: border-color .1s, background .1s;
+  }
+  .chip:hover { border-color: var(--ui-line-strong); }
+  .chip.on { border-color: var(--ui-accent); background: rgba(79,140,255,.15); }
+  .chip .rank { font: 700 11px/1 ui-monospace, monospace; color: var(--ui-accent); }
+  .adj-hint { color: var(--ui-muted); font-size: 12px; margin-top: 10px; }
+
+  /* ---- safeness-spectrum (signature) ---- */
+  .spectrum-rail { display: flex; align-items: center; gap: 6px; margin: 0 0 14px; font-size: 11px; color: var(--ui-muted); }
+  .spectrum-rail .bar { flex: 1; height: 4px; border-radius: 2px;
+    background: linear-gradient(90deg, #3ecf8e 0%, #e6b450 55%, #e0556b 100%); }
+  .variants { display: grid; gap: 14px; }
+  .variant {
+    border: 2px solid var(--ui-line); border-radius: var(--ui-radius);
+    background: var(--ui-panel-2); overflow: hidden; transition: border-color .12s;
+  }
+  .variant.chosen { border-color: var(--ui-accent); }
+  .variant .v-head { display: flex; align-items: center; gap: 10px; padding: 11px 14px; border-bottom: 1px solid var(--ui-line); }
+  .variant .level-badge {
+    font: 700 12px/1 ui-monospace, monospace; min-width: 26px; height: 26px;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 6px; color: #0c0f14;
+  }
+  .variant .v-name { font-weight: 600; font-size: 14px; }
+  .variant .v-sub { color: var(--ui-muted); font-size: 12px; }
+  .variant .v-actions { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+  .variant .choose {
+    border: 1px solid var(--ui-line-strong); border-radius: 6px; background: transparent;
+    color: var(--ui-text); padding: 6px 12px; cursor: pointer; font: 600 12px/1 system-ui;
+  }
+  .variant.chosen .choose { background: var(--ui-accent); border-color: var(--ui-accent); color: #fff; }
+  .variant .v-preview { background: #fff; color: #111; padding: 0; }
+  .variant .v-preview .live { padding: 18px; }
+  .variant iframe.sandbox { width: 100%; height: 260px; border: 0; display: block; background: #fff; }
+
+  /* ---- token-tweak ---- */
+  .tweak { display: grid; grid-template-columns: 320px 1fr; gap: 16px; }
+  @media (max-width: 720px) { .tweak { grid-template-columns: 1fr; } }
+  .tweak .controls { display: grid; gap: 12px; align-content: start; }
+  .tweak .ctl { display: grid; grid-template-columns: 1fr auto; gap: 8px 12px; align-items: center; }
+  .tweak .ctl label { font-size: 12px; color: var(--ui-muted); font-family: ui-monospace, monospace; }
+  .tweak .ctl .val { font: 600 12px/1 ui-monospace, monospace; color: var(--ui-text); justify-self: end; }
+  .tweak .ctl input[type=color] { width: 100%; height: 30px; padding: 0; border: 1px solid var(--ui-line); border-radius: 6px; background: transparent; }
+  .tweak .ctl input[type=range] { width: 100%; }
+  .tweak .ctl input[type=number], .tweak .ctl input[type=text] {
+    width: 100%; background: var(--ui-panel-2); border: 1px solid var(--ui-line);
+    border-radius: 6px; color: var(--ui-text); padding: 6px 8px; font: 13px ui-monospace, monospace;
+  }
+  .tweak .preview { border: 1px solid var(--ui-line); border-radius: var(--ui-radius); background: #fff; color: #111; padding: 18px; overflow: auto; }
+
+  /* ---- constraint ---- */
+  .constraint textarea {
+    width: 100%; min-height: 96px; resize: vertical;
+    background: var(--ui-panel-2); border: 1px solid var(--ui-line); border-radius: var(--ui-radius);
+    color: var(--ui-text); padding: 12px 14px; font: 14px/1.5 system-ui;
+  }
+  .constraint textarea:focus { outline: 2px solid var(--ui-accent); outline-offset: -1px; }
+  .constraint .hint { color: var(--ui-warn); font-size: 12px; margin-top: 8px; }
+
+  .unknown { color: var(--ui-warn); font-size: 13px; }
+
+  /* ---- submit bar ---- */
+  .submitbar {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    padding: 14px 22px;
+    background: rgba(17, 21, 28, 0.95);
+    border-top: 1px solid var(--ui-line);
+    backdrop-filter: blur(6px);
+  }
+  .submitbar .status { color: var(--ui-muted); font-size: 13px; }
+  .submitbar .status.ok { color: var(--ui-good); }
+  .submitbar .status.err { color: #f0808c; }
+  .submitbar button.submit {
+    margin-left: auto;
+    background: var(--ui-accent); color: #fff; border: 0; border-radius: var(--ui-radius);
+    padding: 11px 22px; font: 650 14px/1 system-ui; cursor: pointer;
+  }
+  .submitbar button.submit:hover { filter: brightness(1.08); }
+  .submitbar button.submit:disabled { opacity: .5; cursor: default; }
+
+  .done {
+    background: rgba(62,207,142,.12); border: 1px solid var(--ui-good);
+    color: var(--ui-text); border-radius: var(--ui-radius); padding: 18px 20px; margin: 0 0 22px;
+  }
+  .done strong { color: var(--ui-good); }
+  .done code { font-family: ui-monospace, monospace; background: var(--ui-panel-2); padding: 1px 6px; border-radius: 4px; }
+  .hidden { display: none !important; }
+</style>
+<!--TOKENS_LINK--> <!-- server injects <link>/<style> for the current tokens.css here so previews track the language -->
+</head>
+<body>
+<header class="app">
+  <span class="tag">design-language</span>
+  <h1 id="title">Questionnaire</h1>
+  <span class="save-state" id="saveState">not saved yet</span>
+</header>
+
+<main>
+  <div class="done hidden" id="doneBanner">
+    <strong>Saved.</strong> Your answers were recorded to <code id="doneTarget">responses.json</code>.
+    You can now return to the skill and say <strong>"done"</strong> to continue.
+  </div>
+  <div class="intro" id="intro"></div>
+  <div id="questions"></div>
+</main>
+
+<div class="submitbar">
+  <span class="status" id="status">Answer what you like — progress auto-saves locally.</span>
+  <button class="submit" id="submitBtn">Submit all</button>
+</div>
+
+<!--
+  Server-side injection markers (only used in --static / inline mode). In normal
+  server mode these stay as null and the page fetches /api/questionnaire. The
+  server substitutes JSON literals for the two placeholders below.
+-->
+<script>
+  window.__QUESTIONNAIRE__ = /*__QUESTIONNAIRE_JSON__*/ null /*__END__*/;
+  window.__STATIC_MODE__   = /*__STATIC_MODE__*/ false /*__END__*/;
+</script>
+
+<script>
+"use strict";
+(function () {
+  // ---- tiny helpers -------------------------------------------------------
+  const $ = (id) => document.getElementById(id);
+  const el = (tag, cls, html) => {
+    const n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (html != null) n.innerHTML = html;
+    return n;
+  };
+  const esc = (s) => String(s == null ? "" : s)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+
+  // Spectrum level -> colour on the green→amber→red rail (1 safe .. 5 wild).
+  const LEVEL_COLORS = { 1: "#3ecf8e", 2: "#9ed36a", 3: "#e6b450", 4: "#e6894f", 5: "#e0556b" };
+
+  // ---- light markdown (paragraphs, line breaks, **bold**, `code`) ---------
+  // Intentionally minimal: intro text is author-controlled, but we still escape
+  // first and only re-introduce the few inline marks we support.
+  function renderMarkdown(text) {
+    if (!text) return "";
+    const blocks = String(text).split(/\n{2,}/);
+    return blocks.map((block) => {
+      let h = esc(block.trim());
+      h = h.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+      h = h.replace(/`([^`]+)`/g, "<code>$1</code>");
+      h = h.replace(/\n/g, "<br>");
+      return "<p>" + h + "</p>";
+    }).join("");
+  }
+
+  // ---- state: answers persisted to localStorage per phase -----------------
+  let QUESTIONNAIRE = null;
+  let STORAGE_KEY = "design-language:responses";
+  const answers = {};  // { questionId: <answer object> }
+
+  function loadSaved() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) Object.assign(answers, JSON.parse(raw));
+    } catch (e) { /* ignore corrupt local state */ }
+  }
+  function saveLocal() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(answers));
+      $("saveState").textContent = "saved locally · " + new Date().toLocaleTimeString();
+    } catch (e) { $("saveState").textContent = "could not save locally"; }
+  }
+  function setAnswer(qid, value) { answers[qid] = value; saveLocal(); }
+
+  // ---- a reusable 1–5 scale widget ----------------------------------------
+  function scaleWidget(current, onPick) {
+    const wrap = el("div", "scale");
+    for (let i = 1; i <= 5; i++) {
+      const b = el("button", current === i ? "on" : "", String(i));
+      b.type = "button";
+      b.addEventListener("click", () => {
+        onPick(i);
+        [...wrap.children].forEach((c, idx) => c.classList.toggle("on", idx + 1 === i));
+      });
+      wrap.appendChild(b);
+    }
+    return wrap;
+  }
+
+  // ---- renderers, one per question type -----------------------------------
+  const RENDERERS = {
+    "this-or-that": renderThisOrThat,
+    "rate-grid": renderRateGrid,
+    "adjective-pick": renderAdjectivePick,
+    "safeness-spectrum": renderSafenessSpectrum,
+    "token-tweak": renderTokenTweak,
+    "constraint": renderConstraint,
+  };
+
+  function renderThisOrThat(q, body) {
+    const saved = answers[q.id] || {};
+    const opts = q.options || [
+      { key: "A", name: (q.a && q.a.name) || "Option A", previewHtml: q.a && q.a.previewHtml },
+      { key: "B", name: (q.b && q.b.name) || "Option B", previewHtml: q.b && q.b.previewHtml },
+    ];
+    const wrap = el("div", "tot");
+    opts.forEach((opt) => {
+      const key = opt.key || opt.id || opt.name;
+      const panel = el("button", "panel" + (saved.picked === key ? " sel" : ""));
+      panel.type = "button";
+      if (opt.previewHtml) panel.appendChild(el("div", "pv", opt.previewHtml));
+      const lbl = el("div", "lbl");
+      lbl.appendChild(el("span", "pick", esc(key)));
+      lbl.appendChild(el("span", null, esc(opt.name || key)));
+      panel.appendChild(lbl);
+      panel.addEventListener("click", () => {
+        setAnswer(q.id, { picked: key });
+        [...wrap.children].forEach((c) => c.classList.remove("sel"));
+        panel.classList.add("sel");
+      });
+      wrap.appendChild(panel);
+    });
+    body.appendChild(wrap);
+  }
+
+  function renderRateGrid(q, body) {
+    const saved = answers[q.id] || { ratings: {} };
+    const ratings = Object.assign({}, saved.ratings);
+    const grid = el("div", "grid");
+    (q.items || []).forEach((item, idx) => {
+      const itemId = item.id || item.img || ("item-" + idx);
+      const cell = el("div", "cell");
+      if (item.img) {
+        const img = el("img", "thumb");
+        img.src = item.img; img.alt = item.name || itemId; img.loading = "lazy";
+        img.addEventListener("error", () => {
+          img.replaceWith(el("div", "thumb ph", "image unavailable"));
+        });
+        cell.appendChild(img);
+      } else {
+        cell.appendChild(el("div", "thumb ph", "no preview"));
+      }
+      const meta = el("div", "meta");
+      meta.appendChild(el("div", "name", esc(item.name || itemId)));
+      if (item.source) {
+        const a = el("a", null, "source ↗");
+        a.href = item.source; a.target = "_blank"; a.rel = "noopener noreferrer";
+        meta.appendChild(a);
+      }
+      meta.appendChild(scaleWidget(ratings[itemId], (n) => {
+        ratings[itemId] = n; setAnswer(q.id, { ratings });
+      }));
+      cell.appendChild(meta);
+      grid.appendChild(cell);
+    });
+    body.appendChild(grid);
+  }
+
+  function renderAdjectivePick(q, body) {
+    const saved = answers[q.id] || { picked: [], ranked: [] };
+    const picked = new Set(saved.picked || []);
+    const ranked = (saved.ranked || []).slice();  // ordered selection
+    const wrap = el("div", "adj");
+    const commit = () => setAnswer(q.id, { picked: [...picked], ranked: ranked.slice() });
+    (q.options || []).forEach((opt) => {
+      const word = typeof opt === "string" ? opt : (opt.word || opt.name);
+      const chip = el("button", "chip" + (picked.has(word) ? " on" : ""));
+      chip.type = "button";
+      const rankSpan = el("span", "rank", "");
+      const label = el("span", null, esc(word));
+      chip.appendChild(rankSpan); chip.appendChild(label);
+      const refreshRanks = () => {
+        [...wrap.children].forEach((c) => {
+          const w = c.dataset.word;
+          const pos = ranked.indexOf(w);
+          const r = c.querySelector(".rank");
+          if (r) r.textContent = pos >= 0 ? "#" + (pos + 1) : "";
+          c.classList.toggle("on", picked.has(w));
+        });
+      };
+      chip.dataset.word = word;
+      chip.addEventListener("click", () => {
+        if (picked.has(word)) {
+          picked.delete(word);
+          const i = ranked.indexOf(word); if (i >= 0) ranked.splice(i, 1);
+        } else {
+          picked.add(word); ranked.push(word);  // rank = order chosen
+        }
+        commit(); refreshRanks();
+      });
+      wrap.appendChild(chip);
+      const pos = ranked.indexOf(word);
+      if (pos >= 0) rankSpan.textContent = "#" + (pos + 1);
+    });
+    body.appendChild(wrap);
+    body.appendChild(el("div", "adj-hint", "Click to pick; click order sets the ranking."));
+  }
+
+  function renderSafenessSpectrum(q, body) {
+    const saved = answers[q.id] || { chosenLevel: null, ratings: {} };
+    const ratings = Object.assign({}, saved.ratings);
+    let chosenLevel = saved.chosenLevel != null ? saved.chosenLevel : null;
+
+    const rail = el("div", "spectrum-rail");
+    rail.appendChild(el("span", null, "1 · conventional"));
+    rail.appendChild(el("div", "bar"));
+    rail.appendChild(el("span", null, "experimental · 5"));
+    body.appendChild(rail);
+
+    const list = el("div", "variants");
+    const commit = () => setAnswer(q.id, { chosenLevel, ratings });
+    (q.variants || []).slice().sort((a, b) => (a.level || 0) - (b.level || 0)).forEach((v) => {
+      const level = v.level;
+      const card = el("div", "variant" + (chosenLevel === level ? " chosen" : ""));
+      card.dataset.level = level;
+
+      const head = el("div", "v-head");
+      const badge = el("span", "level-badge", String(level));
+      badge.style.background = LEVEL_COLORS[level] || "#888";
+      head.appendChild(badge);
+      const names = el("div");
+      names.appendChild(el("div", "v-name", esc(v.name || ("Level " + level))));
+      names.appendChild(el("div", "v-sub", "level " + level + " of 5"));
+      head.appendChild(names);
+
+      const actions = el("div", "v-actions");
+      actions.appendChild(scaleWidget(ratings[level], (n) => {
+        ratings[level] = n; commit();
+      }));
+      const chooseBtn = el("button", "choose", chosenLevel === level ? "Chosen" : "Choose");
+      chooseBtn.type = "button";
+      chooseBtn.addEventListener("click", () => {
+        chosenLevel = level; commit();
+        [...list.children].forEach((c) => {
+          const isit = Number(c.dataset.level) === level;
+          c.classList.toggle("chosen", isit);
+          const b = c.querySelector(".choose");
+          if (b) b.textContent = isit ? "Chosen" : "Choose";
+        });
+      });
+      actions.appendChild(chooseBtn);
+      head.appendChild(actions);
+      card.appendChild(head);
+
+      // Live preview. Experimental/WebGL samples (sandbox:true) run isolated in
+      // an <iframe srcdoc> so a level-5 sample can't break the questionnaire.
+      const pv = el("div", "v-preview");
+      if (v.sandbox) {
+        const frame = document.createElement("iframe");
+        frame.className = "sandbox";
+        frame.setAttribute("sandbox", "allow-scripts");
+        frame.setAttribute("title", (v.name || ("level " + level)) + " preview");
+        frame.srcdoc = sandboxDoc(v.previewHtml || "");
+        pv.appendChild(frame);
+      } else {
+        pv.appendChild(el("div", "live", v.previewHtml || "<em>(no preview)</em>"));
+      }
+      card.appendChild(pv);
+      list.appendChild(card);
+    });
+    body.appendChild(list);
+  }
+
+  // Wrap a snippet into a standalone doc for a sandboxed iframe, inheriting the
+  // current tokens.css so even the wild level-5 sample is styled by the user's
+  // emerging language. tokens are inlined into the iframe (it has no network).
+  function sandboxDoc(snippet) {
+    const tokens = window.__TOKENS_CSS__ || "";
+    return "<!doctype html><html><head><meta charset='utf-8'><style>"
+      + "html,body{margin:0;background:#fff;color:#111;font:14px/1.5 system-ui,sans-serif}"
+      + tokens + "</style></head><body>" + snippet + "</body></html>";
+  }
+
+  function renderTokenTweak(q, body) {
+    const saved = answers[q.id] || { tokens: {} };
+    const current = Object.assign({}, q.tokens || {}, saved.tokens || {});  // seed + saved
+    const tokenDefs = q.tokens || saved.tokens || {};
+    const wrap = el("div", "tweak");
+    const controls = el("div", "controls");
+    const preview = el("div", "preview", q.previewHtml || "<p>Live preview</p>");
+    const applyToPreview = () => {
+      // Apply each tweaked token as an inline CSS var on the preview root so the
+      // sample updates live without touching the actual tokens.css.
+      Object.entries(current).forEach(([name, val]) => {
+        const cssVar = name.startsWith("--") ? name : ("--" + name);
+        preview.style.setProperty(cssVar, val);
+      });
+    };
+
+    Object.keys(tokenDefs).forEach((name) => {
+      const val = current[name];
+      const ctl = el("div", "ctl");
+      const label = el("label", null, esc(name));
+      const valOut = el("span", "val", esc(val));
+      ctl.appendChild(label);
+      const isColor = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(String(val));
+      const dim = String(val).match(/^(-?[0-9.]+)(px|rem|em|%|ms|s)?$/);
+      let input;
+      if (isColor) {
+        input = document.createElement("input"); input.type = "color"; input.value = val;
+      } else if (dim) {
+        input = document.createElement("input"); input.type = "number";
+        input.step = "any"; input.value = dim[1];
+        input.dataset.unit = dim[2] || "";
+      } else {
+        input = document.createElement("input"); input.type = "text"; input.value = val;
+      }
+      input.addEventListener("input", () => {
+        const unit = input.dataset.unit || "";
+        const v = input.type === "number" ? (input.value + unit) : input.value;
+        current[name] = v; valOut.textContent = v;
+        applyToPreview(); setAnswer(q.id, { tokens: current });
+      });
+      ctl.appendChild(input);
+      ctl.appendChild(valOut);
+      controls.appendChild(ctl);
+    });
+    if (!Object.keys(tokenDefs).length) {
+      controls.appendChild(el("div", "adj-hint", "No tokens declared for this tweak."));
+    }
+    wrap.appendChild(controls);
+    wrap.appendChild(preview);
+    body.appendChild(wrap);
+    applyToPreview();
+    setAnswer(q.id, { tokens: current });  // record the seed so a no-touch submit still carries values
+  }
+
+  function renderConstraint(q, body) {
+    const saved = answers[q.id] || { text: "" };
+    const wrap = el("div", "constraint");
+    const ta = document.createElement("textarea");
+    ta.placeholder = q.placeholder || "e.g. never use pure black on white; never terracotta; no all-caps headings";
+    ta.value = saved.text || "";
+    ta.addEventListener("input", () => setAnswer(q.id, { text: ta.value }));
+    wrap.appendChild(ta);
+    wrap.appendChild(el("div", "hint", "Hard rule — this becomes a \"must NEVER\" line in the contract."));
+    body.appendChild(wrap);
+  }
+
+  // ---- page assembly ------------------------------------------------------
+  function renderQuestion(q) {
+    const card = el("div", "q");
+    const head = el("div", "q-head");
+    head.appendChild(el("span", "q-type", esc(q.type)));
+    card.appendChild(head);
+    card.appendChild(el("h2", null, esc(q.prompt || q.id)));
+    if (q.help) card.appendChild(el("div", "q-prompt-sub", esc(q.help)));
+    const bodyEl = el("div", "q-body");
+    const renderer = RENDERERS[q.type];
+    if (renderer) {
+      try { renderer(q, bodyEl); }
+      catch (e) { bodyEl.appendChild(el("div", "unknown", "render error: " + esc(e.message))); }
+    } else {
+      bodyEl.appendChild(el("div", "unknown", "Unknown question type: " + esc(q.type)));
+    }
+    card.appendChild(bodyEl);
+    return card;
+  }
+
+  function render() {
+    $("title").textContent = QUESTIONNAIRE.title || "Questionnaire";
+    document.title = (QUESTIONNAIRE.title || "questionnaire") + " — design-language";
+    $("intro").innerHTML = renderMarkdown(QUESTIONNAIRE.intro || "");
+    const host = $("questions");
+    host.innerHTML = "";
+    (QUESTIONNAIRE.questions || []).forEach((q) => host.appendChild(renderQuestion(q)));
+  }
+
+  // ---- assemble + submit responses.json -----------------------------------
+  function buildResponses(status) {
+    return {
+      phase: QUESTIONNAIRE.phase || "",
+      status: status || "complete",
+      answers: JSON.parse(JSON.stringify(answers)),
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  function downloadResponses() {
+    const blob = new Blob([JSON.stringify(buildResponses("complete"), null, 2)],
+      { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = "responses.json";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  async function submit() {
+    const btn = $("submitBtn");
+    const status = $("status");
+    btn.disabled = true;
+    if (window.__STATIC_MODE__) {
+      downloadResponses();
+      status.className = "status ok";
+      status.textContent = "Downloaded responses.json — point the skill at it.";
+      $("doneTarget").textContent = "the downloaded responses.json";
+      $("doneBanner").classList.remove("hidden");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      btn.disabled = false;
+      return;
+    }
+    try {
+      const res = await fetch("/api/responses", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(buildResponses("complete")),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) throw new Error(data.error || ("HTTP " + res.status));
+      status.className = "status ok";
+      status.textContent = "Submitted. Saved to responses.json on the server.";
+      $("doneBanner").classList.remove("hidden");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } catch (e) {
+      status.className = "status err";
+      status.textContent = "Submit failed: " + e.message;
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  // ---- boot ---------------------------------------------------------------
+  async function boot() {
+    $("submitBtn").addEventListener("click", submit);
+    // Static/inline mode: questionnaire + tokens already injected by the server.
+    if (window.__QUESTIONNAIRE__) {
+      QUESTIONNAIRE = window.__QUESTIONNAIRE__;
+    } else {
+      try {
+        const res = await fetch("/api/questionnaire", { cache: "no-store" });
+        QUESTIONNAIRE = await res.json();
+      } catch (e) {
+        $("questions").innerHTML =
+          '<div class="unknown">Could not load /api/questionnaire: ' + esc(e.message) + "</div>";
+        return;
+      }
+    }
+    // Namespace local storage by phase so different phases don't clobber answers.
+    STORAGE_KEY = "design-language:responses:" + (QUESTIONNAIRE.phase || "default");
+    loadSaved();
+    // Resume: if the server already has responses, prefer those as the baseline.
+    if (!window.__STATIC_MODE__) {
+      try {
+        const r = await fetch("/api/responses", { cache: "no-store" });
+        const existing = await r.json();
+        if (existing && existing.answers) Object.assign(answers, existing.answers);
+      } catch (e) { /* no server responses yet — fine */ }
+    }
+    render();
+    saveLocal();
+  }
+
+  boot();
+})();
+</script>
+</body>
+</html>

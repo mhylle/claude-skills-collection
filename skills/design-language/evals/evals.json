@@ -1,0 +1,102 @@
+[
+  {
+    "query": "i keep shipping uis that all look like every other claude app — same beige cards, same vibe. i want a durable house style i can save as files and reuse across all my side projects, not just for one screen",
+    "should_trigger": true,
+    "note": "Core use case: a reusable, file-backed visual language deliberately away from the default Claude look, spanning many projects. Doesn't name the skill but clearly needs it."
+  },
+  {
+    "query": "help me design my own design language",
+    "should_trigger": true,
+    "note": "Canonical trigger phrase, almost verbatim from the skill description."
+  },
+  {
+    "query": "I'm starting a new SaaS called Lumen and I want to build a proper design system for it from scratch — colors, type, spacing, components, the whole thing — so future sessions stay consistent",
+    "should_trigger": true,
+    "note": "Build my own design system covering all dimensions, with persistence/consistency across sessions. Product backstory but unambiguous."
+  },
+  {
+    "query": "everything i build with you ends up looking like the default claude aesthetic. i want my OWN look, not the claude default",
+    "should_trigger": true,
+    "note": "Explicit 'my own look, not the Claude default' framing — the anti-reference motivation this skill is built around."
+  },
+  {
+    "query": "can you set up a reusable visual language for my portfolio brand? i want tokens and a doc that tells you how to build in my style every time",
+    "should_trigger": true,
+    "note": "Asks for the exact output contract — tokens + a contract doc future sessions read — i.e. a durable design language, not a one-off."
+  },
+  {
+    "query": "lets create a visual identity / design language for my app. i'm picky and want to react to options and dial how experimental each part is rather than you just picking",
+    "should_trigger": true,
+    "note": "Matches the reaction-first elicitation and per-dimension safeness gradient that are signature to this skill."
+  },
+  {
+    "query": "I want to establish a house style across my projects so my UIs stop looking templated. something durable that lives as files in the repo, not a one-time paint job",
+    "should_trigger": true,
+    "note": "Durable, file-backed, cross-project house style escaping the templated/default look — squarely this skill, not in-the-moment styling."
+  },
+  {
+    "query": "build me a design system from the ground up: i'll give you adjectives and references and you research inspiration, then we lock in color, typography, motion, imagery treatment, voice & tone, all of it",
+    "should_trigger": true,
+    "note": "Full-system scope (every dimension) with research-driven inspiration — the complete v1 flow."
+  },
+  {
+    "query": "i need a personal design language i can hand to claude on any future project so the output always looks like me and never like stock anthropic styling",
+    "should_trigger": true,
+    "note": "Personal, reusable language that future sessions consume + explicit avoidance of stock Anthropic styling. Direct hit."
+  },
+  {
+    "query": "make a design-tokens.json plus a DESIGN_LANGUAGE.md that captures my brand so the next session can build pages in the same language — color, shape, elevation, components",
+    "should_trigger": true,
+    "note": "Names the precise artifacts this skill emits (design-tokens.json + DESIGN_LANGUAGE.md) as a reusable contract."
+  },
+  {
+    "query": "style this one signup button so it pops more on the pricing page",
+    "should_trigger": false,
+    "note": "Styling a single element in the moment — that's the built-in frontend-design skill, not building a reusable language."
+  },
+  {
+    "query": "this landing page looks kind of bland, can you make it prettier and pick a nicer color for the main CTA?",
+    "should_trigger": false,
+    "note": "Make one UI prettier / pick a color for one CTA right now — frontend-design territory, no durable artifacts wanted."
+  },
+  {
+    "query": "we already use the company design system (it's published as @acme/tokens). implement the dashboard header component following it",
+    "should_trigger": false,
+    "note": "Consuming/implementing an EXISTING design system, not creating a new one. Build the component to spec instead."
+  },
+  {
+    "query": "quick question — what exactly is a design token? is it the same as a CSS variable?",
+    "should_trigger": false,
+    "note": "Conceptual explanation request. Shares vocabulary ('design token') but wants a definition, not a design-language build."
+  },
+  {
+    "query": "can you generate a logo for my startup? something with a fox, two-color, modern",
+    "should_trigger": false,
+    "note": "Logo/asset generation. Adjacent to brand work but not a reusable visual language of tokens + rules."
+  },
+  {
+    "query": "convert this Figma frame to React + Tailwind, here's the export link",
+    "should_trigger": false,
+    "note": "Figma-to-code implementation of an existing design. No creation of a new language; pure translation."
+  },
+  {
+    "query": "run an accessibility audit on our marketing site — check color contrast and focus states and tell me what's failing WCAG",
+    "should_trigger": false,
+    "note": "A11y audit of an existing live site. Overlaps on 'contrast/focus' vocabulary but it's evaluation, not language design."
+  },
+  {
+    "query": "write some punchy brand voice copy for our about page — three tone options, friendly but credible",
+    "should_trigger": false,
+    "note": "Voice/tone is one DIMENSION of the skill, but this asks only for copywriting on one page, not codifying a reusable voice into a language. Closer to a writing task."
+  },
+  {
+    "query": "our buttons, inputs and cards are all slightly inconsistent across the app — can you standardize them to match what's already on the homepage?",
+    "should_trigger": false,
+    "note": "Tricky near-miss: standardizing components, but to an EXISTING look, not authoring a new design language with safeness spectrum and contract. In-the-moment cleanup."
+  },
+  {
+    "query": "pick a font pairing for this blog post template so it reads nicer",
+    "should_trigger": false,
+    "note": "One-off typographic choice for a single template — frontend-design moment-styling, not a durable cross-project language."
+  }
+]
