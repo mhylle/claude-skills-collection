@@ -53,6 +53,7 @@ import argparse
 import json
 import mimetypes
 import os
+import signal
 import socket
 import sys
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -358,13 +359,55 @@ def pick_port(host: str, preferred: int) -> int:
 
 
 # ---------------------------------------------------------------------------
+# Server lifecycle (clean stop/reuse — avoid the pkill -f foot-gun)
+# ---------------------------------------------------------------------------
+
+def default_pidfile(pidfile: str | None, responses: str | None) -> Path | None:
+    """Where this server records its PID so it can be stopped cleanly.
+
+    Defaults to a dotfile beside responses.json, so each phase's server is
+    addressable without the caller having to remember a port or PID — and
+    ``--stop`` can target exactly that server instead of a broad ``pkill -f``
+    that can take out the user's own shell.
+    """
+    if pidfile:
+        return Path(pidfile)
+    if responses:
+        return Path(responses).resolve().parent / ".questionnaire-server.pid"
+    return None
+
+
+def stop_server(pidfile: Path | None) -> int:
+    """Stop a server previously started with the same --responses/--pidfile."""
+    if not pidfile or not pidfile.exists():
+        print("no running questionnaire server found (no pidfile) — nothing to stop", flush=True)
+        return 0
+    try:
+        pid = int(pidfile.read_text().strip())
+    except (OSError, ValueError):
+        pidfile.unlink(missing_ok=True)
+        print("stale pidfile removed; nothing running", flush=True)
+        return 0
+    try:
+        os.kill(pid, signal.SIGTERM)
+        print(f"stopped questionnaire server (pid {pid})", flush=True)
+    except ProcessLookupError:
+        print(f"no process {pid} (already stopped); cleaned up pidfile", flush=True)
+    except PermissionError as exc:
+        print(f"error: cannot stop pid {pid}: {exc}", file=sys.stderr)
+        return 1
+    pidfile.unlink(missing_ok=True)
+    return 0
+
+
+# ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="design-language questionnaire feedback server")
-    parser.add_argument("--questionnaire", required=True, help="path to questionnaire.json")
-    parser.add_argument("--responses", required=True, help="path to write responses.json")
+    parser.add_argument("--questionnaire", help="path to questionnaire.json (required unless --stop)")
+    parser.add_argument("--responses", help="path to write responses.json (required unless --stop)")
     parser.add_argument("--tokens", default=None, help="path to current tokens.css (live previews)")
     parser.add_argument("--template", default=str(DEFAULT_TEMPLATE),
                         help="path to questionnaire.html.tmpl")
@@ -375,7 +418,18 @@ def main(argv: list[str] | None = None) -> int:
                         help="dir whose images may be served at /research/<...>")
     parser.add_argument("--static", default=None, metavar="OUT.html",
                         help="headless: write a standalone HTML file instead of serving")
+    parser.add_argument("--pidfile", default=None,
+                        help="where to record the server PID (default: beside --responses)")
+    parser.add_argument("--stop", action="store_true",
+                        help="stop the server for this --responses/--pidfile, then exit")
     args = parser.parse_args(argv)
+
+    # ---- stop a previously-started server (clean alternative to pkill -f) ----
+    if args.stop:
+        return stop_server(default_pidfile(args.pidfile, args.responses))
+
+    if not args.questionnaire or not args.responses:
+        parser.error("--questionnaire and --responses are required (unless --stop)")
 
     try:
         template = read_template(args.template)
@@ -409,15 +463,38 @@ def main(argv: list[str] | None = None) -> int:
     port = pick_port(args.host, args.port)
     server = ThreadingHTTPServer((args.host, port), handler)
     url = f"http://localhost:{port}/"
-    # The orchestrator parses this exact line to show the user the URL.
+
+    # Record the PID so the server can be stopped cleanly (`--stop`) or by the
+    # orchestrator killing this exact PID — never a broad `pkill -f`, which can
+    # take out the user's own shell.
+    pidfile = default_pidfile(args.pidfile, args.responses)
+    if pidfile:
+        try:
+            pidfile.parent.mkdir(parents=True, exist_ok=True)
+            pidfile.write_text(str(os.getpid()), encoding="utf-8")
+        except OSError:
+            pidfile = None  # non-fatal: serving still works without a pidfile
+
+    # The orchestrator parses these exact lines to show the URL and track the PID.
     print(f"QUESTIONNAIRE_URL {url}", flush=True)
-    print(f"Serving {os.path.relpath(args.questionnaire)} at {url} (Ctrl-C to stop)", flush=True)
+    print(f"QUESTIONNAIRE_PID {os.getpid()}", flush=True)
+    print(f"Serving {os.path.relpath(args.questionnaire)} at {url}", flush=True)
+    print(f"Stop with: python3 {Path(__file__).name} --stop --responses "
+          f"{os.path.relpath(args.responses)}  (or Ctrl-C / kill {os.getpid()})", flush=True)
+    # Treat SIGTERM (what --stop sends) like Ctrl-C so shutdown is graceful and
+    # the finally block below runs.
+    def _graceful(*_):
+        raise KeyboardInterrupt
+    signal.signal(signal.SIGTERM, _graceful)
+
     try:
         server.serve_forever()
     except KeyboardInterrupt:
         print("\nShutting down.", flush=True)
     finally:
         server.server_close()
+        if pidfile:
+            pidfile.unlink(missing_ok=True)
     return 0
 
 

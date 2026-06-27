@@ -74,10 +74,14 @@ carries an optional `previewHtml`) or the shorthand `a`/`b` objects.
 }
 ```
 
-**Response shape.** `{ "picked": "A" }` — the `key` of the chosen option.
+**Response shape.** `{ "picked": "A", "note": "" }` — the `key` of the chosen
+option, plus an optional free-text `note`. The page always shows a small
+"Note (optional)" box so the user can qualify a pick ("B, but tighter") without
+needing a separate question — taste work is full of "this one, but…". `note` is
+omitted-as-empty-string when untouched.
 
 ```jsonc
-"serif-or-sans": { "picked": "B" }
+"serif-or-sans": { "picked": "B", "note": "yes, but a touch less contrast" }
 ```
 
 ---
@@ -93,11 +97,17 @@ to.
 an optional `source` link. `img` may be a `/research/<dimension>/<file>` path the
 server serves, or any reachable URL.
 
+The page renders a **legend stating what 1 and 5 mean** above the grid (default
+`1 = not me … 5 = yes, this is me`) so the scale can never be read backwards.
+Override the endpoints with `scaleLabels: { "low": "...", "high": "..." }` when a
+question's scale means something else.
+
 ```jsonc
 {
   "id": "react-refs",
   "type": "rate-grid",
-  "prompt": "Rate each for vibe — 1 (not me) to 5 (yes)",
+  "prompt": "Rate each for vibe",
+  "scaleLabels": { "low": "not me", "high": "yes, this is me" },
   "items": [
     { "id": "stripe",  "name": "Stripe docs", "img": "research/color/stripe.png",  "source": "https://stripe.com" },
     { "id": "linear",  "name": "Linear",      "img": "research/color/linear.png",  "source": "https://linear.app" }
@@ -155,6 +165,31 @@ variant whose `previewHtml` is risky/experimental (level-5 WebGL, animation,
 arbitrary script) — it is rendered inside a sandboxed `<iframe srcdoc>` so it
 cannot break the questionnaire.
 
+You normally produce this whole object with `scripts/render_spectrum.py`, which
+also attaches a **`caption`** to each variant — the exact token change for that
+rung (e.g. `radius-md 8px → 0`) — shown under the variant name so adjacent rungs
+are always tellable apart even when the visual difference is subtle. You can
+override it with your own `caption` per variant.
+
+> **Make the difference unmissable (this is the #1 readability lesson from real
+> use).** A spectrum is worthless if the user can't *see* the difference between
+> rungs. When you author variants:
+> - **Isolate one property per spectrum.** A color spectrum varies color; a shape
+>   spectrum varies corners. Don't change five things at once — the user can't
+>   tell what they're reacting to.
+> - **Exaggerate.** Adjacent rungs must be *obviously* distinct at a glance.
+>   Three near-identical blues or 6→3→1px corners read as identical. Push the
+>   steps wide enough that the change is undeniable.
+> - **Same content, different treatment.** Every rung shows the *same* sample so
+>   the user compares the treatment, not the content.
+> - Rely on the auto-`caption` to name the change, but never let it substitute for
+>   a visible one.
+
+The page shows two labels so neither scale is ambiguous: the **axis rail**
+(`1 — conventional … 5 — experimental`) explains what the levels mean, and a
+**rating legend** (default `1 = not me … 5 = love it`, override via
+`scaleLabels`) explains the per-rung 1–5 rating.
+
 ```jsonc
 {
   "id": "imagery-spectrum",
@@ -169,12 +204,14 @@ cannot break the questionnaire.
 }
 ```
 
-**Response shape.** `{ "chosenLevel": n, "ratings": { "<level>": n } }`.
+**Response shape.** `{ "chosenLevel": n, "ratings": { "<level>": n }, "note": "" }`.
 `chosenLevel` is the single picked level; `ratings` maps each rated *level* (as a
-string key) to 1–5.
+string key) to 1–5; `note` is the optional free-text qualifier (the box is always
+shown — "level 2, but push the accent toward orange" is exactly the kind of
+decision it captures).
 
 ```jsonc
-"imagery-spectrum": { "chosenLevel": 3, "ratings": { "1": 2, "3": 5, "5": 4 } }
+"imagery-spectrum": { "chosenLevel": 3, "ratings": { "1": 2, "3": 5, "5": 4 }, "note": "3, but warmer" }
 ```
 
 > The variant's `level` is the response key, not its array index — so a
@@ -259,5 +296,12 @@ explicit do-not lines in `DESIGN_LANGUAGE.md`.
   `POST`s it to `/api/responses` (server mode) or downloads `responses.json`
   (static/headless mode). After a successful submit the page tells the user they
   can return to the skill and say "done".
+- **Rating scales are always labelled.** Any 1–5 control (`rate-grid`,
+  `safeness-spectrum`) shows an endpoint legend so the scale cannot be read
+  backwards; override the wording with `scaleLabels: {low, high}`.
+- **Pickers carry an optional note.** `this-or-that` and `safeness-spectrum`
+  always offer a free-text note that rides along in the same answer object, so a
+  qualified choice ("this, but with orange") is captured in one place. (If you
+  prefer, you can still interleave a standalone `constraint` box — both work.)
 - **Unknown types** render a visible "Unknown question type" notice rather than
   failing silently, so an authoring typo is obvious.

@@ -123,6 +123,20 @@
   .scale button:hover { border-color: var(--ui-line-strong); }
   .scale button.on { background: var(--ui-accent); border-color: var(--ui-accent); color: #fff; }
 
+  /* ---- rating legend (so 1..5 is never ambiguous) ---- */
+  .scale-legend { font-size: 12px; color: var(--ui-muted); margin: 0 0 12px; }
+  .scale-legend strong { color: var(--ui-text); font-family: ui-monospace, monospace; }
+
+  /* ---- optional per-question note ("pick 2 but with orange") ---- */
+  .note { margin-top: 14px; display: grid; gap: 6px; }
+  .note label { font-size: 12px; color: var(--ui-muted); }
+  .note textarea {
+    width: 100%; min-height: 52px; resize: vertical;
+    background: var(--ui-panel-2); border: 1px solid var(--ui-line); border-radius: 6px;
+    color: var(--ui-text); padding: 8px 10px; font: 13px/1.45 system-ui;
+  }
+  .note textarea:focus { outline: 2px solid var(--ui-accent); outline-offset: -1px; }
+
   /* ---- adjective-pick ---- */
   .adj { display: flex; flex-wrap: wrap; gap: 8px; }
   .chip {
@@ -153,6 +167,8 @@
   }
   .variant .v-name { font-weight: 600; font-size: 14px; }
   .variant .v-sub { color: var(--ui-muted); font-size: 12px; }
+  /* the exact token change for this rung — so adjacent rungs are always tellable apart */
+  .variant .v-caption { font: 11px/1.4 ui-monospace, "SF Mono", Menlo, monospace; color: var(--ui-accent-2); margin-top: 3px; word-break: break-word; }
   .variant .v-actions { margin-left: auto; display: flex; align-items: center; gap: 12px; }
   .variant .choose {
     border: 1px solid var(--ui-line-strong); border-radius: 6px; background: transparent;
@@ -302,6 +318,29 @@
   }
   function setAnswer(qid, value) { answers[qid] = value; saveLocal(); }
 
+  // ---- a one-line legend so 1..5 is never read backwards ------------------
+  // A real user once rated their favourite "1" assuming 1=best because nothing
+  // said otherwise. Every question with a 1–5 control now states its endpoints.
+  function legendLine(low, high) {
+    return el("div", "scale-legend",
+      "Rate each: <strong>1</strong> = " + esc(low) + " &nbsp;…&nbsp; <strong>5</strong> = " + esc(high));
+  }
+
+  // ---- an optional free-text note for a picker ----------------------------
+  // Taste work is full of "pick this one, but with orange" — capture it inline
+  // rather than forcing the thought into a separate question. The note rides
+  // along in the same answer object (e.g. {chosenLevel, note}).
+  function noteField(initial, onInput, placeholder) {
+    const wrap = el("div", "note");
+    wrap.appendChild(el("label", null, "Note (optional) — a tweak, caveat, or “yes, but…”"));
+    const ta = document.createElement("textarea");
+    ta.placeholder = placeholder || "e.g. this one, but with orange instead of violet";
+    ta.value = initial || "";
+    ta.addEventListener("input", () => onInput(ta.value));
+    wrap.appendChild(ta);
+    return wrap;
+  }
+
   // ---- a reusable 1–5 scale widget ----------------------------------------
   function scaleWidget(current, onPick) {
     const wrap = el("div", "scale");
@@ -329,6 +368,9 @@
 
   function renderThisOrThat(q, body) {
     const saved = answers[q.id] || {};
+    let picked = saved.picked != null ? saved.picked : null;
+    let note = saved.note || "";
+    const commit = () => setAnswer(q.id, { picked, note });
     const opts = q.options || [
       { key: "A", name: (q.a && q.a.name) || "Option A", previewHtml: q.a && q.a.previewHtml },
       { key: "B", name: (q.b && q.b.name) || "Option B", previewHtml: q.b && q.b.previewHtml },
@@ -336,7 +378,7 @@
     const wrap = el("div", "tot");
     opts.forEach((opt) => {
       const key = opt.key || opt.id || opt.name;
-      const panel = el("button", "panel" + (saved.picked === key ? " sel" : ""));
+      const panel = el("button", "panel" + (picked === key ? " sel" : ""));
       panel.type = "button";
       if (opt.previewHtml) panel.appendChild(el("div", "pv", opt.previewHtml));
       const lbl = el("div", "lbl");
@@ -344,18 +386,21 @@
       lbl.appendChild(el("span", null, esc(opt.name || key)));
       panel.appendChild(lbl);
       panel.addEventListener("click", () => {
-        setAnswer(q.id, { picked: key });
+        picked = key; commit();
         [...wrap.children].forEach((c) => c.classList.remove("sel"));
         panel.classList.add("sel");
       });
       wrap.appendChild(panel);
     });
     body.appendChild(wrap);
+    body.appendChild(noteField(note, (v) => { note = v; commit(); }));
   }
 
   function renderRateGrid(q, body) {
     const saved = answers[q.id] || { ratings: {} };
     const ratings = Object.assign({}, saved.ratings);
+    const sl = q.scaleLabels || {};
+    body.appendChild(legendLine(sl.low || "not me", sl.high || "yes, this is me"));
     const grid = el("div", "grid");
     (q.items || []).forEach((item, idx) => {
       const itemId = item.id || item.img || ("item-" + idx);
@@ -430,15 +475,20 @@
     const saved = answers[q.id] || { chosenLevel: null, ratings: {} };
     const ratings = Object.assign({}, saved.ratings);
     let chosenLevel = saved.chosenLevel != null ? saved.chosenLevel : null;
+    let note = saved.note || "";
 
+    // The rail labels the AXIS (what the levels mean); the legend labels the
+    // RATING (what 1..5 on each rung mean). Two different scales — both stated.
     const rail = el("div", "spectrum-rail");
-    rail.appendChild(el("span", null, "1 · conventional"));
+    rail.appendChild(el("span", null, "1 — conventional"));
     rail.appendChild(el("div", "bar"));
-    rail.appendChild(el("span", null, "experimental · 5"));
+    rail.appendChild(el("span", null, "5 — experimental"));
     body.appendChild(rail);
+    const sl = q.scaleLabels || {};
+    body.appendChild(legendLine(sl.low || "not me", sl.high || "love it"));
 
     const list = el("div", "variants");
-    const commit = () => setAnswer(q.id, { chosenLevel, ratings });
+    const commit = () => setAnswer(q.id, { chosenLevel, ratings, note });
     (q.variants || []).slice().sort((a, b) => (a.level || 0) - (b.level || 0)).forEach((v) => {
       const level = v.level;
       const card = el("div", "variant" + (chosenLevel === level ? " chosen" : ""));
@@ -451,6 +501,8 @@
       const names = el("div");
       names.appendChild(el("div", "v-name", esc(v.name || ("Level " + level))));
       names.appendChild(el("div", "v-sub", "level " + level + " of 5"));
+      // The exact token change for this rung, so even subtle previews are tellable apart.
+      if (v.caption) names.appendChild(el("div", "v-caption", esc(v.caption)));
       head.appendChild(names);
 
       const actions = el("div", "v-actions");
@@ -489,6 +541,8 @@
       list.appendChild(card);
     });
     body.appendChild(list);
+    body.appendChild(noteField(note, (v) => { note = v; commit(); },
+      "e.g. level 2, but push the accent toward orange"));
   }
 
   // Wrap a snippet into a standalone doc for a sandboxed iframe, inheriting the

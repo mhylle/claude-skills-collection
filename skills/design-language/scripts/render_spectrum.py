@@ -80,6 +80,34 @@ def _effective(base: dict, delta: dict) -> dict:
     return tokens_lib.apply_delta(base, delta)
 
 
+def _short(value: str, limit: int = 24) -> str:
+    s = str(value)
+    return s if len(s) <= limit else s[: limit - 1] + "…"
+
+
+def _caption_from_delta(base: dict, delta: dict, limit: int = 4) -> str:
+    """One-line 'what actually changed' summary built from the variant's delta.
+
+    Every rung is labelled with the exact change (e.g. ``accent #2f6df0 → #ff3366
+    · radius-md 8px → 0``) so a user can always tell rungs apart even when the
+    rendered difference is subtle — the single biggest readability gap reported
+    from real use. Shows old → new when the base has the token, else just the new
+    value; long values (gradients) are truncated.
+    """
+    parts = []
+    for key, new in list(delta.items())[:limit]:
+        full = key if key.startswith("--") else f"--{key}"
+        name = full[2:].replace("color-", "").replace("space-", "space ")
+        old = base.get(full)
+        if old is not None and str(old) != str(new):
+            parts.append(f"{name} {_short(old)} → {_short(new)}")
+        else:
+            parts.append(f"{name} {_short(new)}")
+    if len(delta) > limit:
+        parts.append(f"+{len(delta) - limit} more")
+    return " · ".join(parts) if parts else "baseline (no token change)"
+
+
 def _v(tokens: dict, name: str, fallback: str = "") -> str:
     """Look up an effective token value (name may omit the leading --)."""
     key = name if name.startswith("--") else f"--{name}"
@@ -652,6 +680,7 @@ def build_question(dimension: str, tokens_path: str,
             "name": name,
             "previewHtml": preview_html,
             "tokens": delta,
+            "caption": _caption_from_delta(base_tokens, delta),
         }
         if sandbox:
             variant["sandbox"] = True
@@ -720,6 +749,9 @@ def build_question_from_spec(spec: dict, tokens_path: str) -> dict:
             "name": raw.get("name", f"Level {level}"),
             "previewHtml": preview_html,
             "tokens": delta,
+            # Prefer an author-written caption/summary; else derive it from the delta
+            # so the rung is always labelled with its exact change.
+            "caption": raw.get("caption") or raw.get("summary") or _caption_from_delta(base_tokens, delta),
         }
         if raw.get("sandbox"):
             variant["sandbox"] = True

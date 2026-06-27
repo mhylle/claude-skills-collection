@@ -115,6 +115,16 @@ a "kinetic, nightlife, neon" brief it might be a marquee ticker or a strobing mo
 cloud is fine *if it genuinely fits this user* — but it is never the default. Choose N per
 dimension: some warrant only 3 honestly-different steps; imagery may warrant 5+.
 
+**Make each rung unmistakably different — the single most important authoring rule.** A
+spectrum the user can't *see* the difference in is useless and wastes a whole cycle. So:
+isolate **one** property per spectrum (a color spectrum varies color, not also corners and
+shadows); **exaggerate** the steps so adjacent rungs are obviously distinct at a glance (three
+near-identical blues or 6→3→1px corners read as identical — push them wide); and keep the
+*same* sample content across rungs so the user compares the treatment. `render_spectrum`
+auto-captions every rung with its exact token change (e.g. `radius-md 8px → 0`), but a caption
+never excuses an invisible difference. Full guidance:
+[references/question-types.md](references/question-types.md).
+
 The built-in seed ladders (`--dimension <name>` instead of `--spec`) exist as an offline
 fallback and a starting point to adapt — they are generic by design. Use them to bootstrap,
 then diverge.
@@ -124,8 +134,12 @@ widen or override.
 
 **Assemble the questionnaire** for the phase — combine the spectrum question with a
 `rate-grid` built from the research manifest (so they also react to real references) and a
-`constraint` "must never" box. See [references/question-types.md](references/question-types.md)
-for every question type and its exact JSON. Write it to the phase dir as `questionnaire.json`.
+`constraint` "must never" box. Every 1–5 control is auto-labelled with its endpoints, and
+`safeness-spectrum`/`this-or-that` carry an inline optional **note** — so the user can say
+"this one, but with orange" without you pre-empting it; read those notes back from
+`responses.json` alongside the picks, as they often carry the best decisions. See
+[references/question-types.md](references/question-types.md) for every question type and its
+exact JSON. Write it to the phase dir as `questionnaire.json`.
 
 ### 3 · Serve it and let the user react
 
@@ -143,6 +157,18 @@ previews in their current tokens, and auto-saves. **Do not poll** — wait until
 they're done, then read `responses.json`. (Headless/Cowork/CI: add `--static
 ./design-system/.state/phases/<phase>/questionnaire.html`; the page downloads `responses.json`
 on submit and the user points you at it. Same schema either way.)
+
+**Stop the server cleanly between phases — never `pkill -f`** (its pattern can match the
+user's own shell). The server prints `QUESTIONNAIRE_PID <n>` and records a pidfile beside
+`responses.json`; stop it with the same `--responses` path before serving the next phase:
+
+```bash
+python3 "$SKILL_DIR/scripts/serve_questionnaire.py" --stop \
+    --responses ./design-system/.state/phases/<phase>/responses.json
+```
+
+(Or `kill <the printed PID>`. Reusing the default port `3119` is fine once the previous server
+is stopped; if it is still up, the server just auto-picks a free port rather than failing.)
 
 ### 4 · Tweak (optional fine-tune)
 
