@@ -250,7 +250,7 @@ Each agent **pins its model** in frontmatter — the tier is part of the contrac
 Installs to:
 - Skills: `~/.claude/skills/`
 - Agents: `~/.claude/agents/`
-- Hooks: `~/.claude/hooks.json`
+- Hooks: merged into the `"hooks"` key of `~/.claude/settings.json` (a standalone `hooks.json` is never loaded by Claude Code — see `merge-hooks.js`)
 
 ### What Gets Installed
 
@@ -262,22 +262,22 @@ Installs to:
 | **PreToolUse** | tmux-reminder | Long-running commands | Suggest tmux for session persistence |
 | **PreToolUse** | git-push-review | `git push` | Reminder to review before push |
 | **PreToolUse** | doc-file-warn | `.md/.txt` creation | Warn about docs outside `docs/` structure |
-| **PreToolUse** | strategic-compact | Edit/Write/Read | Suggest `/compact` at logical boundaries |
 | **PostToolUse** | pr-url-logger | `gh pr create` | Log PR URL and review command |
 | **PostToolUse** | prettier-format | JS/TS file edits | Auto-format with Prettier |
 | **PostToolUse** | typescript-check | `.ts/.tsx` edits | Run `tsc --noEmit` and show errors |
 | **PostToolUse** | console-log-warn | JS/TS file edits | Warn about `console.log` statements |
 | **Stop** | console-log-audit | Session end | Audit modified files for `console.log` |
-| **Stop** | continuous-learning | Session end | Extract patterns to `~/.claude/skills/learned/` |
 | **SessionStart** | load-context | Session start | Detect saved context files in `docs/context/` |
 | **PreCompact** | save-context-remind | Before `/compact` | Remind to save context before compaction |
+
+`strategic-compact` and `continuous-learning` are **not** wired as hooks — a hook action must be `command`/`prompt`/`agent`/`http`/`mcp_tool`; there is no "run this skill" hook type, so a prior version of this file's `"type": "skill"` entries were silently inert. Invoke `/strategic-compact` and `/continuous-learning` manually until this is redesigned as a real hook type (e.g. `agent`).
 
 ### Manual Install
 
 ```bash
 cp -r skills/* ~/.claude/skills/
 cp agents/*.md ~/.claude/agents/
-cp hooks.json ~/.claude/hooks.json
+node merge-hooks.js hooks.json ~/.claude/settings.json
 ```
 
 ### Hooks Only
@@ -285,10 +285,12 @@ cp hooks.json ~/.claude/hooks.json
 If you only want to update hooks without reinstalling skills:
 
 ```bash
-cp hooks.json ~/.claude/hooks.json
+node merge-hooks.js hooks.json ~/.claude/settings.json
 ```
 
-**Restart Claude Code after installation.**
+This merges by event (concatenating each event's hook groups, skipping ones already present by deep-equality) rather than overwriting your existing `settings.json` — a backup is written to `settings.json.backup` first regardless.
+
+**Restart Claude Code after installation.** Editing `~/.claude/settings.json` directly (global scope, not project-scoped) may be blocked by the Claude Code auto-mode classifier if an agent runs this installer on your behalf — that's expected; run it yourself in a real terminal, or have the agent hand you the merge command to run via `!`.
 
 ### CLAUDE.md Integration
 

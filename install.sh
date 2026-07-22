@@ -54,16 +54,18 @@ for agent_file in "$SCRIPT_DIR/agents"/*.md; do
 done
 
 # Install hooks
+# Claude Code only loads hooks from settings.json's "hooks" key - a standalone
+# hooks.json is never read - so merge into settings.json rather than copy.
 echo "Installing hooks..."
 if [ -f "$SCRIPT_DIR/hooks.json" ]; then
     if [ "$DRY_RUN" -eq 0 ]; then
-        if [ -f "$CLAUDE_DIR/hooks.json" ]; then
-            echo "  - Backing up existing hooks.json to hooks.json.backup"
-            cp "$CLAUDE_DIR/hooks.json" "$CLAUDE_DIR/hooks.json.backup"
+        if command -v node >/dev/null 2>&1; then
+            node "$SCRIPT_DIR/merge-hooks.js" "$SCRIPT_DIR/hooks.json" "$CLAUDE_DIR/settings.json"
+        else
+            echo "  - node not found; could not merge hooks into settings.json. Merge $SCRIPT_DIR/hooks.json's \"hooks\" key into $CLAUDE_DIR/settings.json by hand."
         fi
-        cp "$SCRIPT_DIR/hooks.json" "$CLAUDE_DIR/hooks.json"
     fi
-    echo "  - hooks.json (strategic-compact, continuous-learning)"
+    echo "  - hooks merged into settings.json (tmux-dev-block, tmux-reminder, git-push-review, doc-file-warn, pr-url-logger, prettier-format, typescript-check, console-log-warn/audit, load-context)"
 fi
 
 if [ "$DRY_RUN" -eq 1 ]; then
@@ -77,7 +79,7 @@ echo "Installation complete!"
 echo ""
 echo "Skills installed to: $CLAUDE_DIR/skills/"
 echo "Agents installed to: $CLAUDE_DIR/agents/"
-echo "Hooks installed to:  $CLAUDE_DIR/hooks.json"
+echo "Hooks merged into: $CLAUDE_DIR/settings.json (backed up first as settings.json.backup)"
 echo ""
 echo "Hooks configured:"
 echo ""
@@ -86,7 +88,6 @@ echo "    - tmux-dev-block: Block dev servers outside tmux"
 echo "    - tmux-reminder: Suggest tmux for long-running commands"
 echo "    - git-push-review: Reminder before git push"
 echo "    - doc-file-warn: Warn about docs outside docs/ structure"
-echo "    - strategic-compact: Suggest /compact at logical boundaries"
 echo ""
 echo "  PostToolUse (after tool execution):"
 echo "    - pr-url-logger: Log PR URL after creation"
@@ -96,10 +97,15 @@ echo "    - console-log-warn: Warn about console.log in JS/TS"
 echo ""
 echo "  Stop (session end):"
 echo "    - console-log-audit: Audit modified files for console.log"
-echo "    - continuous-learning: Extract patterns to learned/"
 echo ""
 echo "  SessionStart / PreCompact:"
 echo "    - load-context: Detect saved context files"
+echo ""
+echo "  NOTE: strategic-compact and continuous-learning are NOT wired as hooks -"
+echo "  a hook action can only be command/prompt/agent/http/mcp_tool, not a skill"
+echo "  invocation, so there is no valid 'run this skill on this event' hook type."
+echo "  Invoke /strategic-compact and /continuous-learning manually, or via a"
+echo "  command/agent-type hook, until that's redesigned."
 echo "    - save-context-remind: Remind to save before /compact"
 echo ""
 echo "Restart Claude Code to activate the new skills, agents, and hooks."
