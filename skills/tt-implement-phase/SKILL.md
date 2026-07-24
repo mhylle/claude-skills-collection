@@ -180,15 +180,19 @@ Sub-tasks are the unit of work. Walk them in order:
 
 ```
 For each sub-task in order:
-  1. tasktracker_setActiveTask(<sub-task-id>)     # focus shifts; heartbeats fire
-  2. tasktracker_updateTaskStatus(<sub-task-id>, "in_progress")
-  3. Spawn implementation subagent(s) for this sub-task — OR, in in-context
+  1. tasktracker_setActiveTask(<sub-task-id>)     # focus shifts; principles/ACs surface
+  2. tasktracker_startTimer(<sub-task-id>)        # REQUIRED — see note below
+  3. tasktracker_updateTaskStatus(<sub-task-id>, "in_progress")
+  4. Spawn implementation subagent(s) for this sub-task — OR, in in-context
      mode, implement the sub-task yourself with Edit/Write/Bash
      (test sub-tasks BEFORE implementation sub-tasks — verification-first)
-  4. On subagent COMPLETE → tasktracker_updateTaskStatus(<sub-task-id>, "completed")
+  5. On subagent COMPLETE → tasktracker_updateTaskStatus(<sub-task-id>, "completed")
      On subagent ERROR  → spawn fix subagent, retry (up to retry_limit)
      On genuine BLOCKED → return BLOCKED from the phase
+  6. tasktracker_stopTimer(<sub-task-id>)         # REQUIRED — before moving to the next sub-task
 ```
+
+**`setActiveTask` does NOT start a timer by itself** (verified empirically — calling it alone, even across 60+ seconds of real work, never opens a running timer; each heartbeat-eligible call only creates a near-instantaneous blip of a few seconds). The step numbering above isn't cosmetic: call `startTimer` right after `setActiveTask`, and call `stopTimer` right before moving on to the next sub-task (or before any user-wait — see the `pauseActiveTask` note below). Skipping this means the phase's tasktracker time log will under-report real effort by roughly 3–4x, even though every sub-task shows a "completed" status and a nonzero (but misleadingly tiny) logged duration. Filed as [mhylle/tasktracker#3](https://github.com/mhylle/tasktracker/issues/3).
 
 **Sub-task ordering principle:** the standard phase templates already seed sub-tasks in the right order (tests come early). Do not re-order without good reason.
 
@@ -485,7 +489,8 @@ Non-negotiable — phase cannot complete until all are satisfied.
 - ❌ Writing code in this session **when a subagent tool is available** (orchestrated mode — spawn subagents). With no subagent tool, in-context coding is the correct path, not an anti-pattern.
 - ❌ Stalling or no-opping because "I'm only an orchestrator" when no subagent tool exists. Degrade to in-context mode and do the work.
 - ❌ Editing the phase task description. HTTP 422 — and even if it didn't reject, it violates the locked-body contract.
-- ❌ Skipping `setActiveTask` on a sub-task before working it (no heartbeats, no time tracking).
+- ❌ Skipping `setActiveTask` on a sub-task before working it (no principles/ACs surfaced).
+- ❌ Relying on `setActiveTask` alone for time tracking. It does not start a timer — call `startTimer` explicitly right after it, and `stopTimer` before moving to the next sub-task or any user-wait. See Step 1.
 - ❌ Marking a sub-task `completed` while the actual work is incomplete.
 - ❌ Marking the phase `completed` with open sub-tasks.
 - ❌ Burying defects/learnings/frictions in chat narrative instead of `logDefect`/`logLearning`/`logFriction`.

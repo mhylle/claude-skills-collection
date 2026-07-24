@@ -15,7 +15,7 @@ Tasktracker-native orchestrator that executes a plan stored as phase tasks. It r
 |---|---|---|
 | Plan source | `docs/plans/*.md` + `task_list_id` | Phase tasks in tasktracker (no file) |
 | Progress tracking | `TaskCreate`/`TaskUpdate` (built-in) | `tasktracker_updateTaskStatus` + active-task heartbeats |
-| Active task discipline | None | `setActiveTask` / `pauseActiveTask` / `clearActiveTask` — required |
+| Active task discipline | None | `setActiveTask` + `startTimer` / `pauseActiveTask` / `stopTimer` / `clearActiveTask` — required |
 | Phase body updates | Free edit | **Forbidden** once children exist — write to sub-tasks |
 | Insight capture | Ad-hoc / lessons.md | `logDefect`, `logLearning`, `logFriction` |
 | Multi-session resume | `CLAUDE_CODE_TASK_LIST_ID=...` | Built-in: active task persists across MCP restarts |
@@ -131,10 +131,13 @@ For each phase, in order:
 
 ```
 tasktracker_setActiveTask(<phase-task-id>)
+tasktracker_startTimer(<phase-task-id>)
 tasktracker_updateTaskStatus(<phase-task-id>, "in_progress")
 ```
 
 `setActiveTask` returns a digest containing principles, the phase body, acceptance criteria, and (if present) the directional-work block. Read this carefully — it's the ground truth for the phase scope. **Do not** re-derive scope from the original brainstorm; the phase body is the locked contract.
+
+**`setActiveTask` does NOT start a timer by itself** — verified empirically (calling it alone, even across 60+ seconds of real work, never opens a running timer; each heartbeat-eligible call only creates a near-instantaneous blip of a few seconds). Skipping the explicit `startTimer` call above means this phase's tasktracker time log will under-report real effort by roughly 3–4x, regardless of how correctly everything else in this workflow is followed. Filed as [mhylle/tasktracker#3](https://github.com/mhylle/tasktracker/issues/3).
 
 #### 4b. Announce
 
@@ -193,16 +196,17 @@ If a principle should be added based on this phase's experience, propose it to t
 
 #### 4e. Pause before any user wait
 
-Before any message that ends with a question, `tasktracker_pauseActiveTask`. The user's thinking time is not work time.
+Before any message that ends with a question, `tasktracker_pauseActiveTask`. The user's thinking time is not work time. (This one already works correctly — it stops the real running timer for exactly the wait, and a fresh one opens on the next tool call. It only helps, though, if a real timer was actually running per 4a above.)
 
 #### 4f. Phase done
 
 When `/tt-implement-phase` returns `PHASE_RESULT.status: COMPLETE`:
 
 1. Verify all sub-tasks are `completed` (or `deleted` if dropped, with a one-line reason logged).
-2. `tasktracker_updateTaskStatus(<phase-task-id>, "completed")`.
-3. Show the user the result block.
-4. Pause for user confirmation before moving to the next phase.
+2. `tasktracker_stopTimer(<phase-task-id>)` — pairs with the `startTimer` in 4a; do this before marking the phase complete, not after.
+3. `tasktracker_updateTaskStatus(<phase-task-id>, "completed")`.
+4. Show the user the result block.
+5. Pause for user confirmation before moving to the next phase.
 
 If `/tt-implement-phase` returns `BLOCKED`, **stop**. Surface the blocker and options to the user (see "Handling blockers" below). Do not auto-proceed.
 
@@ -331,7 +335,8 @@ This is not bureaucracy — it's the audit trail. The phase body shows "what we 
 ## Anti-patterns to avoid
 
 - ❌ Writing code in this session. Delegate to `/tt-implement-phase`.
-- ❌ Skipping `setActiveTask` before phase work — heartbeats won't fire, principles won't surface.
+- ❌ Skipping `setActiveTask` before phase work — principles won't surface.
+- ❌ Relying on `setActiveTask` alone for time tracking. It does not start a timer — call `startTimer` right after it (4a) and `stopTimer` before marking the phase complete (4f), or the time log will under-report real effort by ~3-4x.
 - ❌ Forgetting `pauseActiveTask` before user-wait messages.
 - ❌ Editing a phase description after sub-tasks exist (HTTP 422).
 - ❌ Auto-fixing a blocker without user confirmation.
@@ -343,6 +348,7 @@ This is not bureaucracy — it's the audit trail. The phase body shows "what we 
 ## Quality checklist (per phase)
 
 - [ ] `setActiveTask` set before the first artifact-producing call.
+- [ ] `startTimer` called right after `setActiveTask` (it does not start one by itself), `stopTimer` called before marking the phase complete.
 - [ ] Phase body read from the `setActiveTask` digest (not re-derived).
 - [ ] Principles surfaced and acknowledged where they constrain the phase.
 - [ ] `/tt-implement-phase` did the actual work; this session orchestrated.
@@ -380,7 +386,7 @@ This is not bureaucracy — it's the audit trail. The phase body shows "what we 
 
 1. **Delegate phase execution** — `/tt-implement-phase` for all phase work.
 2. **Orchestrate, don't implement** — this skill coordinates, never codes.
-3. **Active-task discipline** — `setActiveTask` / `pauseActiveTask` / `clearActiveTask` are not optional.
+3. **Active-task discipline** — `setActiveTask` / `startTimer` / `pauseActiveTask` / `stopTimer` / `clearActiveTask` are not optional. `setActiveTask` does not start a timer by itself — `startTimer` must be called explicitly, or the time log silently under-reports real effort by ~3-4x.
 4. **Locked phase body is sacred** — sub-tasks are the right place for mid-implementation notes.
 5. **Insights belong in tasktracker** — `logDefect` / `logLearning` / `logFriction`, not just chat.
 6. **User confirmation between phases** — current safe mode.
