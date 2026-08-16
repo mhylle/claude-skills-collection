@@ -3,6 +3,9 @@
 Custom skills and agents for Claude Code that enhance codebase research, context management, and implementation planning workflows.
 
 > **New to this workflow?** See the [Workflow Overview](documentation/01-workflow-overview.md) for a step-by-step guide.
+>
+> **Installing?** This repo ships as the `devflow` Claude Code plugin — see [Installation](#installation)
+> and [Plugin Distribution](documentation/03-plugin-distribution.md).
 
 ## Built on Claude Code Task Tools
 
@@ -31,12 +34,19 @@ This collection uses modern Claude Code skill features (v2.1.16+):
 
 | Feature | Skills Using It | Purpose |
 |---------|-----------------|---------|
-| `context: fork` | brainstorm, team-brainstorm, user-story, create-plan, implement-plan, implement-phase, codebase-research, agent-creator | Run in isolated subagent context |
-| `agent: Explore/Plan` | brainstorm, user-story, create-plan, codebase-research | Specify subagent type for forked context |
+| `context: fork` | implement-phase, tt-implement-phase, codebase-research | Run in isolated subagent context. Only for skills that run to completion without the user. |
+| `agent: Explore/Plan` | (none) | Subagent type for a forked skill. Both built-ins are read-only and lack the `Agent` tool, so any skill that writes files or spawns subagents must leave this unset. |
 | `allowed-tools` | code-review, verification-loop, security-review, adversarial-reviewer, codebase-research, strategic-compact | Restrict available tools (read-only enforcement) |
 | `argument-hint` | implement-plan, implement-phase, adr, e2e-testing, code-review, adversarial-reviewer, context-saver, prompt-generator | Show usage hints in autocomplete |
 | `disable-model-invocation` | context-saver, prompt-generator | User-only invocation (no auto-trigger) |
 | `user-invocable: false` | implement-phase | Hide from user menu (internal skill) |
+
+**Never add `context: fork` to an interactive skill.** A forked skill runs in a subagent
+with no access to the conversation history, and since Claude Code v2.1.218 it is
+backgrounded by default — so a skill that asks the user questions and waits for answers
+(`brainstorm`) simply never reaches the user. `agent: Explore` compounds it: that agent
+type is read-only, so the skill cannot write its output document either.
+`tests/test-interactive-skills.sh` guards this.
 
 ### Argument Substitution
 
@@ -241,7 +251,45 @@ Each agent **pins its model** in frontmatter — the tier is part of the contrac
 
 ## Installation
 
-### Quick Install
+Two ways to install. **The plugin is the recommended one** — it is versioned, updatable
+in place, and does not copy anything into `~/.claude/`.
+
+### Option A: Install as a plugin (recommended)
+
+This repository is a Claude Code plugin named `devflow`, published through a marketplace
+named `mhylle`. Inside Claude Code:
+
+```
+/plugin marketplace add mhylle/claude-skills-collection
+/plugin install devflow@mhylle
+```
+
+Then `/reload-plugins` (or restart) if the install summary asks for it.
+
+Plugin skills are namespaced, so every skill is invoked as `/devflow:<skill>`:
+
+```
+/devflow:brainstorm
+/devflow:create-plan
+/devflow:implement-plan
+```
+
+To update later:
+
+```
+/plugin marketplace update mhylle
+```
+
+See [Plugin Distribution](documentation/03-plugin-distribution.md) for the manifest
+layout, versioning, and how to publish changes.
+
+> **Heads up if you have also run `./install.sh`:** plugin skills do not override
+> same-named personal skills — you end up with *both* `/brainstorm` and
+> `/devflow:brainstorm`, and Claude may auto-invoke either. Pick one install method.
+> To drop the copies from the script, remove the skill directories it created under
+> `~/.claude/skills/` and `~/.claude/agents/`.
+
+### Option B: Copy into `~/.claude/` with the install script
 
 ```bash
 ./install.sh
@@ -251,6 +299,9 @@ Installs to:
 - Skills: `~/.claude/skills/`
 - Agents: `~/.claude/agents/`
 - Hooks: `~/.claude/hooks.json`
+
+Skills are invoked without a namespace (`/brainstorm`). Updating means re-running the
+script; there is no version tracking.
 
 ### What Gets Installed
 
@@ -526,6 +577,9 @@ Every phase must end clean. Therefore:
 
 ```
 claude-skills-collection/
+├── .claude-plugin/                 # NEW: plugin packaging (see documentation/03-plugin-distribution.md)
+│   ├── plugin.json                 #   plugin manifest — name `devflow`, namespaces every skill
+│   └── marketplace.json            #   marketplace catalog — name `mhylle`, source "./"
 ├── skills/
 │   ├── adr/
 │   ├── adversarial-reviewer/      # NEW: Hostile-persona subagent review (Saboteur/New Hire/Security)

@@ -3,6 +3,8 @@
 A high-level guide to the Claude Code skills-based implementation workflow.
 
 > **Want more detail?** See the [Detailed Workflow Guide](02-detailed-workflow.md) for step-by-step instructions with rationale.
+>
+> **Installing or publishing the skills?** See [Plugin Distribution](03-plugin-distribution.md).
 
 ## The Big Picture
 

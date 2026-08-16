@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "devflow",
+  "displayName": "DevFlow Skills Collection",
+  "version": "1.0.0",
+  "description": "A verification-first development pipeline for Claude Code: brainstorm to plan to phased implementation, with quality gates (verification-loop, code-review, security-review), adversarial review, and TaskTracker-native variants.",
+  "author": {
+    "name": "Martin Hylleberg",
+    "url": "https://github.com/mhylle"
+  },
+  "homepage": "https://github.com/mhylle/claude-skills-collection#readme",
+  "repository": "https://github.com/mhylle/claude-skills-collection",
+  "license": "MIT",
+  "keywords": [
+    "workflow",
+    "planning",
+    "brainstorming",
+    "code-review",
+    "tdd",
+    "quality-gates",
+    "tasktracker"
+  ],
+  "hooks": "./hooks.json"
+}

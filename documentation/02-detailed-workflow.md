@@ -15,6 +15,7 @@ A comprehensive guide explaining each step of the workflow and the reasoning beh
 8. [Continuous Learning System](#continuous-learning-system)
 9. [Hooks and Automation](#hooks-and-automation)
 10. [Skill Architecture (Claude Code 2.1.x)](#skill-architecture-claude-code-21x)
+11. [Plugin Distribution](03-plugin-distribution.md)
 
 ---
 
@@ -822,7 +823,12 @@ Skills are categorized by their execution context and tool access:
 │  ├── Run in isolated subagent context                                       │
 │  ├── Spawn their own subagents for work                                     │
 │  ├── Never write code directly                                              │
-│  └── Examples: implement-plan, implement-phase, brainstorm, create-plan     │
+│  └── Examples: implement-plan, implement-phase, create-plan                 │
+│                                                                              │
+│  INTERACTIVE SKILLS (no context: fork — main conversation only)             │
+│  ├── Ask the user questions and wait for the answers                        │
+│  ├── A fork has no conversation history and is backgrounded by default      │
+│  └── Examples: brainstorm                                                   │
 │                                                                              │
 │  READ-ONLY SKILLS (allowed-tools: restricted)                               │
 │  ├── Can only read, search, and run verification commands                   │
@@ -845,8 +851,9 @@ Skills are configured via YAML frontmatter in their SKILL.md files:
 
 | Field | Purpose | Example |
 |-------|---------|---------|
-| `context: fork` | Run skill in isolated subagent | Orchestrator skills |
-| `agent: Explore\|Plan` | Specify subagent type for forked context | Research/planning skills |
+| `context: fork` | Run skill in isolated subagent — backgrounded by default (v2.1.218+), no conversation history. Never use on an interactive skill. | Orchestrator skills |
+| `agent: Explore\|Plan` | Specify subagent type for forked context. Only meaningful with `context: fork`; `Explore` is read-only, so a skill that writes files can't use it. | Research/planning skills |
+| `background: false` | Wait for a forked skill in the invoking turn instead of backgrounding it. Does not give the fork conversation history or the ability to ask the user anything — for that, drop `context: fork` entirely. | Forked skills that must finish first |
 | `allowed-tools:` | Restrict which tools the skill can use | Read-only skills |
 | `argument-hint:` | Autocomplete hint shown in CLI | `[plan-path]` |
 | `user-invocable: false` | Hide from user menu (internal only) | implement-phase |
@@ -952,13 +959,26 @@ This creates a D3.js force-directed graph showing:
 
 | Skill | Type | Context | Agent | Key Tools |
 |-------|------|---------|-------|-----------|
-| brainstorm | Orchestrator | fork | Explore | All |
-| team-brainstorm | Orchestrator | fork | - | All (+ TeamCreate, SendMessage) |
-| create-plan | Orchestrator | fork | Plan | All |
-| implement-plan | Orchestrator | fork | - | All |
+| brainstorm | Interactive | main conversation | - | All |
+| deep-brainstorm | Interactive | main conversation | - | All |
+| team-brainstorm | Interactive (orchestrator) | main conversation | - | All (+ TeamCreate, SendMessage) |
+| tt-brainstorm | Interactive | main conversation | - | All |
+| create-plan | Interactive (orchestrator) | main conversation | - | All |
+| team-create-plan | Interactive (orchestrator) | main conversation | - | All |
+| tt-create-plan | Interactive (orchestrator) | main conversation | - | All |
+| user-story | Interactive | main conversation | - | All |
+| implement-plan | Interactive (orchestrator) | main conversation | - | All |
+| team-implement-plan | Interactive (orchestrator) | main conversation | - | All |
+| team-implement-plan-full | Interactive (orchestrator) | main conversation | - | All |
+| tt-implement-plan | Interactive (orchestrator) | main conversation | - | All |
+| tt-workflow-audit | Interactive (orchestrator) | main conversation | - | All (+ Workflow) |
+| tt-workflow-build | Interactive (orchestrator) | main conversation | - | All (+ Workflow) |
+| tt-workflow-run | Interactive (orchestrator) | main conversation | - | All |
+| workflow-guide | Interactive | main conversation | - | Read |
+| agent-creator | Interactive | main conversation | - | All |
 | implement-phase | Orchestrator | fork | - | All |
-| codebase-research | Orchestrator | fork | Explore | Read, Glob, Grep, Bash |
-| agent-creator | Orchestrator | fork | Explore | All |
+| tt-implement-phase | Orchestrator | fork | - | All |
+| codebase-research | Orchestrator | fork | - | Read, Glob, Grep, Bash, Agent |
 | code-review | Read-only | - | - | Read, Grep, Glob, Bash |
 | adversarial-reviewer | Read-only (orchestrator) | - | - | Read, Grep, Glob, Bash, Agent |
 | verification-loop | Read-only | - | - | Read, Glob, Bash |
