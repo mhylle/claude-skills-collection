@@ -1,7 +1,6 @@
 ---
 name: team-implement-plan
 description: Execute implementation plans with a small review team (Implementer + Reviewer + optional Integrator). The Implementer writes code directly while the Reviewer provides adversarial quality checks per phase. Use for moderate-to-complex plans where real-time adversarial review catches issues that automated checks miss. Triggers on "team implement", "team implement plan", or when the user explicitly wants team-based implementation.
-context: fork
 argument-hint: "[plan-path]"
 ---
 

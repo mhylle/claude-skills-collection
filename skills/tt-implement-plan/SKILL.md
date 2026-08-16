@@ -1,7 +1,6 @@
 ---
 name: tt-implement-plan
 description: Tasktracker-native plan orchestrator. Drives execution of a plan whose phases are stored as tasktracker phase tasks (NOT a docs/plans/*.md file). Honours active-task discipline (setActiveTask before every artifact-producing call, pauseActiveTask before user waits, clearActiveTask on phase done), respects the locked phase body (design notes go to sub-tasks, never to the phase description), logs defects/learnings/frictions through tasktracker insights as they surface, and delegates the actual implementation to /implement-phase. Use whenever the user wants to "implement the plan", "run the plan", or "work through the phases" AND the plan was created with /tt-create-plan (or otherwise lives in tasktracker). Triggers on "tt implement plan", "tt implement", "implement plan (tasktracker)", "/tt-implement-plan", "execute the tasktracker plan", or any plan-execution request inside a session that already has a tasktracker active task or project. Prefer this over the plain /implement-plan skill whenever a tasktracker MCP is available — it correctly handles the locked phase body, requirement linking, insight logging, and lifecycle gating that the file-based variant ignores.
-context: fork
 argument-hint: "[project-slug-or-id]"
 ---
 

@@ -1,8 +1,6 @@
 ---
 name: brainstorm
 description: Interactive idea refinement using Socratic questioning methodology. This skill should be used when users want to explore an idea, find gaps in concepts, enhance proposals, or structure thoughts before implementation planning. Triggers on "brainstorm", "explore this idea", "find holes in", "help me think through", "what am I missing", or when presenting rough concepts that need refinement. Output integrates with create-plan skill.
-context: fork
-agent: Explore
 ---
 
 # Brainstorm
@@ -12,6 +10,8 @@ agent: Explore
 This skill provides structured single-session brainstorming through Socratic questioning and targeted analytical frameworks. It helps users refine raw ideas into well-structured concepts ready for implementation planning.
 
 The key philosophy: **adapt the analysis to the idea, not the idea to the analysis.** Different types of ideas benefit from different frameworks. A risk-heavy initiative needs premortem analysis, not SCAMPER. A product feature needs SCAMPER, not just risk tables. Select the right tools for the job rather than running everything mechanically.
+
+This skill runs in the main conversation, not a subagent. Phase 2 waits on the user's answers before continuing, and Phase 5 writes a file and offers follow-up skills — none of which a forked context can do, since it has no conversation history, gets backgrounded by default, and (under `agent: Explore`) has no write tools. Don't add `context: fork` or `agent:` to the frontmatter.
 
 ## Initial Response
 

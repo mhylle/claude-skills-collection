@@ -1,7 +1,6 @@
 ---
 name: team-create-plan
 description: Team-based implementation planning with adversarial design review. Spawns an Architect, Risk Analyst, and Researcher who explore competing designs and challenge each other before producing a plan. Use when planning complex features, high-stakes changes, or when multiple valid approaches exist. Triggers on "team create plan", "team plan", "deep plan", or when the user explicitly wants team-based planning.
-context: fork
 argument-hint: "[topic or brainstorm-path]"
 ---
 

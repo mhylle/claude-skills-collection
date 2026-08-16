@@ -1,8 +1,6 @@
 ---
 name: user-story
 description: Generate hierarchical user stories (epics, features, tasks) with formal Given/When/Then acceptance criteria. Works from brainstorm output or standalone. Produces structured requirements that feed directly into create-plan. Triggers on "create user stories", "write stories", "define requirements", "user story", or when presenting features that need requirements decomposition.
-context: fork
-agent: Explore
 argument-hint: "[brainstorm-path?]"
 ---
 
