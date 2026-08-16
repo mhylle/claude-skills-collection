@@ -16,6 +16,7 @@ Quick reference index for all architectural decisions. Read this file first to i
 | [0008](./ADR-0008-prompt-style-policy-by-tier.md) | Prompt style by tier: outcome-style (Fable 5), step-lists (Sonnet 4.6), TDD contract (Opus 4.8) | ship-issue skill, agent prompts | 2026-06-11 |
 | [0009](./ADR-0009-single-orchestrator-file-run-state-polling-dashboard.md) | Single orchestrator skill, file-based run state, read-only polling dashboard | ship-issue skill, dashboard, run state | 2026-06-11 |
 | [0010](./ADR-0010-testable-substrate-split-for-llm-skills.md) | Extract mechanically-testable skill behavior into stdlib CLI helpers; verify the LLM-interpreted remainder via greps and sandboxed scenario tests | ship-issue skill, scripts/, tests/ship-issue | 2026-06-12 |
+| [0011](./ADR-0011-plugin-only-distribution.md) | Distribute exclusively as the `devflow` Claude Code plugin; delete `install.sh` and the copy-into-`~/.claude/` path | install.sh (deleted), README, documentation/03, hooks location, tests/ship-issue | 2026-08-16 |
 
 ## Superseded Decisions
 
@@ -51,4 +52,4 @@ Quick reference index for all architectural decisions. Read this file first to i
 (none yet)
 
 ### Infrastructure
-(none yet)
+- [ADR-0011](./ADR-0011-plugin-only-distribution.md): Plugin-only distribution — `devflow` plugin on the `mhylle` marketplace, no copy-install script

@@ -3,7 +3,7 @@
 #
 # Verifies the five ship-issue agent files in agents/ (model pinning, frontmatter
 # shape, outcome-contract bodies, verdict contracts, BLOCKED/retry semantics)
-# plus install.sh --dry-run behavior.
+# plus plugin packaging of the agent roster.
 #
 # Plain bash, no framework. Collects ALL failures (no set -e).
 # Output: one line per test "PASS|FAIL Tn: <desc>", then "X/Y passed".
@@ -303,29 +303,28 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# T6 — install.sh --dry-run: exit 0, names all five agents, copies nothing
+# T6 — plugin packaging ships all five agents from the default agents/ location
 # ---------------------------------------------------------------------------
+# Distribution is plugin-only (ADR-0011). `agents/` at the plugin root is a
+# default discovery location, so shipping is a question of file placement plus a
+# manifest that does not redirect the scan elsewhere.
 t6_ok=1
 t6_reason=""
-fake_home="$(mktemp -d)"
-dryrun_out="$(cd "$REPO_ROOT" && HOME="$fake_home" timeout 60 bash install.sh --dry-run </dev/null 2>/dev/null)"
-dryrun_rc=$?
-if [ "$dryrun_rc" -ne 0 ]; then
-  t6_ok=0; t6_reason="$t6_reason exit=$dryrun_rc"
-fi
 for f in "${AGENT_FILES[@]}"; do
-  if ! printf '%s\n' "$dryrun_out" | grep -qF "$f"; then
-    t6_ok=0; t6_reason="$t6_reason missing-in-output:$f"
+  if [ ! -f "$AGENTS_DIR/$f" ]; then
+    t6_ok=0; t6_reason="$t6_reason not-at-plugin-root:$f"
   fi
 done
-if [ -d "$fake_home/.claude/agents" ] && [ -n "$(ls -A "$fake_home/.claude/agents" 2>/dev/null)" ]; then
-  t6_ok=0; t6_reason="$t6_reason dry-run-copied-files"
+if [ ! -f "$REPO_ROOT/.claude-plugin/plugin.json" ]; then
+  t6_ok=0; t6_reason="$t6_reason no-plugin-manifest"
 fi
-rm -rf "$fake_home"
+if grep -q '"agents":' "$REPO_ROOT/.claude-plugin/plugin.json" 2>/dev/null; then
+  t6_ok=0; t6_reason="$t6_reason manifest-overrides-agents-path"
+fi
 if [ "$t6_ok" -eq 1 ]; then
-  record PASS T6 "install.sh --dry-run exits 0, lists all five agents, copies nothing"
+  record PASS T6 "plugin ships all five agents from the default agents/ location"
 else
-  record FAIL T6 "install.sh --dry-run exits 0, lists all five agents, copies nothing (${t6_reason# })"
+  record FAIL T6 "plugin ships all five agents from the default agents/ location (${t6_reason# })"
 fi
 
 # ---------------------------------------------------------------------------

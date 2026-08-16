@@ -3,7 +3,7 @@
 # pipeline: the orchestrator skill (skills/ship-issue/SKILL.md) and its
 # helpers (scripts/preflight.py, scripts/run_state.py).
 #
-# Text contracts on SKILL.md (T1-T8), install.sh --dry-run (T9), and scenario
+# Text contracts on SKILL.md (T1-T8), plugin packaging (T9), and scenario
 # tests against a local throwaway git sandbox with offline gh/aws stubs
 # (T10-T16). No network, no real gh/aws, ever.
 #
@@ -241,29 +241,26 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# T9 — install.sh --dry-run: exit 0, lists ship-issue, copies nothing
+# T9 — plugin packaging ships ship-issue from the default skills/ location
 # ---------------------------------------------------------------------------
+# Distribution is plugin-only (ADR-0011). A skill ships when it is a
+# <name>/SKILL.md directory under the plugin root's skills/ and the manifest
+# does not redirect the scan somewhere else.
 t9_ok=1
 t9_reason=""
-fake_home="$(mktemp -d)"
-dryrun_out="$(cd "$REPO_ROOT" && HOME="$fake_home" timeout 60 bash install.sh --dry-run </dev/null 2>/dev/null)"
-dryrun_rc=$?
-if [ "$dryrun_rc" -ne 0 ]; then
-  t9_ok=0; t9_reason="$t9_reason exit=$dryrun_rc"
+if [ ! -f "$REPO_ROOT/skills/ship-issue/SKILL.md" ]; then
+  t9_ok=0; t9_reason="$t9_reason no-skill-md-at-plugin-root"
 fi
-if ! printf '%s\n' "$dryrun_out" | grep -qF 'ship-issue'; then
-  t9_ok=0; t9_reason="$t9_reason ship-issue-not-listed"
+if [ ! -f "$REPO_ROOT/.claude-plugin/plugin.json" ]; then
+  t9_ok=0; t9_reason="$t9_reason no-plugin-manifest"
 fi
-for d in skills agents; do
-  if [ -d "$fake_home/.claude/$d" ] && [ -n "$(ls -A "$fake_home/.claude/$d" 2>/dev/null)" ]; then
-    t9_ok=0; t9_reason="$t9_reason dry-run-copied-$d"
-  fi
-done
-rm -rf "$fake_home"
+if grep -q '"skills":' "$REPO_ROOT/.claude-plugin/plugin.json" 2>/dev/null; then
+  t9_ok=0; t9_reason="$t9_reason manifest-overrides-skills-path"
+fi
 if [ "$t9_ok" -eq 1 ]; then
-  record PASS T9 "install.sh --dry-run exits 0, lists ship-issue, copies nothing"
+  record PASS T9 "plugin ships ship-issue from the default skills/ location"
 else
-  record FAIL T9 "install.sh --dry-run exits 0, lists ship-issue, copies nothing (${t9_reason# })"
+  record FAIL T9 "plugin ships ship-issue from the default skills/ location (${t9_reason# })"
 fi
 
 # ---------------------------------------------------------------------------

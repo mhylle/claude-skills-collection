@@ -19,6 +19,5 @@
     "tdd",
     "quality-gates",
     "tasktracker"
-  ],
-  "hooks": "./hooks.json"
+  ]
 }

@@ -15,35 +15,40 @@ publish changes.
 6. [Versioning](#versioning)
 7. [Local development](#local-development)
 8. [Validation and verification](#validation-and-verification)
-9. [Coexisting with `install.sh`](#coexisting-with-installsh)
+9. [Migrating from the old install script](#migrating-from-the-old-install-script)
 10. [Troubleshooting](#troubleshooting)
 
 ---
 
 ## Why a plugin
 
-`./install.sh` copies files into `~/.claude/`. That works, but it has no version tracking,
-no update path other than re-running the script, and no way to cleanly uninstall. A plugin
-fixes all three: Claude Code fetches it from a marketplace, tracks its version, updates it
-in place, and can disable or remove it without leaving orphaned files behind.
+This collection used to ship an install script that copied skills, agents, and hooks into
+`~/.claude/`. Copying has no version tracking, no update path other than re-running the
+script, and no clean uninstall — and it silently overwrote the user's `hooks.json`. The
+plugin fixes all four: Claude Code fetches it from a marketplace, tracks its version,
+updates it in place, and removes it without leaving orphans behind.
+
+The script is gone; the plugin is the only distribution path. See
+[ADR-0011](../docs/decisions/ADR-0011-plugin-only-distribution.md) for the full rationale.
 
 The tradeoff is namespacing. Plugin skills are always invoked as `/<plugin>:<skill>`, so
 `/brainstorm` becomes `/devflow:brainstorm`. This is deliberate on Claude Code's part — it
 prevents two plugins from fighting over the same skill name.
 
-| | `install.sh` | Plugin |
+| | Old copy-install | Plugin |
 |---|---|---|
 | Invocation | `/brainstorm` | `/devflow:brainstorm` |
 | Update | re-run the script | `/plugin marketplace update mhylle` |
 | Version tracking | none | `version` in `plugin.json` |
 | Uninstall | delete directories by hand | `/plugin uninstall devflow` |
 | Files in `~/.claude/skills/` | yes, copies | no, lives in the plugin cache |
+| User's `hooks.json` | overwritten | untouched |
 
 ## Repository layout
 
 The repository root **is** the plugin root, and it is also the marketplace root. Claude
-Code auto-discovers components in their default locations, so no path wiring is needed
-beyond the hooks file:
+Code auto-discovers every component from its default location, so the manifest needs no
+path wiring at all:
 
 ```
 claude-skills-collection/          ← plugin root AND marketplace root
@@ -56,9 +61,11 @@ claude-skills-collection/          ← plugin root AND marketplace root
 ├── agents/                        ← auto-discovered: *.md
 │   ├── codebase-locator.md
 │   └── ...
-├── hooks.json                     ← referenced explicitly by plugin.json
+├── hooks/
+│   └── hooks.json                 ← auto-discovered
 ├── documentation/
-└── install.sh                     ← the non-plugin install path, still supported
+├── tests/
+└── LICENSE
 ```
 
 Two rules are easy to get wrong:
@@ -67,11 +74,11 @@ Two rules are easy to get wrong:
   `agents/`, and `hooks/` must sit at the plugin root. Putting them under
   `.claude-plugin/` is the single most common plugin mistake and produces a plugin that
   loads with zero components.
-- **`hooks.json` lives at the repo root, not in `hooks/`.** The default location Claude
-  Code scans is `hooks/hooks.json`. This repo keeps the file at the root because
-  `install.sh` has always read it from there, so `plugin.json` points at it explicitly with
-  `"hooks": "./hooks.json"`. Both install paths therefore share one file — do not create a
-  second copy under `hooks/`, or the two will drift.
+- **Everything sits in a default location, so `plugin.json` declares no component paths.**
+  `skills/`, `agents/`, and `hooks/hooks.json` are all scanned automatically. The manifest
+  carries metadata only. Adding a path override would be one more thing that can drift out
+  of sync with where the files actually are — if you need to move a component, prefer
+  moving it back to the default location.
 
 `skills/references/` holds shared reference material and has no `SKILL.md`. Claude Code
 skips directories without one, so it is harmless.
@@ -93,8 +100,8 @@ to fetch plugins from.
   "author": { "name": "Martin Hylleberg", "url": "https://github.com/mhylle" },
   "homepage": "https://github.com/mhylle/claude-skills-collection#readme",
   "repository": "https://github.com/mhylle/claude-skills-collection",
-  "keywords": ["workflow", "planning", "..."],
-  "hooks": "./hooks.json"
+  "license": "MIT",
+  "keywords": ["workflow", "planning", "..."]
 }
 ```
 
@@ -115,6 +122,7 @@ command users have learned, so treat it as stable.
       "source": "./",
       "displayName": "DevFlow Skills Collection",
       "description": "...",
+      "license": "MIT",
       "category": "workflow",
       "tags": ["workflow", "planning", "..."]
     }
@@ -204,8 +212,7 @@ claude plugin validate . --strict
 # plugin manifest, isolated
 mkdir -p /tmp/pv/devflow/.claude-plugin
 cp .claude-plugin/plugin.json /tmp/pv/devflow/.claude-plugin/
-cp hooks.json /tmp/pv/devflow/
-cp -r skills agents /tmp/pv/devflow/
+cp -r skills agents hooks /tmp/pv/devflow/
 claude plugin validate /tmp/pv/devflow --strict
 ```
 
@@ -223,32 +230,33 @@ claude --plugin-dir . --model claude-haiku-4-5-20251001 -p \
 The expected count is the number of `skills/*/SKILL.md` files minus those that set
 `disable-model-invocation: true` (`user-invocable: false` skills still appear to the model).
 
-Also run the frontmatter guard, which enforces that interactive skills never get forked into
-a background subagent:
+Also run the two repo guards:
 
 ```bash
-./tests/test-interactive-skills.sh
+./tests/test-interactive-skills.sh   # interactive skills are never forked into the background
+./tests/test-plugin-packaging.sh     # LICENSE, plugin-only distribution, default component locations
 ```
 
-## Coexisting with `install.sh`
+## Migrating from the old install script
 
-Plugin skills are namespaced and **do not override** same-named personal skills in
-`~/.claude/skills/`. If you have run both install paths you will have `/brainstorm` and
-`/devflow:brainstorm`, pointing at two separate copies that drift apart as soon as one is
-updated. Worse, Claude auto-invokes by description, and both descriptions match — so which
-copy runs is not something you control.
+Before the plugin, `install.sh` copied everything into `~/.claude/`. Those copies survive
+the switch, and plugin skills **do not override** same-named personal skills — so anyone who
+ran the old script has both `/brainstorm` and `/devflow:brainstorm`, backed by two copies
+that drift apart as soon as one updates. Claude auto-invokes by description, and both
+descriptions match, so which copy runs is not under the user's control.
 
-Pick one. To move from the script to the plugin, remove the directories the script created:
+After installing the plugin, remove the copies once, from a checkout of this repo:
 
 ```bash
-# skills this repo installs
 for s in $(ls skills); do rm -rf "$HOME/.claude/skills/$s"; done
-# agents this repo installs
 for a in agents/*.md; do rm -f "$HOME/.claude/agents/$(basename "$a")"; done
 ```
 
-`~/.claude/hooks.json` is shared user configuration rather than a copy of this repo's file,
-so review it by hand before deleting anything from it.
+`~/.claude/hooks.json` is the user's own configuration. The old script overwrote it and
+left a `hooks.json.backup`; the plugin contributes its hooks from `hooks/hooks.json`
+without touching the user file. Review `~/.claude/hooks.json` by hand and delete only the
+entries recognisable as this collection's — deleting the file wholesale would take the
+user's own hooks with it.
 
 ## Troubleshooting
 
@@ -259,6 +267,8 @@ so review it by hand before deleting anything from it.
 | Users are not getting an update | `version` in `plugin.json` was not bumped. |
 | `Marketplace is registered from an untrusted source` | The marketplace name collides with a reserved Anthropic name. `mhylle` is not reserved; a rename could collide. |
 | Relative `source` fails to resolve | The marketplace was added by direct URL to `marketplace.json`. Relative sources need a git or local-directory source, since only the single file is downloaded otherwise. |
+| Hooks do not fire | The file must be at `hooks/hooks.json`. A `hooks.json` at the repo root is not scanned unless `plugin.json` names it. |
+| A skill runs twice, or the wrong version runs | Leftover copies from the old install script. See [Migrating from the old install script](#migrating-from-the-old-install-script). |
 
 ## Reference
 

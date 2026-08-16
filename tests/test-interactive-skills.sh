@@ -16,7 +16,6 @@ set -u
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SKILLS_DIR="$REPO_ROOT/skills"
-INSTALL_DIR="${CLAUDE_SKILLS_HOME:-$HOME/.claude/skills}"
 
 # Skills whose SKILL.md body depends on a live user turn-by-turn, or that must
 # hold the parent's tool set (Agent/Workflow/Write) to do their job at all.
@@ -110,15 +109,6 @@ for skill in "${INTERACTIVE_SKILLS[@]}"; do
     record FAIL "T$n" "$skill: frontmatter still declares name and description"
   fi
 
-  n=$((n + 1))
-  installed="$INSTALL_DIR/$skill/SKILL.md"
-  if [ ! -f "$installed" ]; then
-    record FAIL "T$n" "$skill: installed copy exists at $installed"
-  elif diff -q "$src" "$installed" >/dev/null; then
-    record PASS "T$n" "$skill: installed copy matches source (fix is live in this session)"
-  else
-    record FAIL "T$n" "$skill: installed copy matches source — run install.sh, $installed is stale"
-  fi
 done
 
 for skill in "${FORKED_SKILLS[@]}"; do

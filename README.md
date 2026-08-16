@@ -251,13 +251,8 @@ Each agent **pins its model** in frontmatter — the tier is part of the contrac
 
 ## Installation
 
-Two ways to install. **The plugin is the recommended one** — it is versioned, updatable
-in place, and does not copy anything into `~/.claude/`.
-
-### Option A: Install as a plugin (recommended)
-
-This repository is a Claude Code plugin named `devflow`, published through a marketplace
-named `mhylle`. Inside Claude Code:
+This repository is distributed **exclusively** as a Claude Code plugin named `devflow`,
+published through a marketplace named `mhylle`. Inside Claude Code:
 
 ```
 /plugin marketplace add mhylle/claude-skills-collection
@@ -274,38 +269,47 @@ Plugin skills are namespaced, so every skill is invoked as `/devflow:<skill>`:
 /devflow:implement-plan
 ```
 
-To update later:
+Nothing is copied into `~/.claude/` — the plugin lives in Claude Code's plugin cache,
+carries a version, and updates in place:
 
 ```
 /plugin marketplace update mhylle
 ```
 
+To remove it: `/plugin uninstall devflow`.
+
 See [Plugin Distribution](documentation/03-plugin-distribution.md) for the manifest
-layout, versioning, and how to publish changes.
+layout, versioning, publishing, and local development.
 
-> **Heads up if you have also run `./install.sh`:** plugin skills do not override
-> same-named personal skills — you end up with *both* `/brainstorm` and
-> `/devflow:brainstorm`, and Claude may auto-invoke either. Pick one install method.
-> To drop the copies from the script, remove the skill directories it created under
-> `~/.claude/skills/` and `~/.claude/agents/`.
+### Migrating from the old install script
 
-### Option B: Copy into `~/.claude/` with the install script
+Earlier versions shipped an `install.sh` that copied skills, agents, and hooks into
+`~/.claude/`. It is gone ([ADR-0011](docs/decisions/ADR-0011-plugin-only-distribution.md)).
+
+Those copies do **not** disappear on their own, and plugin skills do not override
+same-named personal skills — so until you remove them you will have both `/brainstorm`
+and `/devflow:brainstorm` pointing at two copies that drift apart, with Claude free to
+auto-invoke either. Remove the copies once, after installing the plugin:
 
 ```bash
-./install.sh
+# from a checkout of this repo
+for s in $(ls skills); do rm -rf "$HOME/.claude/skills/$s"; done
+for a in agents/*.md; do rm -f "$HOME/.claude/agents/$(basename "$a")"; done
 ```
 
-Installs to:
-- Skills: `~/.claude/skills/`
-- Agents: `~/.claude/agents/`
-- Hooks: `~/.claude/hooks.json`
+`~/.claude/hooks.json` is your own user configuration, not a copy of this repo's file.
+The old script overwrote it (leaving `hooks.json.backup`); the plugin no longer touches
+it. Review it by hand and delete only the entries you recognise from this collection.
 
-Skills are invoked without a namespace (`/brainstorm`). Updating means re-running the
-script; there is no version tracking.
+### What the Plugin Ships
 
-### What Gets Installed
+Skills, agents, and these hooks — all discovered automatically from the plugin's
+default component locations (`skills/`, `agents/`, `hooks/hooks.json`).
 
 **Hooks** (automatic behaviors):
+
+`/devflow:strategic-compact` is invoked on demand rather than by a hook — see
+[ADR-0011](docs/decisions/ADR-0011-plugin-only-distribution.md#hook-repair).
 
 | Hook Type | Name | Trigger | Purpose |
 |-----------|------|---------|---------|
@@ -313,33 +317,16 @@ script; there is no version tracking.
 | **PreToolUse** | tmux-reminder | Long-running commands | Suggest tmux for session persistence |
 | **PreToolUse** | git-push-review | `git push` | Reminder to review before push |
 | **PreToolUse** | doc-file-warn | `.md/.txt` creation | Warn about docs outside `docs/` structure |
-| **PreToolUse** | strategic-compact | Edit/Write/Read | Suggest `/compact` at logical boundaries |
 | **PostToolUse** | pr-url-logger | `gh pr create` | Log PR URL and review command |
 | **PostToolUse** | prettier-format | JS/TS file edits | Auto-format with Prettier |
 | **PostToolUse** | typescript-check | `.ts/.tsx` edits | Run `tsc --noEmit` and show errors |
 | **PostToolUse** | console-log-warn | JS/TS file edits | Warn about `console.log` statements |
 | **Stop** | console-log-audit | Session end | Audit modified files for `console.log` |
 | **Stop** | continuous-learning | Session end | Extract patterns to `~/.claude/skills/learned/` |
+| **SessionStart** | load-learned-patterns | Session start | Surface patterns captured by continuous-learning |
 | **SessionStart** | load-context | Session start | Detect saved context files in `docs/context/` |
-| **PreCompact** | save-context-remind | Before `/compact` | Remind to save context before compaction |
-
-### Manual Install
-
-```bash
-cp -r skills/* ~/.claude/skills/
-cp agents/*.md ~/.claude/agents/
-cp hooks.json ~/.claude/hooks.json
-```
-
-### Hooks Only
-
-If you only want to update hooks without reinstalling skills:
-
-```bash
-cp hooks.json ~/.claude/hooks.json
-```
-
-**Restart Claude Code after installation.**
+| **PreCompact** | continuous-learning-before-compact | Before `/compact` | Capture patterns before context is summarized away |
+| **PreCompact** | save-context-before-compact | Before `/compact` | Remind to save context before compaction |
 
 ### CLAUDE.md Integration
 
@@ -622,10 +609,17 @@ claude-skills-collection/
 │   ├── staging-e2e-verifier.md        # NEW: ship-issue staging E2E (Sonnet 4.6)
 │   ├── staging-log-verifier.md        # NEW: ship-issue staging logs (Sonnet 4.6)
 │   └── web-search-researcher.md
+├── hooks/
+│   └── hooks.json                  # plugin default hooks location
+├── documentation/
+│   ├── 01-workflow-overview.md
+│   ├── 02-detailed-workflow.md
+│   └── 03-plugin-distribution.md   # NEW: packaging, publishing, versioning
+├── tests/
 ├── docs/
 │   ├── decisions/                # ADRs
 │   └── plans/                    # Implementation plans
-├── install.sh
+├── LICENSE                         # NEW: MIT
 └── README.md
 ```
 
