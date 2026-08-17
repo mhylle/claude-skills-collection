@@ -1,7 +1,6 @@
 ---
 name: tt-workflow-build
 description: Tasktracker-native trigger for a PARALLEL build via the Claude Code Workflow tool. Thin by design — it does two things, then drives to done: (1) ensure a tasktracker project exists (use the existing one, or create one), then (2) start a dynamic `Workflow` that builds it, tracking the work in tasktracker and using the build + verify skills. It does NOT analyze parallelism up front, ask the user to choose a mode, hand back, or fall back to a sequential skill — get a project, start the workflow, drive autonomously to done (pausing only at real human gates like deploy). Use when the user wants a build driven by the parallel Workflow engine — typically after /tt-brainstorm + /tt-create-plan, or standalone. Triggers on "/tt-workflow-build", "build this with a workflow", "parallel build (tasktracker)", "fan out the build". Prefer /tt-implement-plan or /tt-workflow-run only when the WHOLE job is irreducibly sequential; prefer /tt-workflow-audit for read-only analysis.
-context: fork
 user-invocable: true
 argument-hint: "[project-slug-or-id]"
 ---

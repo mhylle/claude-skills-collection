@@ -3,6 +3,9 @@
 Custom skills and agents for Claude Code that enhance codebase research, context management, and implementation planning workflows.
 
 > **New to this workflow?** See the [Workflow Overview](documentation/01-workflow-overview.md) for a step-by-step guide.
+>
+> **Installing?** This repo ships as the `devflow` Claude Code plugin — see [Installation](#installation)
+> and [Plugin Distribution](documentation/03-plugin-distribution.md).
 
 ## Built on Claude Code Task Tools
 
@@ -31,12 +34,19 @@ This collection uses modern Claude Code skill features (v2.1.16+):
 
 | Feature | Skills Using It | Purpose |
 |---------|-----------------|---------|
-| `context: fork` | brainstorm, team-brainstorm, user-story, create-plan, implement-plan, implement-phase, codebase-research, agent-creator | Run in isolated subagent context |
-| `agent: Explore/Plan` | brainstorm, user-story, create-plan, codebase-research | Specify subagent type for forked context |
+| `context: fork` | implement-phase, tt-implement-phase, codebase-research | Run in isolated subagent context. Only for skills that run to completion without the user. |
+| `agent: Explore/Plan` | (none) | Subagent type for a forked skill. Both built-ins are read-only and lack the `Agent` tool, so any skill that writes files or spawns subagents must leave this unset. |
 | `allowed-tools` | code-review, verification-loop, security-review, adversarial-reviewer, codebase-research, strategic-compact | Restrict available tools (read-only enforcement) |
 | `argument-hint` | implement-plan, implement-phase, adr, e2e-testing, code-review, adversarial-reviewer, context-saver, prompt-generator | Show usage hints in autocomplete |
 | `disable-model-invocation` | context-saver, prompt-generator | User-only invocation (no auto-trigger) |
 | `user-invocable: false` | implement-phase | Hide from user menu (internal skill) |
+
+**Never add `context: fork` to an interactive skill.** A forked skill runs in a subagent
+with no access to the conversation history, and since Claude Code v2.1.218 it is
+backgrounded by default — so a skill that asks the user questions and waits for answers
+(`brainstorm`) simply never reaches the user. `agent: Explore` compounds it: that agent
+type is read-only, so the skill cannot write its output document either.
+`tests/test-interactive-skills.sh` guards this.
 
 ### Argument Substitution
 
@@ -241,20 +251,65 @@ Each agent **pins its model** in frontmatter — the tier is part of the contrac
 
 ## Installation
 
-### Quick Install
+This repository is distributed **exclusively** as a Claude Code plugin named `devflow`,
+published through a marketplace named `mhylle`. Inside Claude Code:
 
-```bash
-./install.sh
+```
+/plugin marketplace add mhylle/claude-skills-collection
+/plugin install devflow@mhylle
 ```
 
-Installs to:
-- Skills: `~/.claude/skills/`
-- Agents: `~/.claude/agents/`
-- Hooks: `~/.claude/hooks.json`
+Then `/reload-plugins` (or restart) if the install summary asks for it.
 
-### What Gets Installed
+Plugin skills are namespaced, so every skill is invoked as `/devflow:<skill>`:
+
+```
+/devflow:brainstorm
+/devflow:create-plan
+/devflow:implement-plan
+```
+
+Nothing is copied into `~/.claude/` — the plugin lives in Claude Code's plugin cache,
+carries a version, and updates in place:
+
+```
+/plugin marketplace update mhylle
+```
+
+To remove it: `/plugin uninstall devflow`.
+
+See [Plugin Distribution](documentation/03-plugin-distribution.md) for the manifest
+layout, versioning, publishing, and local development.
+
+### Migrating from the old install script
+
+Earlier versions shipped an `install.sh` that copied skills, agents, and hooks into
+`~/.claude/`. It is gone ([ADR-0011](docs/decisions/ADR-0011-plugin-only-distribution.md)).
+
+Those copies do **not** disappear on their own, and plugin skills do not override
+same-named personal skills — so until you remove them you will have both `/brainstorm`
+and `/devflow:brainstorm` pointing at two copies that drift apart, with Claude free to
+auto-invoke either. Remove the copies once, after installing the plugin:
+
+```bash
+# from a checkout of this repo
+for s in $(ls skills); do rm -rf "$HOME/.claude/skills/$s"; done
+for a in agents/*.md; do rm -f "$HOME/.claude/agents/$(basename "$a")"; done
+```
+
+`~/.claude/hooks.json` is your own user configuration, not a copy of this repo's file.
+The old script overwrote it (leaving `hooks.json.backup`); the plugin no longer touches
+it. Review it by hand and delete only the entries you recognise from this collection.
+
+### What the Plugin Ships
+
+Skills, agents, and these hooks — all discovered automatically from the plugin's
+default component locations (`skills/`, `agents/`, `hooks/hooks.json`).
 
 **Hooks** (automatic behaviors):
+
+`/devflow:strategic-compact` is invoked on demand rather than by a hook — see
+[ADR-0011](docs/decisions/ADR-0011-plugin-only-distribution.md#hook-repair).
 
 | Hook Type | Name | Trigger | Purpose |
 |-----------|------|---------|---------|
@@ -262,33 +317,16 @@ Installs to:
 | **PreToolUse** | tmux-reminder | Long-running commands | Suggest tmux for session persistence |
 | **PreToolUse** | git-push-review | `git push` | Reminder to review before push |
 | **PreToolUse** | doc-file-warn | `.md/.txt` creation | Warn about docs outside `docs/` structure |
-| **PreToolUse** | strategic-compact | Edit/Write/Read | Suggest `/compact` at logical boundaries |
 | **PostToolUse** | pr-url-logger | `gh pr create` | Log PR URL and review command |
 | **PostToolUse** | prettier-format | JS/TS file edits | Auto-format with Prettier |
 | **PostToolUse** | typescript-check | `.ts/.tsx` edits | Run `tsc --noEmit` and show errors |
 | **PostToolUse** | console-log-warn | JS/TS file edits | Warn about `console.log` statements |
 | **Stop** | console-log-audit | Session end | Audit modified files for `console.log` |
 | **Stop** | continuous-learning | Session end | Extract patterns to `~/.claude/skills/learned/` |
+| **SessionStart** | load-learned-patterns | Session start | Surface patterns captured by continuous-learning |
 | **SessionStart** | load-context | Session start | Detect saved context files in `docs/context/` |
-| **PreCompact** | save-context-remind | Before `/compact` | Remind to save context before compaction |
-
-### Manual Install
-
-```bash
-cp -r skills/* ~/.claude/skills/
-cp agents/*.md ~/.claude/agents/
-cp hooks.json ~/.claude/hooks.json
-```
-
-### Hooks Only
-
-If you only want to update hooks without reinstalling skills:
-
-```bash
-cp hooks.json ~/.claude/hooks.json
-```
-
-**Restart Claude Code after installation.**
+| **PreCompact** | continuous-learning-before-compact | Before `/compact` | Capture patterns before context is summarized away |
+| **PreCompact** | save-context-before-compact | Before `/compact` | Remind to save context before compaction |
 
 ### CLAUDE.md Integration
 
@@ -526,6 +564,9 @@ Every phase must end clean. Therefore:
 
 ```
 claude-skills-collection/
+├── .claude-plugin/                 # NEW: plugin packaging (see documentation/03-plugin-distribution.md)
+│   ├── plugin.json                 #   plugin manifest — name `devflow`, namespaces every skill
+│   └── marketplace.json            #   marketplace catalog — name `mhylle`, source "./"
 ├── skills/
 │   ├── adr/
 │   ├── adversarial-reviewer/      # NEW: Hostile-persona subagent review (Saboteur/New Hire/Security)
@@ -568,10 +609,17 @@ claude-skills-collection/
 │   ├── staging-e2e-verifier.md        # NEW: ship-issue staging E2E (Sonnet 4.6)
 │   ├── staging-log-verifier.md        # NEW: ship-issue staging logs (Sonnet 4.6)
 │   └── web-search-researcher.md
+├── hooks/
+│   └── hooks.json                  # plugin default hooks location
+├── documentation/
+│   ├── 01-workflow-overview.md
+│   ├── 02-detailed-workflow.md
+│   └── 03-plugin-distribution.md   # NEW: packaging, publishing, versioning
+├── tests/
 ├── docs/
 │   ├── decisions/                # ADRs
 │   └── plans/                    # Implementation plans
-├── install.sh
+├── LICENSE                         # NEW: MIT
 └── README.md
 ```
 

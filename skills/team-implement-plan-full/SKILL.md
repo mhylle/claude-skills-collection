@@ -1,7 +1,6 @@
 ---
 name: team-implement-plan-full
 description: Execute implementation plans with a full team — one implementer per phase running in parallel where the dependency graph allows, plus a shared cross-phase Reviewer. Phases execute in waves based on dependencies. Use for large plans with 4+ phases and independent work streams. Highest token cost but fastest execution for parallelizable work. Triggers on "full team implement", "parallel implement", or when the user explicitly wants maximum parallelism.
-context: fork
 argument-hint: "[plan-path]"
 ---
 

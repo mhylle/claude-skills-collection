@@ -1,8 +1,6 @@
 ---
 name: tt-create-plan
 description: Tasktracker-native implementation planning. Turns a frozen brainstorm (or a clear requirement) into a phased plan persisted as tasktracker phase tasks — NOT as a docs/plans/*.md file. Creates requirements with formal acceptance criteria, registers architecture components, generates phases via createPhaseFromTemplate (backend-feature / ui-fix / refactor / schema-migration / bug-investigation / docs-only / data-housekeeping), links every task back to its requirement, and uses getProjectReadiness as the completion gate. Use whenever the user wants to plan, design, or scope an implementation AND the work is (or will be) tracked in tasktracker. Triggers on "tt create plan", "tt plan", "plan this in tasktracker", "create a plan (tasktracker)", "/tt-create-plan", or any plan-creation request inside a session that already has a tasktracker active task or project. Prefer this over the plain /create-plan skill whenever a tasktracker MCP is available — the resulting phase tasks integrate with /tt-implement-plan and /implement-phase, so picking the file-based variant in a tasktracker project just creates orphan markdown.
-context: fork
-agent: Plan
 ---
 
 # tt-create-plan

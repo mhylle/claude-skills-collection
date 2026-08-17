@@ -1,7 +1,6 @@
 ---
 name: team-brainstorm
 description: Adversarial brainstorming using agent teams for multi-perspective analysis. Use when users want thorough idea exploration with real debate between independent perspectives. Triggers on "team brainstorm", "adversarial brainstorm", "brainstorm with team", "debate this idea", or when the user explicitly requests team-based analysis. Higher token cost but significantly deeper analysis than single-agent brainstorm.
-context: fork
 ---
 
 # Team Brainstorm

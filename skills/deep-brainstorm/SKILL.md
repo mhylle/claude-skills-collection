@@ -1,7 +1,6 @@
 ---
 name: deep-brainstorm
 description: Multi-session, resumable deep brainstorming with mindmap-on-disk structure. Explores ideas across multiple dimensions using creative methodologies (Morphological Analysis, TRIZ, Lateral Thinking, Lotus Blossom, Assumption Mapping). Sessions persist to filesystem and can span days. Triggers on "deep brainstorm", "deep dive brainstorm", "multi-session brainstorm", "brainstorm deeply", or when the user wants extended, resumable idea exploration. Higher depth than brainstorm or team-brainstorm but spread across sessions.
-context: fork
 ---
 
 # Deep Brainstorm

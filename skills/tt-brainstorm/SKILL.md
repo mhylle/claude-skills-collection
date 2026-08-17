@@ -1,8 +1,6 @@
 ---
 name: tt-brainstorm
 description: Tasktracker-native Socratic brainstorming. Refines a raw idea into a frozen brainstorm document tree stored in tasktracker (NOT in docs/brainstorms/*.md), with every chosen/deferred/rejected option recorded as a decision and an optional one-way promotion into a task tree. Use whenever a user wants to brainstorm, explore, refine, or "think through" an idea AND the work is (or will be) tracked in tasktracker. Triggers on "tt brainstorm", "brainstorm with tasktracker", "brainstorm in tasktracker", "explore this idea (tasktracker)", "/tt-brainstorm", or any brainstorm-style request inside a session that already has a tasktracker active task or project. Prefer this over the plain /brainstorm skill whenever a tasktracker MCP is available — the artifacts integrate with /tt-create-plan and /tt-implement-plan, so picking the file-based variant in a tasktracker project just creates orphan markdown.
-context: fork
-agent: Explore
 ---
 
 # tt-brainstorm

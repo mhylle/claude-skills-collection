@@ -1,7 +1,6 @@
 ---
 name: workflow-guide
 description: Recommend which workflow mode fits the task at hand — solo (implement-plan), small team (team-implement-plan with Implementer + Reviewer), full team (team-implement-plan-full with parallel per-phase implementers + shared Reviewer), or a dynamic workflow (the Workflow tool — deterministic parallel fan-out across tens-to-hundreds of background agents for large read/analyze/audit/research jobs, e.g. /tt-workflow-audit). Factors in task complexity, risk, parallelism, work shape (analyze vs implement), and token budget. Use when the user asks which workflow to pick, is unsure whether to go solo or team-based, mentions "which mode should I use", asks "solo or team for this", "should I use a workflow", "parallel audit", or is about to kick off execution without having chosen a mode. Triggers on "/workflow-guide", "which workflow mode", "solo or team", "pick a workflow", "dynamic workflow or team".
-context: fork
 ---
 
 # Workflow Guide

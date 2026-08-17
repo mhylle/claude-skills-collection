@@ -40,23 +40,6 @@
           }
         ],
         "description": "Warn about documentation files outside docs/ structure"
-      },
-      {
-        "name": "strategic-compact-monitor",
-        "matcher": "tool == \"Edit\" || tool == \"Write\" || tool == \"Read\"",
-        "hooks": [
-          {
-            "type": "skill",
-            "skill": "strategic-compact"
-          }
-        ],
-        "config": {
-          "threshold": 50,
-          "mode": "suggest",
-          "integrate_context_saver": true,
-          "boundary_events": ["task_completion", "git_commit", "phase_transition"]
-        },
-        "description": "Monitor session complexity and suggest /compact at logical boundaries"
       }
     ],
     "PostToolUse": [
@@ -118,8 +101,8 @@
         "matcher": "*",
         "hooks": [
           {
-            "type": "skill",
-            "skill": "continuous-learning"
+            "type": "prompt",
+            "prompt": "The session is ending. Invoke the continuous-learning skill to extract reusable patterns from this session into ~/.claude/skills/learned/. Skip silently if nothing in the session is worth promoting."
           }
         ],
         "config": {
@@ -129,7 +112,7 @@
           "max_patterns": 10,
           "auto_merge": true
         },
-        "description": "Extract valuable patterns from session before exit"
+        "description": "Extract valuable patterns from session before exit (runs the continuous-learning skill)"
       }
     ],
     "SessionStart": [
@@ -162,8 +145,8 @@
         "matcher": "*",
         "hooks": [
           {
-            "type": "skill",
-            "skill": "continuous-learning"
+            "type": "prompt",
+            "prompt": "Context is about to be compacted and detail will be lost. Invoke the continuous-learning skill first to capture any reusable patterns from the part of the session that is about to be summarized away."
           }
         ],
         "config": {
@@ -173,7 +156,7 @@
           "max_patterns": 10,
           "auto_merge": true
         },
-        "description": "Extract patterns before compaction loses context"
+        "description": "Extract patterns before compaction loses context (runs the continuous-learning skill)"
       },
       {
         "name": "save-context-before-compact",

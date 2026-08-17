@@ -1,7 +1,6 @@
 ---
 name: tt-workflow-audit
 description: Tasktracker-native project-wide parallel audit using the Claude Code Workflow tool (dynamic workflows). Partitions a repo / backlog / architecture and fans out read-only agents (one per partition) that return schema-checked findings, aggregates them into a deduplicated, ranked risk register, and OPTIONALLY writes fixes back as tasks under a Bug Fix phase — with all tasktracker writes done by the PARENT, never the parallel agents (single global active-task pointer). Journaled and resumable, so a rate-limit or crash mid-audit resumes without re-running completed partitions. Use for large, embarrassingly-parallel, read/analyze-heavy jobs where each unit is self-contained and the output aggregates — audit every file/component for risk, find all architecture drift (scanArchitectureDrift) or duplicate tasks (detectDuplicates/auditDuplicates), per-file tech-debt sweep, test-coverage or security-surface scan across a whole project. Triggers on "/tt-workflow-audit", "audit the whole repo", "parallel audit", "scan every file/component", "find all drift/duplicates", "tech-debt sweep (tasktracker)", or any whole-project analyze-at-scale request inside a session with a tasktracker project. Prefer this over /codebase-audit or /code-quality-audit when the project is tracked in tasktracker AND you want the findings written back as tasks; prefer it over team-* modes when the units don't need to negotiate live (they just report).
-context: fork
 user-invocable: true
 argument-hint: "[project-slug-or-id] [audit-mode]"
 ---
