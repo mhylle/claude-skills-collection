@@ -1,0 +1,470 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{VIDEO TITLE}} — explained</title>
+<style>
+/* =====================================================================
+   video-explainer base stylesheet
+   - Tokens (light + dark), page layout, prose, and a library of pure-CSS
+     diagram components. Markup examples: references/diagrams.md
+   - Colour any component part with a utility class: .c1–.c6 .good .bad
+     .warn .muted (they set --c, which components tint from).
+   - Every figure.diagram is a size container: components adapt to the
+     figure's width (not the screen), so they also work inside columns.
+   ===================================================================== */
+:root {
+  color-scheme: light dark;
+  --bg: #f6f5f1; --surface: #ffffff; --surface-2: #efede7;
+  --ink: #1c1c1e; --ink-2: #4d4d55; --ink-3: #82828c;
+  --line: #e3e0d8; --line-strong: #c4c0b5;
+  --accent: #2a5bd7;
+  --c1: #2a5bd7; --c2: #e06c1f; --c3: #16936b; --c4: #c2386b; --c5: #7b54e0; --c6: #0d8fb0;
+  --good: #16936b; --bad: #d23f3f; --warn: #c98208;
+  --c: var(--accent);
+  --radius: 14px;
+  --shadow: 0 1px 2px rgb(20 20 30 / .05), 0 6px 24px rgb(20 20 30 / .06);
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+  --mono: ui-monospace, "Cascadia Code", "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #121316; --surface: #1a1c20; --surface-2: #24262c;
+    --ink: #ececef; --ink-2: #b6b6bf; --ink-3: #85858f;
+    --line: #2d3036; --line-strong: #4a4d56;
+    --accent: #7aa2ff;
+    --c1: #7aa2ff; --c2: #ff9a57; --c3: #45c99a; --c4: #f06a9b; --c5: #a98bff; --c6: #4cc3e0;
+    --good: #45c99a; --bad: #ff6b6b; --warn: #f2b84b;
+    --shadow: 0 1px 2px rgb(0 0 0 / .4), 0 6px 24px rgb(0 0 0 / .25);
+  }
+}
+.c1 { --c: var(--c1); } .c2 { --c: var(--c2); } .c3 { --c: var(--c3); }
+.c4 { --c: var(--c4); } .c5 { --c: var(--c5); } .c6 { --c: var(--c6); }
+.good { --c: var(--good); } .bad { --c: var(--bad); } .warn { --c: var(--warn); }
+.muted { --c: var(--ink-3); }
+
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; padding: 0 1rem 4rem; background: var(--bg); color: var(--ink);
+  font: 17px/1.6 var(--sans); overflow-wrap: break-word;
+}
+img { max-width: 100%; height: auto; display: block; }
+a { color: var(--accent); text-underline-offset: .18em; }
+
+/* ---------- page layout ---------- */
+.page { max-width: 46rem; margin: 0 auto; }
+.wide { width: min(66rem, 100vw - 2rem); position: relative; left: 50%; transform: translateX(-50%); }
+section { margin-top: 3.5rem; scroll-margin-top: 1rem; }
+h1, h2, h3 { font-family: var(--serif); line-height: 1.2; letter-spacing: -.01em; margin: 0; }
+h2 { font-size: clamp(1.5rem, 1.1rem + 1.6vw, 2rem); margin-bottom: .9rem; text-wrap: balance; }
+h3 { font-size: 1.2rem; margin: 1.8rem 0 .5rem; }
+/* number badge, title and timestamp flow inline, so phones don't get three loose lines */
+h2 .num { display: inline-block; font: 600 .8rem/1 var(--mono); color: var(--accent); border: 1.5px solid currentColor; border-radius: 999px; padding: .3rem .5rem; margin-right: .5rem; vertical-align: .3em; }
+h2 .ts { margin-left: .45rem; vertical-align: .35em; }
+p { margin: 0 0 1rem; }
+ul, ol { padding-left: 1.3rem; }
+li { margin: .25rem 0; }
+strong { font-weight: 650; }
+
+/* timestamp link: <a class="ts" href="…&t=95s">1:35</a> */
+.ts { font: 600 .74rem/1 var(--mono); padding: .28rem .45rem; border-radius: 6px; background: var(--surface-2); color: var(--ink-2); text-decoration: none; white-space: nowrap; vertical-align: .12em; }
+a.ts:hover { background: var(--accent); color: #fff; }
+.ts::before { content: "▶ "; font-size: .62rem; }
+
+/* ---------- header ---------- */
+.hero { padding: clamp(2.5rem, 7vw, 5rem) 0 1.5rem; border-bottom: 1px solid var(--line); }
+.eyebrow { font: 600 .78rem/1.4 var(--sans); letter-spacing: .08em; text-transform: uppercase; color: var(--accent); margin-bottom: .9rem; }
+.hero h1 { font-size: clamp(2rem, 1.3rem + 3.2vw, 3.25rem); margin-bottom: 1rem; text-wrap: balance; }
+.dek { font-size: 1.2rem; line-height: 1.55; color: var(--ink-2); max-width: 40rem; text-wrap: pretty; }
+.meta { font-size: .88rem; color: var(--ink-3); display: flex; flex-wrap: wrap; gap: .3rem 1rem; margin: 1.2rem 0 0; }
+.meta a { font-weight: 600; }
+
+/* ---------- contents + video map ---------- */
+.toc { margin-top: 2rem; }
+.videomap { display: flex; gap: 3px; height: .9rem; border-radius: 999px; overflow: hidden; margin-bottom: 1rem; }
+.videomap > * { flex: var(--len, 1) 1 0; min-width: 4px; background: color-mix(in srgb, var(--c) 70%, var(--surface)); }
+.videomap > a:hover { background: var(--c); }
+/* skipped parts of the video (sponsor read, intro): <span class="skip" style="--len:80" title="Sponsor"></span> */
+.videomap > .skip { background: repeating-linear-gradient(-45deg, var(--line-strong) 0 3px, transparent 3px 7px); }
+/* contents read down the columns, not across */
+.toc ol { list-style: none; padding: 0; margin: 0; columns: 2 15rem; column-gap: 2rem; counter-reset: toc; }
+.toc li { counter-increment: toc; margin: 0 0 .25rem; display: flex; gap: .55rem; align-items: baseline; font-size: .92rem; break-inside: avoid; }
+.toc li.skip { counter-increment: none; color: var(--ink-3); font-style: italic; }
+.toc li.skip::before { content: "–"; background: none; color: var(--ink-3); }
+.toc li::before { content: counter(toc); flex: none; width: 1.35rem; height: 1.35rem; display: inline-grid; place-items: center; border-radius: 50%; font: 600 .7rem/1 var(--mono); color: #fff; background: color-mix(in srgb, var(--c) 85%, var(--ink)); transform: translateY(.1rem); }
+.toc li a { color: var(--ink); text-decoration: none; }
+.toc li a:hover { color: var(--accent); text-decoration: underline; }
+.toc li time { margin-left: auto; font: .72rem var(--mono); color: var(--ink-3); }
+
+/* ---------- takeaways / cards ---------- */
+.takeaways { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: .9rem; counter-reset: tk; }
+.takeaways > li, .cards > * {
+  margin: 0; padding: 1.05rem 1.1rem; background: var(--surface); border: 1px solid var(--line);
+  border-top: 3px solid var(--c); border-radius: var(--radius); box-shadow: var(--shadow); font-size: .95rem;
+}
+.takeaways > li { counter-increment: tk; }
+.takeaways > li::before { content: counter(tk, decimal-leading-zero); display: block; font: 700 .75rem/1 var(--mono); color: var(--c); margin-bottom: .5rem; }
+.takeaways b, .cards b { display: block; font-size: 1.02rem; margin-bottom: .25rem; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: .9rem; }
+.cards > * p { margin: 0; color: var(--ink-2); font-size: .9rem; }
+/* exactly 4 items: 2x2 instead of an orphaned 3+1 */
+.takeaways:has(> :nth-child(4):last-child), .cards:has(> :nth-child(4):last-child) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (max-width: 34rem) {
+  .takeaways:has(> :nth-child(4):last-child), .cards:has(> :nth-child(4):last-child) { grid-template-columns: 1fr; }
+}
+
+/* ---------- figures ---------- */
+figure { margin: 2rem 0; }
+figure.diagram {
+  container-type: inline-size; padding: clamp(1rem, 3.5vw, 1.75rem);
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow);
+}
+.diagram-title { font: 700 .74rem/1.3 var(--sans); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); margin: 0 0 1.1rem; }
+figcaption { margin-top: 1.1rem; font-size: .88rem; line-height: 1.5; color: var(--ink-2); }
+figure.diagram > figcaption { border-top: 1px solid var(--line); padding-top: .8rem; }
+.legend { display: flex; flex-wrap: wrap; gap: .4rem 1.1rem; font-size: .8rem; color: var(--ink-2); margin-top: 1rem; }
+.legend > span { display: inline-flex; align-items: center; gap: .4rem; }
+.legend > span::before { content: ""; width: .8rem; height: .8rem; border-radius: 3px; background: var(--c); }
+.legend > span.dash::before { height: 0; border-top: 2px dashed var(--ink); border-radius: 0; background: none; }
+
+/* screenshots: <figure class="shot"><img …><figcaption>…</figcaption></figure> */
+figure.shot img { border-radius: 10px; border: 1px solid var(--line); box-shadow: var(--shadow); width: 100%; }
+.shots { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 1rem; margin: 2rem 0; align-items: start; }
+.shots > figure { margin: 0; }
+/* same-shape frames: style="--ratio: 16/9" on .shots crops every image to that shape */
+.shots[style*="--ratio"] img { aspect-ratio: var(--ratio); object-fit: cover; }
+/* equal heights without cropping: style="grid-template-columns: 1.78fr 1.33fr" (each image's width/height) */
+@media (max-width: 34rem) { .shots { grid-template-columns: 1fr !important; } }
+
+/* ---------- notes, quotes, glossary ---------- */
+.note { margin: 1.5rem 0; padding: .9rem 1.1rem; border-radius: 10px; background: color-mix(in srgb, var(--c) 9%, var(--surface)); border-left: 4px solid var(--c); font-size: .95rem; }
+.note > b:first-child { display: block; font-size: .74rem; letter-spacing: .08em; text-transform: uppercase; color: color-mix(in srgb, var(--c) 80%, var(--ink)); margin-bottom: .25rem; }
+.note.context { --c: var(--ink-3); }
+blockquote.quote { margin: 1.8rem 0; padding: .2rem 0 .2rem 1.3rem; border-left: 3px solid var(--accent); font: italic 1.2rem/1.5 var(--serif); color: var(--ink); }
+blockquote.quote footer { font: .82rem var(--sans); color: var(--ink-3); margin-top: .4rem; font-style: normal; }
+.glossary { display: grid; grid-template-columns: max-content 1fr; gap: .6rem 1.4rem; margin: 0; }
+.glossary dt { font-weight: 650; }
+.glossary dd { margin: 0; color: var(--ink-2); }
+@media (max-width: 34rem) { .glossary { grid-template-columns: 1fr; gap: .15rem; } .glossary dd { margin-bottom: .7rem; } }
+.page > footer { margin-top: 4rem; padding-top: 1.2rem; border-top: 1px solid var(--line); font-size: .82rem; color: var(--ink-3); }
+
+/* =====================================================================
+   DIAGRAM COMPONENTS
+   ===================================================================== */
+
+/* ---- .flow: steps with arrows (horizontal; vertical in narrow figures)
+   modifiers: .numbered  .labeled (arrow labels from data-via on a step) */
+.flow { --gap: 2.4rem; --arrow: var(--ink-3); display: flex; align-items: stretch; gap: var(--gap); counter-reset: step; margin: .4rem 0; }
+.flow.labeled { --gap: 5.5rem; }
+.flow > .step {
+  position: relative; flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: .25rem;
+  padding: .85rem .95rem; border-radius: 10px; counter-increment: step;
+  background: color-mix(in srgb, var(--c) 10%, var(--surface)); border: 1.5px solid color-mix(in srgb, var(--c) 38%, var(--surface));
+}
+.flow > .step > b { font-size: .97rem; line-height: 1.3; }
+.flow > .step > span, .flow > .step > small { font-size: .84rem; line-height: 1.4; color: var(--ink-2); }
+.flow > .step.key { background: color-mix(in srgb, var(--c) 22%, var(--surface)); border-color: var(--c); box-shadow: 0 0 0 3px color-mix(in srgb, var(--c) 18%, transparent); }
+.flow > .step.ghost { background: transparent; border-style: dashed; }
+.flow.numbered > .step > b::before { content: counter(step); display: inline-grid; place-items: center; width: 1.35rem; height: 1.35rem; margin-right: .45rem; border-radius: 50%; background: var(--c); color: var(--surface); font: 700 .72rem/1 var(--mono); vertical-align: .08em; }
+.flow > .step + .step::before {
+  content: ""; position: absolute; top: 50%; left: calc(-1 * var(--gap)); width: var(--gap); height: 16px; transform: translateY(-50%);
+  background: var(--arrow); clip-path: polygon(14% 43%, 70% 43%, 70% 14%, 90% 50%, 70% 86%, 70% 57%, 14% 57%);
+}
+.flow > .step[data-via]::after {
+  content: attr(data-via); position: absolute; left: calc(-1 * var(--gap)); width: var(--gap); bottom: calc(50% + 11px);
+  padding: 0 .2rem; text-align: center; font-size: .72rem; line-height: 1.2; color: var(--ink-2); font-style: italic;
+}
+@container (max-width: 40rem) {
+  .flow, .flow.labeled { flex-direction: column; --gap: 2rem; }
+  .flow.labeled { --gap: 2.6rem; }
+  .flow > .step + .step::before {
+    top: calc(-1 * var(--gap)); left: 1.6rem; width: 16px; height: var(--gap); transform: none;
+    clip-path: polygon(43% 14%, 57% 14%, 57% 66%, 86% 66%, 50% 90%, 14% 66%, 43% 66%);
+  }
+  .flow > .step[data-via]::after { left: calc(1.6rem + 22px); width: auto; bottom: auto; top: calc(-1 * var(--gap)); height: var(--gap); display: flex; align-items: center; text-align: left; }
+}
+/* 5+ steps are too cramped side by side in the text column: stack them unless the figure is .wide */
+@container (max-width: 54rem) {
+  .flow:has(> .step:nth-child(5)) { flex-direction: column; --gap: 2rem; }
+  .flow.labeled:has(> .step:nth-child(5)) { --gap: 2.6rem; }
+  .flow:has(> .step:nth-child(5)) > .step + .step::before {
+    top: calc(-1 * var(--gap)); left: 1.6rem; width: 16px; height: var(--gap); transform: none;
+    clip-path: polygon(43% 14%, 57% 14%, 57% 66%, 86% 66%, 50% 90%, 14% 66%, 43% 66%);
+  }
+  .flow:has(> .step:nth-child(5)) > .step[data-via]::after { left: calc(1.6rem + 22px); width: auto; bottom: auto; top: calc(-1 * var(--gap)); height: var(--gap); display: flex; align-items: center; text-align: left; }
+}
+
+/* ---- .timeline: vertical list of dated events. li.key = filled dot */
+.timeline { list-style: none; margin: .3rem 0; padding: 0 0 0 1.9rem; position: relative; }
+.timeline::before { content: ""; position: absolute; left: .55rem; top: .5rem; bottom: .9rem; width: 2px; background: var(--line-strong); }
+.timeline > li { position: relative; margin: 0; padding: 0 0 1.3rem; }
+.timeline > li:last-child { padding-bottom: 0; }
+.timeline > li::before { content: ""; position: absolute; left: calc(-1.9rem + .55rem + 1px - 7px); top: .3rem; width: 14px; height: 14px; border-radius: 50%; background: var(--surface); border: 3px solid var(--c); }
+.timeline > li.key::before { background: var(--c); box-shadow: 0 0 0 4px color-mix(in srgb, var(--c) 22%, transparent); }
+.timeline time { display: block; font: 700 .76rem/1.3 var(--mono); color: color-mix(in srgb, var(--c) 85%, var(--ink)); }
+.timeline b { display: block; margin: .1rem 0; line-height: 1.35; }
+.timeline p { margin: 0; font-size: .9rem; color: var(--ink-2); }
+
+/* ---- .bars: horizontal bar chart. --v = length in % of the track (0-100).
+   Optional --mark on .bars draws a dashed reference line at that %. */
+.bars { display: grid; grid-template-columns: max-content minmax(4rem, 1fr) max-content; gap: .6rem .8rem; align-items: center; margin: .3rem 0; }
+.bar { display: contents; }
+.bar > .label { font-size: .88rem; line-height: 1.25; text-align: right; max-width: 13rem; }
+.bar > .track { position: relative; height: 1.5rem; border-radius: 6px; background: var(--surface-2); }
+.bar > .track::before { content: ""; position: absolute; inset: 0 auto 0 0; width: calc(var(--v, 0) * 1%); border-radius: 6px; background: var(--c); }
+.bar.ghost > .track::before { background: repeating-linear-gradient(-45deg, color-mix(in srgb, var(--c) 45%, var(--surface)) 0 5px, transparent 5px 9px); border: 1.5px dashed var(--c); }
+.bar > .value { font: 650 .84rem/1 var(--mono); color: var(--ink); }
+.bars[style*="--mark"] .track::after { content: ""; position: absolute; top: -5px; bottom: -5px; left: calc(var(--mark) * 1%); border-left: 2px dashed var(--ink); }
+@container (max-width: 30rem) {
+  .bars { grid-template-columns: minmax(3rem, 1fr) max-content; row-gap: .2rem; }
+  .bar > .label { grid-column: 1 / -1; text-align: left; max-width: none; margin-top: .45rem; font-size: .84rem; }
+}
+/* .bars.compact: long lists (10-20 rows), e.g. a table rebuilt as bars */
+.bars.compact { gap: .28rem .7rem; }
+.bars.compact .bar > .track, .bars.compact .bar > .track::before { height: .95rem; border-radius: 4px; }
+.bars.compact .bar > .label, .bars.compact .bar > .value { font-size: .76rem; }
+.bars.compact .bar > .label { margin-top: 0; }
+/* a full-width divider row inside .bars: <div class="divider">5.25% and above</div> */
+.bars > .divider { grid-column: 1 / -1; display: flex; align-items: center; gap: .6rem; font: 700 .72rem/1 var(--sans); letter-spacing: .05em; text-transform: uppercase; color: var(--c); margin: .3rem 0; }
+.bars > .divider::before, .bars > .divider::after { content: ""; flex: 1; border-top: 2px dashed var(--c); }
+
+/* ---- .range: dumbbell chart, "from X to Y" per category. --from/--to are
+   positions in % of the track (chart_math.py --values gives them). Hollow dot
+   = start, filled dot = end. Optional --mark on .range = reference line. */
+.range { --mark: -10; display: grid; grid-template-columns: max-content minmax(4rem, 1fr) max-content; gap: .75rem .8rem; align-items: center; margin: .3rem 0; }
+.span { display: contents; }
+.span > .label { font-size: .88rem; line-height: 1.25; text-align: right; max-width: 13rem; }
+.span > .value { font: 650 .8rem/1 var(--mono); white-space: nowrap; }
+.span > .track { position: relative; height: 1.5rem;
+  background:
+    linear-gradient(to right, transparent calc(var(--mark) * 1% - 1px), var(--ink) calc(var(--mark) * 1% - 1px) calc(var(--mark) * 1% + 1px), transparent calc(var(--mark) * 1% + 1px)),
+    linear-gradient(to right, transparent calc(min(var(--from), var(--to)) * 1%), color-mix(in srgb, var(--c) 55%, var(--surface)) calc(min(var(--from), var(--to)) * 1%) calc(max(var(--from), var(--to)) * 1%), transparent calc(max(var(--from), var(--to)) * 1%)) center / 100% 5px no-repeat,
+    linear-gradient(var(--line), var(--line)) center / 100% 2px no-repeat; }
+.span > .track::before, .span > .track::after { content: ""; position: absolute; top: 50%; width: 14px; height: 14px; border-radius: 50%; transform: translate(-50%, -50%); }
+.span > .track::before { left: calc(var(--from) * 1%); background: var(--surface); border: 3px solid var(--c); }
+.span > .track::after { left: calc(var(--to) * 1%); background: var(--c); border: 3px solid var(--c); }
+@container (max-width: 30rem) {
+  .range { grid-template-columns: minmax(3rem, 1fr) max-content; row-gap: .2rem; }
+  .span > .label { grid-column: 1 / -1; text-align: left; max-width: none; margin-top: .45rem; font-size: .84rem; }
+}
+.legend > span.line::before { height: 0; border-top: 2px solid var(--ink); border-radius: 0; background: none; }
+.legend > span.plain::before { display: none; }
+/* axis labels under .bars / .range tracks: <div class="axis"><span style="--at:0">0%</span>…</div> (--at in % of the track) */
+.bars > .axis, .range > .axis { grid-column: 2; position: relative; height: 1.1rem; margin-top: -.15rem; font: .7rem/1 var(--mono); color: var(--ink-3); }
+.axis > span { position: absolute; top: 0; left: calc(var(--at) * 1%); transform: translateX(-50%); white-space: nowrap; }
+@container (max-width: 30rem) { .bars > .axis, .range > .axis { grid-column: 1; } }
+.legend > span.from::before { background: var(--surface); border: 3px solid var(--c); border-radius: 50%; }
+.legend > span.to::before { border-radius: 50%; }
+
+/* ---- .columns: vertical bars over time/categories. --v = height in %.
+   Optional --mark (in %) + data-mark="label" for a reference line. */
+.columns { --h: 13rem; position: relative; display: flex; align-items: flex-end; justify-content: space-around; gap: clamp(.2rem, 2cqi, 1rem); height: var(--h); margin: 1.9rem .4rem 2.6rem; border-bottom: 2px solid var(--line-strong); }
+.col { position: relative; flex: 1 1 0; max-width: 4.5rem; min-width: 0; height: calc(var(--v, 0) * 1%); background: var(--c); border-radius: 5px 5px 0 0; }
+.col.ghost { background: repeating-linear-gradient(-45deg, color-mix(in srgb, var(--c) 45%, var(--surface)) 0 5px, transparent 5px 9px); border: 1.5px dashed var(--c); border-bottom: 0; }
+.col > .value { position: absolute; bottom: calc(100% + 3px); left: 50%; transform: translateX(-50%); padding: .1rem .2rem; border-radius: 4px; background: var(--surface); z-index: 2; font: 650 .74rem/1.1 var(--mono); white-space: nowrap; }
+.col > .label { position: absolute; top: 100%; left: 50%; transform: translateX(-50%); padding-top: .45rem; font-size: .74rem; line-height: 1.15; color: var(--ink-2); white-space: nowrap; text-align: center; }
+.columns[style*="--mark"]::after { content: ""; position: absolute; left: -.4rem; right: -.4rem; bottom: calc(var(--mark) * 1%); border-top: 2px dashed var(--ink); z-index: 1; }
+.columns[data-mark]::before { content: attr(data-mark); position: absolute; left: -.4rem; bottom: calc(var(--mark) * 1% + 3px); font: 700 .7rem/1 var(--mono); color: var(--ink); background: var(--surface); padding: .15rem .3rem; z-index: 2; }
+
+/* ---- .plot: area/line chart drawn with clip-path (pure CSS).
+   .area (fill) and .stroke (line) each get a clip-path polygon printed by
+   scripts/chart_math.py (polygon y% is measured from the TOP).
+   .pt (--x, --y from bottom) = labelled point; .x/.y = axis labels;
+   --mark (from bottom, %) + data-mark = horizontal reference line. */
+.plot { --h: 14rem; --rows: 4; position: relative; height: var(--h); margin: 1.6rem 1.2rem 2.4rem 2.8rem;
+  border-left: 1.5px solid var(--line-strong); border-bottom: 1.5px solid var(--line-strong);
+  background: repeating-linear-gradient(to top, transparent 0 calc(100% / var(--rows) - 1px), var(--line) calc(100% / var(--rows) - 1px) calc(100% / var(--rows))); }
+.plot > .area { position: absolute; inset: 0; background: linear-gradient(to bottom, color-mix(in srgb, var(--c) 34%, transparent), color-mix(in srgb, var(--c) 4%, transparent)); }
+.plot > .stroke { position: absolute; inset: 0; background: var(--c); }
+.plot > .stroke.dashed { background: repeating-linear-gradient(to right, var(--c) 0 8px, transparent 8px 13px); }
+.plot > .band { position: absolute; left: 0; right: 0; bottom: calc(var(--from) * 1%); height: calc((var(--to) - var(--from)) * 1%); background: color-mix(in srgb, var(--c) 12%, transparent); }
+.plot > .pt { position: absolute; left: calc(var(--x) * 1%); bottom: calc(var(--y) * 1%); width: 0; height: 0; z-index: 2; }
+.plot > .pt::before { content: ""; position: absolute; left: -6px; top: -6px; width: 12px; height: 12px; border-radius: 50%; background: var(--c); border: 2.5px solid var(--surface); }
+.plot > .pt > span { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); white-space: nowrap; font: 650 .74rem/1.2 var(--sans); background: var(--surface); padding: .15rem .35rem; border-radius: 5px; border: 1px solid var(--line); }
+.plot > .pt.right > span { left: 10px; bottom: auto; top: -.65rem; transform: none; }
+.plot > .pt.left > span { left: auto; right: 10px; bottom: auto; top: -.65rem; transform: none; }
+.plot > .pt.below > span { bottom: auto; top: 10px; }
+.plot > .x { position: absolute; top: calc(100% + .45rem); left: calc(var(--x) * 1%); transform: translateX(-50%); font-size: .72rem; color: var(--ink-2); white-space: nowrap; }
+.plot > .y { position: absolute; right: calc(100% + .45rem); bottom: calc(var(--y) * 1%); transform: translateY(50%); font: .7rem var(--mono); color: var(--ink-2); white-space: nowrap; }
+.plot[style*="--mark"]::after { content: ""; position: absolute; left: 0; right: 0; bottom: calc(var(--mark) * 1%); border-top: 2px dashed var(--ink); z-index: 1; }
+.plot[data-mark]::before { content: attr(data-mark); position: absolute; left: .3rem; bottom: calc(var(--mark) * 1% + 4px); font: 700 .7rem/1 var(--mono); background: var(--surface); padding: .15rem .3rem; z-index: 1; }
+
+/* ---- .scale: a number line with zones, ticks and markers.
+   Set --min/--max on .scale; zones use --from/--to; .marker/.tick use --at
+   (all in real units, e.g. percent yield). */
+.scale { --min: 0; --max: 100; position: relative; height: 2.5rem; margin: 3.4rem .9rem 2.2rem; }
+.scale > .zone {
+  position: absolute; top: 0; height: 100%;
+  left: calc((var(--from) - var(--min)) / (var(--max) - var(--min)) * 100%);
+  width: calc((var(--to) - var(--from)) / (var(--max) - var(--min)) * 100%);
+  display: grid; place-items: center; overflow: hidden; white-space: nowrap; padding: 0 .3rem;
+  font-size: .76rem; font-weight: 650; color: color-mix(in srgb, var(--c) 70%, var(--ink));
+  background: color-mix(in srgb, var(--c) 20%, var(--surface)); border-block: 1.5px solid color-mix(in srgb, var(--c) 45%, var(--surface));
+}
+.scale > .zone:first-child { border-radius: 8px 0 0 8px; border-left: 1.5px solid color-mix(in srgb, var(--c) 45%, var(--surface)); }
+.scale > .zone.end { border-radius: 0 8px 8px 0; border-right: 1.5px solid color-mix(in srgb, var(--c) 45%, var(--surface)); }
+@container (max-width: 30rem) { .scale > .zone { white-space: normal; text-align: center; font-size: .66rem; line-height: 1.1; } }
+.scale > .tick { position: absolute; top: calc(100% + .4rem); left: calc((var(--at) - var(--min)) / (var(--max) - var(--min)) * 100%); transform: translateX(-50%); font: .72rem var(--mono); color: var(--ink-2); white-space: nowrap; }
+.scale > .tick::before { content: ""; position: absolute; left: 50%; top: -.55rem; height: .4rem; border-left: 1.5px solid var(--line-strong); }
+.scale > .marker { position: absolute; bottom: calc(100% + 9px); left: calc((var(--at) - var(--min)) / (var(--max) - var(--min)) * 100%); transform: translateX(-50%); white-space: nowrap; z-index: 2;
+  font: 700 .76rem/1.2 var(--sans); color: var(--surface); background: var(--c); padding: .25rem .5rem; border-radius: 6px; }
+.scale > .marker::after { content: ""; position: absolute; left: 50%; top: 100%; transform: translateX(-50%); border: 6px solid transparent; border-top-color: var(--c); }
+.scale > .marker::before { content: ""; position: absolute; left: 50%; top: calc(100% + 9px); height: 2.5rem; border-left: 2.5px solid var(--c); transform: translateX(-50%); }
+.scale > .marker.edge-left { transform: translateX(-12px); }
+.scale > .marker.edge-left::after, .scale > .marker.edge-left::before { left: 12px; }
+.scale > .marker.edge-right { transform: translateX(calc(-100% + 12px)); }
+.scale > .marker.edge-right::after, .scale > .marker.edge-right::before { left: calc(100% - 12px); }
+
+/* ---- .seesaw: inverse relationship. --tilt negative = left end down. */
+.seesaw { --tilt: -9deg; position: relative; height: 10rem; display: grid; place-items: center; margin: .5rem 0; }
+.seesaw > .beam { position: relative; width: min(30rem, 94%); height: 10px; border-radius: 5px; background: var(--ink-2); transform: rotate(var(--tilt)); display: flex; justify-content: space-between; align-items: flex-end; }
+.seesaw > .beam > * { transform: rotate(calc(-1 * var(--tilt))); transform-origin: bottom center; margin-bottom: 15px;
+  padding: .45rem .75rem; border-radius: 9px; font-weight: 650; font-size: .92rem; text-align: center; line-height: 1.25;
+  background: color-mix(in srgb, var(--c) 14%, var(--surface)); border: 1.5px solid color-mix(in srgb, var(--c) 50%, var(--surface)); }
+.seesaw > .beam > * small { display: block; font-weight: 400; font-size: .76rem; color: var(--ink-2); }
+.seesaw::after { content: ""; position: absolute; left: 50%; top: calc(50% + 4px); width: 2.8rem; height: 2.3rem; transform: translateX(-50%); background: var(--ink-3); clip-path: polygon(50% 0, 100% 100%, 0 100%); }
+@container (max-width: 30rem) {
+  .seesaw > .beam > * { max-width: 46%; padding: .35rem .5rem; font-size: .8rem; }
+  .seesaw > .beam > * small { font-size: .68rem; }
+}
+
+/* ---- .versus: two-sided comparison with a badge (data-vs="vs" default) */
+.versus { display: grid; grid-template-columns: 1fr auto 1fr; gap: 1rem; align-items: stretch; }
+.versus::before { content: "vs"; order: 1; align-self: center; width: 2.6rem; height: 2.6rem; display: grid; place-items: center; border-radius: 50%; background: var(--ink); color: var(--surface); font: 700 .8rem/1 var(--mono); }
+.versus[data-vs]::before { content: attr(data-vs); font-size: 1.15rem; }
+.versus > :first-child { order: 0; } .versus > :last-child { order: 2; }
+.versus > .side { padding: 1rem 1.1rem; border-radius: 12px; background: color-mix(in srgb, var(--c) 9%, var(--surface)); border: 1.5px solid color-mix(in srgb, var(--c) 40%, var(--surface)); }
+.versus > .side > h4 { margin: 0 0 .5rem; font-size: 1.02rem; color: color-mix(in srgb, var(--c) 75%, var(--ink)); }
+.versus > .side ul { margin: 0; padding-left: 1.1rem; font-size: .9rem; }
+.versus > .side p { margin: 0 0 .5rem; font-size: .9rem; }
+@container (max-width: 34rem) {
+  .versus { grid-template-columns: 1fr; } .versus::before { justify-self: center; }
+  /* stacked panels: a sideways arrow badge now points down */
+  .versus[data-vs="→"]::before, .versus[data-vs="⇄"]::before, .versus[data-vs="⟶"]::before { transform: rotate(90deg); }
+}
+
+/* ---- .cycle: nodes evenly spaced on a loop with direction chevrons.
+   --n on .cycle (node count), --i on each .node (0-based, clockwise from top). */
+.cycle { --r: min(10.5rem, 31cqi); --node: min(9.5rem, 29cqi); position: relative; width: calc(2 * var(--r) + var(--node)); max-width: 100%; aspect-ratio: 1; margin: 1rem auto; }
+.cycle::before { content: ""; position: absolute; inset: calc(var(--node) / 2); border-radius: 50%; border: 2px dashed var(--line-strong); }
+.cycle > .node {
+  --a: calc(360deg / var(--n) * var(--i) - 90deg); --d: calc(180deg / var(--n));
+  position: absolute; width: var(--node); left: calc(50% + var(--r) * cos(var(--a))); top: calc(50% + var(--r) * sin(var(--a)));
+  transform: translate(-50%, -50%); padding: .6rem .5rem; text-align: center; border-radius: 10px; z-index: 1;
+  background: color-mix(in srgb, var(--c) 12%, var(--surface)); border: 1.5px solid color-mix(in srgb, var(--c) 45%, var(--surface));
+  font-size: .84rem; line-height: 1.3;
+}
+.cycle > .node > b { display: block; font-size: .88rem; }
+.cycle > .node > span { display: block; color: var(--ink-2); font-size: .76rem; margin-top: .15rem; }
+.cycle > .node::after {
+  content: ""; position: absolute; width: 13px; height: 13px; background: var(--ink-3); clip-path: polygon(0 0, 100% 50%, 0 100%);
+  left: calc(50% + var(--r) * (cos(var(--a) + var(--d)) - cos(var(--a))));
+  top: calc(50% + var(--r) * (sin(var(--a) + var(--d)) - sin(var(--a))));
+  transform: translate(-50%, -50%) rotate(calc(var(--a) + var(--d) + 90deg));
+}
+.cycle > .hub { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); max-width: calc(2 * var(--r) - var(--node) - .5rem); text-align: center; font: 700 .8rem/1.3 var(--sans); color: var(--ink-2); }
+
+/* ---- .stack: layers (top first). .pyramid: set --w (width %) per layer */
+.stack { display: flex; flex-direction: column; gap: 6px; }
+.stack > .layer { display: flex; flex-wrap: wrap; gap: .2rem 1rem; align-items: baseline; justify-content: space-between; padding: .75rem 1rem; border-radius: 9px;
+  background: color-mix(in srgb, var(--c) 14%, var(--surface)); border-left: 5px solid var(--c); }
+.stack > .layer > b { font-size: .95rem; }
+.stack > .layer > span { font-size: .84rem; color: var(--ink-2); }
+.stack.pyramid > .layer { width: calc(var(--w, 100) * 1%); margin-inline: auto; justify-content: center; text-align: center; border-left: 0; border-radius: 6px; flex-direction: column; align-items: center; }
+
+/* ---- .tree: hierarchy as an outline with connectors (nested ul) */
+.tree, .tree ul { list-style: none; margin: 0; padding: 0; }
+.tree ul { padding-left: 1.6rem; }
+.tree li { position: relative; margin: 0; padding: .3rem 0 .1rem; }
+.tree b, .tree .node { display: inline-block; padding: .25rem .65rem; border-radius: 7px; font-size: .9rem; line-height: 1.35;
+  background: color-mix(in srgb, var(--c) 12%, var(--surface)); border: 1.5px solid color-mix(in srgb, var(--c) 45%, var(--surface)); }
+.tree li > span { font-size: .84rem; color: var(--ink-2); margin-left: .4rem; }
+.tree ul > li::before { content: ""; position: absolute; left: -1.05rem; top: 0; width: .85rem; height: 1.3rem; border-left: 2px solid var(--line-strong); border-bottom: 2px solid var(--line-strong); border-bottom-left-radius: 7px; }
+.tree ul > li::after { content: ""; position: absolute; left: -1.05rem; top: 1.2rem; bottom: 0; border-left: 2px solid var(--line-strong); }
+.tree ul > li:last-child::after { display: none; }
+@container (max-width: 30rem) { .tree li > span { display: block; margin: .15rem 0 .1rem .3rem; } }
+
+/* ---- .matrix: 2x2 with axis labels (data-x, data-y). Cells in reading order:
+   top-left, top-right, bottom-left, bottom-right. */
+.matrix { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; position: relative; margin: .3rem 0 2rem 2rem; }
+.matrix > .cell { padding: .9rem 1rem; border-radius: 9px; min-height: 6.5rem; font-size: .88rem; background: color-mix(in srgb, var(--c) 10%, var(--surface)); border: 1.5px solid color-mix(in srgb, var(--c) 35%, var(--surface)); }
+.matrix > .cell > b { display: block; font-size: .95rem; margin-bottom: .2rem; }
+.matrix > .cell.key { background: color-mix(in srgb, var(--c) 24%, var(--surface)); border-color: var(--c); }
+.matrix[data-x]::after { content: attr(data-x); position: absolute; top: calc(100% + .45rem); left: 0; right: 0; text-align: center; font: 700 .74rem/1 var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }
+.matrix[data-y]::before { content: attr(data-y); position: absolute; right: calc(100% + .5rem); top: 50%; transform: translate(50%, -50%) rotate(-90deg); white-space: nowrap; font: 700 .74rem/1 var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }
+
+/* ---- .stats: big-number callouts */
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); gap: .8rem; margin: 1.5rem 0; }
+.stat { padding: .9rem 1rem; border-radius: 12px; background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow); }
+.stat > b { display: block; font: 700 clamp(1.6rem, 1.2rem + 1.6vw, 2.2rem)/1.1 var(--serif); color: color-mix(in srgb, var(--c) 85%, var(--ink)); }
+.stat > span { display: block; font-size: .84rem; color: var(--ink-2); margin-top: .3rem; line-height: 1.35; }
+
+/* ---- small helpers for custom diagrams */
+.row { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; }
+.pill { display: inline-block; padding: .2rem .6rem; border-radius: 999px; font-size: .8rem; font-weight: 650; background: color-mix(in srgb, var(--c) 15%, var(--surface)); color: color-mix(in srgb, var(--c) 75%, var(--ink)); border: 1px solid color-mix(in srgb, var(--c) 40%, var(--surface)); }
+.arrow-down { width: 16px; height: 2rem; margin: .3rem auto; background: var(--ink-3); clip-path: polygon(43% 0, 57% 0, 57% 62%, 86% 62%, 50% 100%, 14% 62%, 43% 62%); }
+.up { color: var(--good); } .down { color: var(--bad); }
+
+/* ---- page-specific CSS (custom diagrams) goes below this line ---- */
+
+</style>
+</head>
+<body>
+<main class="page">
+
+  <header class="hero">
+    <p class="eyebrow">Video explainer · {{CHANNEL}} · {{DURATION}}</p>
+    <h1>{{A clear headline: what the video explains or shows}}</h1>
+    <p class="dek">{{TL;DR — 2–3 sentences a reader could repeat to a friend.}}</p>
+    <p class="meta">
+      <a href="{{VIDEO URL}}">Watch the video ↗</a>
+      <span>“{{Original video title}}”</span>
+      <span>Uploaded {{YYYY-MM-DD}}</span>
+    </p>
+  </header>
+
+  <!-- Contents + proportional map of the video (--len = section length in seconds) -->
+  <nav class="toc" aria-label="Contents">
+    <div class="videomap">
+      <a href="#s1" class="c1" style="--len:40" title="1 · {{Section}}"></a>
+      <a href="#s2" class="c2" style="--len:95" title="2 · {{Section}}"></a>
+    </div>
+    <ol>
+      <li class="c1"><a href="#s1">{{Section title}}</a><time>0:00</time></li>
+      <li class="c2"><a href="#s2">{{Section title}}</a><time>0:40</time></li>
+    </ol>
+  </nav>
+
+  <section id="takeaways">
+    <h2>Key takeaways</h2>
+    <ol class="takeaways">
+      <li class="c1"><b>{{Takeaway}}</b>{{One or two sentences.}}</li>
+    </ol>
+  </section>
+
+  <section id="s1">
+    <h2><span class="num">1</span>{{Section title}} <a class="ts" href="{{URL&t=0s}}">0:00</a></h2>
+    <p>{{Explanation in your own words. Short paragraphs.}}</p>
+    <figure class="diagram">
+      <p class="diagram-title">{{What this diagram shows}}</p>
+      <!-- component markup from references/diagrams.md -->
+      <figcaption>{{What to notice, and where it comes from (timestamp).}}</figcaption>
+    </figure>
+  </section>
+
+  <section id="glossary">
+    <h2>Glossary</h2>
+    <dl class="glossary">
+      <dt>{{Term}}</dt><dd>{{Plain-language definition.}}</dd>
+    </dl>
+  </section>
+
+  <footer>
+    Explainer generated from the video’s transcript and frames on {{DATE}}. Source: <a href="{{VIDEO URL}}">{{Original video title}}</a> by {{CHANNEL}}.
+  </footer>
+</main>
+</body>
+</html>
