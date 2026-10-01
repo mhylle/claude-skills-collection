@@ -1,0 +1,46 @@
+{
+  "skill_name": "video-explainer",
+  "evals": [
+    {
+      "id": 1,
+      "name": "bond-market-tipping-point",
+      "prompt": "I keep seeing headlines about bond yields but honestly I don't get it. Can you turn this video into an HTML explainer page with diagrams so I can understand it without watching it? https://www.youtube.com/watch?v=JFTeh7lZ9Cw",
+      "expected_output": "A single self-contained HTML file explaining the TLDR News video on why a 5.25% 10-year Treasury yield is the bond market's tipping point: the bond price/yield relationship, the stock-bond relationship, the historical evidence, and today's situation, with several pure-CSS diagrams (e.g. seesaw for price vs yield, threshold scale, timeline of past episodes, cause-effect flow). Few or no screenshots because the video's motion graphics can be rebuilt as diagrams.",
+      "files": [],
+      "assertions": [
+        "Produces exactly one HTML page",
+        "Page is self-contained (images inlined, no external scripts/styles/images)",
+        "Diagrams are pure HTML+CSS (no <svg>, <canvas> or <script>)",
+        "Contains at least 4 diagrams",
+        "Has at least 3 timestamp deep links into the video",
+        "No horizontal overflow or broken images at 400px phone width",
+        "Uses at most 2 screenshots (motion-graphics news video: diagrams should carry it)",
+        "States the 5.25% threshold",
+        "Explains price vs yield with the video's $1,000 bond sold at $900 (~5.5%) example",
+        "Explains the normal inverse stock-bond relationship and its flip past the threshold",
+        "Covers the doom-loop risk (stocks = 33% of household wealth)",
+        "Leaves out the sponsor segment (Proton Mail)"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "ai-animation-workflow",
+      "prompt": "Make me a visual explainer page for this video, I want to understand the workflow they used: https://www.youtube.com/watch?v=evK-Y83Qlco",
+      "expected_output": "A single self-contained HTML file explaining the 'Crazy AI Animation Workflow - Opus 5.5' video: the three attempts (Blender primitives from code, Tripo model + keyframed walk, AI-generated video copied onto a skeleton), the final pipeline as a CSS flow diagram, numbers like 29 bones / 97 frames / ~30 min per clip, and screenshots of the visual results (the animated animals, side-by-side comparison) because the results are visual and can't be shown as CSS diagrams.",
+      "files": [],
+      "assertions": [
+        "Produces exactly one HTML page",
+        "Page is self-contained (images inlined, no external scripts/styles/images)",
+        "Diagrams are pure HTML+CSS (no <svg>, <canvas> or <script>)",
+        "Contains at least 4 diagrams",
+        "Has at least 3 timestamp deep links into the video",
+        "No horizontal overflow or broken images at 400px phone width",
+        "Includes at least 2 screenshots of the visual results (demo video)",
+        "Covers all three attempts (Blender from code, Tripo + keyframes, AI video copied to bones)",
+        "Includes the key numbers (29 bones, 97 frames, ~30 min per clip)",
+        "Explains why it fails on people (a video has no depth)",
+        "Explains the animal 'brain' (two circles: watch, then flee)"
+      ]
+    }
+  ]
+}

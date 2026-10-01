@@ -214,6 +214,12 @@ Skills are invoked via the `Skill` tool or `/skill-name` shorthand.
 | **agent-creator** | "create agent", "build agent" | Creates composable AI agent systems in NestJS |
 | **design-language** | "design my own design language", "build my design system", "I want my own look not the Claude default" | Guided design-brief → living-styleguide compiler. **Reaction-first** elicitation (web research + real references + live archetypes rendered in your own tokens → you react → targeted refinement) with a per-dimension **1–5 "safeness" gradient** (conventional→experimental) across the entire system (color, type, spacing, shape, elevation, motion, imagery, components, patterns, voice). Resumable multi-phase flow; emits a self-contained, portable `./design-system/` (interactive dashboard + `css/tokens.css` single-source-of-truth + W3C `design-tokens.json` + `DESIGN_LANGUAGE.md` contract with an explicit **anti-Claude** reference + pre-ship checklist + a default-vs-yours `compare.html`) that future sessions read and build from. Different from `frontend-design` (which styles one UI in the moment). |
 
+### Media & Content
+
+| Skill | Trigger | Description |
+|-------|---------|-------------|
+| **video-explainer** | `/video-explainer <url-or-path>`, "make an HTML explainer for this video", "turn this talk into visual notes" | Turns a video (YouTube, any yt-dlp URL, or a local file) into one self-contained HTML explainer page: headline + TL;DR, key takeaways, a section per part of the video, and diagrams built in **pure HTML + CSS** (17 components: flows, timelines, bar/line/dumbbell charts, threshold scales, comparisons, cycles, layers…). Watches the video via the [watch plugin](https://github.com/bradautomates/claude-video) (frames + transcript), adds screenshots **only** when the video's own image is the information, renders the page headless at desktop and phone width to check its own layout, and links every claim to its timestamp. **Requires the watch plugin**: see the [Video Explainer Guide](docs/guides/video-explainer.md) for install and usage. |
+
 ### Pipeline (Issue → Merge)
 
 | Skill | Trigger | Description |
