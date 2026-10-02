@@ -1,0 +1,183 @@
+---
+name: tt-create-build-loop
+description: Writes a project's unattended build-loop prompt — `prompts/autonomous-build-loop.md`, the file a dynamic `/loop` re-reads every iteration to plan, implement and verify TaskTracker phases on its own, under a zero-error phase gate, with a human-only queue and a per-phase cost ledger. Detects everything it can (repo, visibility, stack, gate and CI commands, docs and ADRs, memory, lessons, the TaskTracker project with its phases), asks only what it can't (owner, decision precedence, sibling repos, production, standing authority, human-only work, machine quirks), creates the human-queue and cost-ledger phases only if they're missing, optionally installs the bundled token-usage tooling (hooks merged, never overwritten), and fills a template whose rules each carry the incident that taught them. Use when the user wants to "set up an autonomous build loop", "create the loop prompt", "make this project build itself overnight", "generalise the build loop for this repo", or "/tt-create-build-loop". It writes the loop; it does not run it — /devflow:tt-workflow-run drives a measured workflow run instead.
+user-invocable: true
+argument-hint: "[tasktracker-project-name-or-id]"
+---
+
+# tt-create-build-loop
+
+Writes `prompts/autonomous-build-loop.md` for a project: the prompt that `/loop` runs, one iteration at a time, while the owner is away. Each iteration orients in TaskTracker, decides the next piece of work, plans or implements it through subagents, closes phases only through a zero-error gate, records cost, and schedules the next iteration — stopping only when the project is done or everything left needs the owner.
+
+The template was generalised from a loop that built a real product across dozens of phases. Its rules are kept as general rules, each with a one-line "Why"; the full incidents are in `references/lessons-catalogue.md`. This skill is interactive: it runs in the main conversation and asks the user questions.
+
+## When to use it
+
+- The project is tracked in TaskTracker (a plan exists, or the loop's first iterations will make one with `/devflow:tt-create-plan`), and the owner wants it built unattended over many iterations.
+- A loop file exists and needs regenerating after the project changed shape (a remote, CI or a deploy was added).
+
+Not for: running one phase (`/devflow:tt-implement-phase`), a measured workflow run with projections (`/devflow:tt-workflow-run`), or a project without TaskTracker.
+
+## Files
+
+| Path | What |
+|---|---|
+| `references/loop-template.md` | The loop, with `{{PLACEHOLDERS}}` and optional blocks (`<!-- if:flag -->…<!-- end:flag -->`, also inline) |
+| `references/placeholders.md` | Every placeholder and flag: meaning, source (detect / ask / derive / bootstrap), how to find it, default |
+| `references/lessons-catalogue.md` | Each rule with the incident behind it |
+| `references/token-tooling.md` | The bundled tooling: what it installs, how it counts, its tests |
+| `references/example-values.json` | A fictional project's values file, in the shape the renderer reads |
+| `scripts/render-template.mjs` | Fills a template from a values file; fails closed on undecided flags, typos and leftovers |
+| `scripts/install-token-tooling.mjs` | Installs the tooling; plans first, writes nothing on any conflict |
+| `assets/run-orch-gate.sh` | Template of the gate runner the loop uses (`scripts/run-orch-gate.sh <sha> <log>`) |
+| `assets/token-usage/` | The tooling itself, with its tests (`node --test tooling/token-usage/test/*.test.mjs`) |
+
+Below, `$SKILL` is this skill's directory and `$SP` a scratch directory (the session scratchpad when there is one).
+
+## Procedure
+
+### 0. Preconditions
+
+- The TaskTracker MCP tools are available. Without them, stop and say so: the loop cannot run without TaskTracker.
+- The working directory is inside a git repo (`git rev-parse --show-toplevel`). If it isn't, offer `git init` and stop until the user decides.
+- `node --version` is 22 or later; the scripts need it.
+
+### 1. Detect what can be detected
+
+Gather everything below before asking anything. Start `$SP/build-loop.values.json` in the shape of `references/example-values.json` and fill in each value as you find it. `references/placeholders.md` says where every placeholder comes from.
+
+**Repo**
+- Root: `git rev-parse --show-toplevel`. Remote: `git remote -v`. With a remote: `gh repo view --json nameWithOwner,visibility,defaultBranchRef`. Without one: the current branch.
+- `remote` = a remote exists; `billed-ci` = `ci` and the visibility is `PRIVATE` or `INTERNAL`.
+
+**Stack and gate**
+- Apps and their commands: `package.json` scripts, `pyproject.toml`, `Makefile`, `Cargo.toml`, `go.mod`, and the commands section of any `CLAUDE.md`.
+- A gate script: `scripts/gate.sh`, `make gate`, `npm run gate`. When there is one, take `{{GATE_CHECKS}}` from its own step labels: a commands list in `CLAUDE.md` often leaves out the heavy suites. When there is none, `{{GATE_COMMAND}}` is the per-app commands joined with `&&`. Say so in the report: a single gate script is worth adding early.
+- Toolchain (`.nvmrc`, `.python-version`, `.venv`) and lockfiles, for the gate runner.
+- `browser-e2e`: a `playwright.config.*` or `cypress.config.*`; take `{{BROWSER_MATRIX}}` from its projects.
+- `offline-client`: `ngsw-config.json`, a `serviceWorker` build option, workbox, `manifest.webmanifest`, a mobile app.
+- `database`: migrations, an ORM dependency (TypeORM, Prisma, SQLAlchemy, Django), a database service in a compose file.
+
+**CI**
+- `.github/workflows/*.yml`: `ci` = a workflow triggered by `push`; `deployed` = a deploy job on the default branch; `ci-sharding` = a matrix passing `--shard`; `{{CI_RUNNER}}` from `runs-on`.
+- Private repo only: `gh run list --branch <default> --limit 20 --json databaseId,createdAt,updatedAt,workflowName`. Estimate the billed minutes per push from those runs' durations; that gives `{{CI_MINUTES_PER_PUSH}}`.
+
+**Docs, decisions, memory, lessons**
+- Product docs: `docs/**`, `PRD.md`, `README.md`, a `reference/` folder. ADRs: `docs/decisions`, `docs/adr`, `adr`.
+- Memory: `~/.claude/projects/<slug>/memory/MEMORY.md`, where slug = the repo path with every non-alphanumeric character replaced by `-`. Read its index; decisions recorded there belong in `{{DECISIONS}}`.
+- Lessons: `tasks/lessons.md` in the repo or a parent directory.
+
+**TaskTracker** (reads only in this step)
+- The project: the argument if one was given, else `tasktracker_listProjects` matched against the repo name and path. If more than one could match, it is the first question in step 2.
+- `tasktracker_listTasks {projectId, type: "phase"}`. Match the existing phases by **title or role, never by an id from elsewhere**:
+  - human queue: `/awaiting|human[- ]only|human queue/i`;
+  - cost ledger: `/cost ledger/i`, and its child `/ledger table/i`.
+- The human queue's open children (`listTasks {parentId}`) become `{{ALREADY_QUEUED}}`: their count and up to five examples.
+- `tasktracker_listBrainstorms {status: "frozen"}` for `{{DECISIONS}}`; `tasktracker_getProjectReadiness` for the report.
+
+**Skills, scopes and tools**
+- `{{SKILL_PREFIX}}`: how this session lists the devflow skills. `devflow:tt-implement-phase` gives `devflow:`; a bare `tt-implement-phase` (user skills in `~/.claude/skills/`) gives an empty prefix.
+- `gh auth status`: scopes the project needs and the token lacks (`read:packages` for GitHub Packages, say). Each becomes a `{{PREFLIGHT}}` step, or a `{{PREFLIGHT_GAPS}}` item with its workaround.
+
+**Token tooling and existing files**
+- Already installed: `scripts/token-usage.mjs` exists and `.claude/settings.json` has its hook. If so, `token-tooling` is on. Step 4 then only offers an update (see there).
+- TaskTracker's MCP server: `claude mcp get tasktracker`. The directory of the `Args` path, which holds `lib/mcp-client.js`, is `--mcp-dir`.
+- Existing `prompts/autonomous-build-loop.md`, `prompts/autonomous-build-loop.values.json` and `scripts/run-orch-gate.sh`. A values file from an earlier run supplies the answers to step 2; ask only about what has changed.
+
+### 2. Ask only what can't be detected
+
+Use `AskUserQuestion`. Put the detected or proposed answer first, marked "(Recommended)". The user types free text (names, URLs) through "Other". Skip any question whose answer was detected or is irrelevant (no production questions without `deployed`). That makes at most three rounds:
+
+1. **Who and what.**
+   - The product owner's name (default: the first name in `git config user.name`).
+   - Decision precedence, and any decisions that override the docs.
+   - Sibling repos whose patterns to reuse, with what each is the reference for.
+   - Which TaskTracker project, if detection was ambiguous.
+2. **Production and authority.**
+   - With `deployed`: the production URLs, the host in words (no IP addresses), how to confirm health read-only, and whether other apps share the host (`shared-host`).
+   - Pre-authorised actions.
+   - Forbidden actions beyond the template's defaults.
+   - The secrets policy: names and sources only, never values.
+   - Test accounts.
+3. **Operations.**
+   - Kinds of work only the owner can do (on-device checks, say).
+   - Machine quirks.
+   - Pre-flight gaps.
+   - `parallel-agents` (default: yes when the repo has two or more apps).
+   - Install the token tooling? (default: yes)
+   - Create the missing TaskTracker phases? (list them)
+   - In a public repo: commit the usage log?
+
+If `AskUserQuestion` is not available, ask the same groups as one plain-text message and wait for the answer.
+
+### 3. Bootstrap TaskTracker, only what is missing
+
+Create nothing that step 1 found, and nothing the user declined in step 2. Reuse every existing phase and record its id. For each missing piece:
+
+- **Human queue:** `tasktracker_createTask {type: "phase", title: "Phase 00 — Awaiting <owner> (human-only verification queue)"}`. Its description says that it holds work only the owner can do, that the loop never completes anything in it, and that the loop re-reads it every iteration. Leave it `pending`.
+- **Cost ledger:** a phase titled "Cost ledger — tokens and API-equivalent cost (auto-updated by the build loop)", described as the loop's ledger: never implemented, always `completed`.
+- **Ledger table:** a `task` under the ledger, titled "Ledger table (latest) — tokens and API-equivalent cost per phase, auto-updated by the build loop", with a placeholder table as its description.
+- Activate the ledger phase (`setActiveTask`), and mark it `completed` with a note. If TaskTracker refuses because the table task is open, use `tasktracker_completeWithCaveat` and name the table task.
+
+Put the ids into the values file. Report each phase as **found** (with its title) or **created**.
+
+### 4. Install the token tooling (optional)
+
+Skip this step if the user declined the tooling. Otherwise:
+
+```bash
+node "$SKILL/scripts/install-token-tooling.mjs" --target <repo> --project-id <uuid> --mcp-dir <mcp-server> --dry-run
+node "$SKILL/scripts/install-token-tooling.mjs" --target <repo> --project-id <uuid> --mcp-dir <mcp-server>
+(cd <repo> && node --test tooling/token-usage/test/*.test.mjs)
+```
+
+- The installer writes the project id to `.claude/usage/tasktracker.json` (committed) and the machine-specific mcp-server path to `.claude/usage/tasktracker.local.json` (gitignored).
+- On a conflict, the installer writes nothing and names the file. Show it to the user and resolve it with them. Never delete or overwrite the project's file to get past it.
+- An existing install, perhaps an older copy, shows up as conflicts in the dry run. Show the user `diff -ru` between the project's files and `assets/token-usage/`, and update only the files they agree to.
+- The tests must pass in the target repo before `token-tooling` is turned on. If the user wants the usage log out of git (a public repo, say), append `.claude/usage/token-usage.jsonl` to `.gitignore`.
+
+### 5. Write the gate runner and the loop
+
+1. Save the values file in the repo: `prompts/autonomous-build-loop.values.json`. It holds no secrets, only names and sources, and lets a later run reuse the answers.
+2. Render both files into `$SP` first:
+   ```bash
+   node "$SKILL/scripts/render-template.mjs" --template "$SKILL/assets/run-orch-gate.sh" \
+     --values prompts/autonomous-build-loop.values.json --out "$SP/run-orch-gate.sh"
+   node "$SKILL/scripts/render-template.mjs" --template "$SKILL/references/loop-template.md" \
+     --values prompts/autonomous-build-loop.values.json --out "$SP/autonomous-build-loop.md"
+   ```
+   The renderer refuses:
+   - an undecided flag;
+   - a value or flag that `references/placeholders.md` does not document;
+   - a malformed or unbalanced block;
+   - any placeholder left in the output.
+
+   Fix the values; never edit the rendered file to get past a refusal. The shell template gets its values verbatim, and only markdown is tidied.
+3. `bash -n "$SP/run-orch-gate.sh"`. Then read the rendered loop once from top to bottom: every sentence must make sense for this project (no browser rules for a backend-only project, no billed-CI rules for a public repo).
+4. Move both into place. Install the runner as `scripts/run-orch-gate.sh` with mode 755. If either file already exists and differs, show `diff -u` and ask: replace it, keep it, or write the new one beside it as `*.new`. Never overwrite without that answer.
+
+### 6. Report and hand over
+
+Tell the user:
+- **What was written**: each file path, with a line count.
+- **Where every value came from**: detected, answered, bootstrapped, or defaulted. Name the flags that are on and off, each with its reason.
+- **TaskTracker**: the phases found and created, with ids.
+- **The start command**, run from the repo root with auto mode on:
+  ```
+  /loop Read prompts/autonomous-build-loop.md and run exactly one iteration as it specifies.
+  ```
+- **Pre-flight checks** before starting:
+  - `gh auth status` has every scope the loop needs. The loop file's pre-flight line lists the extras.
+  - TaskTracker answers `tasktracker_getProjectReadiness`.
+  - The gate is green on HEAD: `scripts/run-orch-gate.sh "$(git rev-parse HEAD)" "$SP/gate.log"`.
+  - The token tooling's tests pass, if it was installed.
+  - The generated files are committed. The skill does not commit; suggest `chore(loop): add the autonomous build loop` and commit only if the user asks.
+
+## Rules
+
+- **Detect before asking**, and ask in at most three grouped rounds. Show detected values rather than asking for them.
+- **Never overwrite** the loop file, the gate runner, settings or a project's own tooling without showing the diff and getting an answer. The installer refuses conflicts by design.
+- **TaskTracker writes happen only in step 3**, only for missing pieces, and only with the user's yes. Match existing phases by title or role.
+- **No secrets anywhere**: the values file, the loop and the report name secrets and their sources, never their values. For servers, prefer an SSH host alias to a raw address; the template itself never holds one.
+- **No git commits or pushes.** The user, or the loop itself later, owns those.
+- **Keep the template general.** A project-specific rule goes into a values list (`{{FORBIDDEN_EXTRA}}`, `{{MACHINE_QUIRKS}}` …), never into `references/loop-template.md`. A new general rule goes into the template, with its "Why" there and its incident in the lessons catalogue. `tests/test-build-loop-skill.sh` guards the template.

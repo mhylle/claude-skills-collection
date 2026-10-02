@@ -175,6 +175,7 @@ Skills are invoked via the `Skill` tool or `/skill-name` shorthand.
 | **team-implement-plan** | `/team-implement-plan` | Small team: Implementer + Reviewer + optional Integrator |
 | **team-implement-plan-full** | `/team-implement-plan-full` | Full team: per-phase implementers + shared Reviewer, parallel waves |
 | **implement-phase** | Called by implement-plan | Executes single phase with all quality gates |
+| **tt-create-build-loop** | `/tt-create-build-loop`, "set up an autonomous build loop" | Writes `prompts/autonomous-build-loop.md`, the prompt a `/loop` re-reads every iteration to plan, implement and verify TaskTracker phases unattended under a zero-error gate, with a human-only queue and a per-phase cost ledger. Detects the repo, stack, CI and TaskTracker phases, asks only what it can't, creates missing queue/ledger phases, optionally installs the bundled token-usage tooling, and installs a clean-worktree gate runner |
 | **workflow-guide** | `/workflow-guide` | Recommends solo, small team, or full team mode based on task |
 
 ### Quality & Documentation
@@ -599,6 +600,7 @@ claude-skills-collection/
 │   ├── team-create-plan/         # NEW: Agent team planning (Architect + Risk Analyst + Researcher)
 │   ├── team-implement-plan/      # NEW: Small review team (Implementer + Reviewer)
 │   ├── team-implement-plan-full/ # NEW: Full parallel team (per-phase + shared Reviewer)
+│   ├── tt-create-build-loop/     # NEW: Writes an unattended TaskTracker build loop (template, lessons, token tooling)
 │   ├── workflow-guide/           # NEW: Recommends workflow mode
 │   ├── ship-issue/               # NEW: Issue→merge pipeline (SKILL.md, references/, scripts/dashboard.py)
 │   └── verification-loop/        # 6-phase verification
