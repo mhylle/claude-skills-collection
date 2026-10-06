@@ -150,7 +150,7 @@ Research only when the idea would meaningfully benefit. Don't research for the s
 
 > **The brainstorm itself is NEVER delegated.** This skill's actual work — recording documents and decisions via the tasktracker MCP (`addBrainstormDocument`, `recordBrainstormDecision`, …) — always runs in THIS context. Research subagents are an optional *input-gathering* step: they go fetch, they RETURN findings, and **you** fold those findings into the brainstorm by persisting them. A research subagent must never be allowed to stand in for the brainstorm and hand back a prose summary instead of persisted rows (the original Phase 113 friction).
 
-**Fan research out via the `Agent` tool** — it's a top-level main-loop BUILT-IN (like `Bash`/`Edit`), so in this `context: fork` skill it is ALWAYS available; never "check" for it and never use `ToolSearch` to detect it (ToolSearch indexes only deferred MCP tools — `Agent` never appears there, and a miss is NOT absence). Just dispatch:
+**Fan research out via the `Agent` tool** — it's a top-level main-loop BUILT-IN (like `Bash`/`Edit`), so in this skill — which runs inline in the main loop, never forked — it is ALWAYS available; never "check" for it and never use `ToolSearch` to detect it (ToolSearch indexes only deferred MCP tools — `Agent` never appears there, and a miss is NOT absence). Just dispatch:
 
 ```
 # Web research (most ideas benefit; very internal ones may not)

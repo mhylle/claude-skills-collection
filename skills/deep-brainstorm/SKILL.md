@@ -108,7 +108,7 @@ When this skill is invoked, **first check for existing sessions**:
 
 ### Conversation Context Detection
 
-**IMPORTANT**: This skill uses `context: fork`, which means you have the FULL conversation history — every message the user sent, every analysis you performed, every branch/gap identified. Before asking the user to "share your idea," you MUST scan the conversation for ALL of the following:
+**IMPORTANT**: This skill runs inline in the main conversation (never forked), which means you have the FULL conversation history — every message the user sent, every analysis you performed, every branch/gap identified. Before asking the user to "share your idea," you MUST scan the conversation for ALL of the following:
 
 1. **The idea itself**: Has the user already described a concept, problem, or project?
 2. **Prior analysis**: Was there a brainstorm, branch analysis, gap analysis, or any structured exploration already done in-conversation?

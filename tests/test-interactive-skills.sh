@@ -110,6 +110,17 @@ for skill in "${INTERACTIVE_SKILLS[@]}"; do
     record FAIL "T$n" "$skill: frontmatter still declares name and description"
   fi
 
+  # The body and references must not claim the skill runs forked either: a stale
+  # "this skill uses context: fork" line misleads the model about its context, and
+  # skill-visualizer classifies any SKILL.md containing that string as forked.
+  n=$((n + 1))
+  claims="$(grep -rlE 'context: *fork' --include='*.md' "$SKILLS_DIR/$skill" 2>/dev/null)"
+  if [ -n "$claims" ]; then
+    record FAIL "T$n" "$skill: no prose claims 'context: fork' (found in: $(echo "$claims" | sed "s|$SKILLS_DIR/||" | tr '\n' ' '))"
+  else
+    record PASS "T$n" "$skill: no prose claims 'context: fork'"
+  fi
+
 done
 
 for skill in "${FORKED_SKILLS[@]}"; do

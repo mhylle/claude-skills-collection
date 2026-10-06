@@ -25,7 +25,7 @@ Never reach Step 2 without a project. That's the only thing this skill guarantee
 
 ## Step 2 — Start the Workflow
 
-Invoke the **built-in `Workflow` tool** directly. It is a top-level main-loop tool like `Bash`/`Edit`/`Agent` — **NOT an MCP tool**, so it NEVER appears in `ToolSearch`; never look for it there and never read a ToolSearch miss as "unavailable" (see the contract's "Tool availability" section). This skill runs in `context: fork` (the main loop), where the tool is always present — just call it.
+Invoke the **built-in `Workflow` tool** directly. It is a top-level main-loop tool like `Bash`/`Edit`/`Agent` — **NOT an MCP tool**, so it NEVER appears in `ToolSearch`; never look for it there and never read a ToolSearch miss as "unavailable" (see the contract's "Tool availability" section). This skill runs inline in the main loop (never forked into a background subagent), where the tool is always present — just call it.
 
 The workflow builds the project: fan out the ready, mutually-independent build slices as parallel worktree agents, integrate + gate + track each in the parent, loop waves until done. **Read `references/build-workflow-protocol.md` (and the contract it points to) and follow it when writing the workflow script** — but treat it as construction detail, not a decision gate that can stop you.
 
