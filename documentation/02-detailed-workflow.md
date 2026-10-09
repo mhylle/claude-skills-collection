@@ -63,12 +63,9 @@ Traditional AI-assisted coding often suffers from:
 
 ## Phase 1: Brainstorming
 
-Two skills are available depending on the depth needed:
-
 | Skill | Method | Best For | Token Cost |
 |-------|--------|----------|------------|
-| `/brainstorm` | Single agent applies all frameworks serially | Quick ideas, straightforward concepts | ~8-12K |
-| `/team-brainstorm` | Agent team with adversarial debate | Critical decisions, high-stakes ideas | ~25-40K |
+| `/brainstorm` | Single agent applies all frameworks serially | Most ideas, from quick concepts to critical decisions | ~8-12K |
 
 ### /brainstorm Flow (Single Agent)
 
@@ -121,49 +118,6 @@ Two skills are available depending on the depth needed:
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### /team-brainstorm Flow (Agent Team)
-
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                        TEAM BRAINSTORM FLOW                                  │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                              │
-│  PHASE 1-2: Idea Capture + Socratic Clarification (Lead-driven)            │
-│  Same as single-agent brainstorm — clarify before spawning team            │
-│                                                                              │
-│  PHASE 3: Team Creation & Research                                          │
-│  ┌─────────────────────────────────────────────────────────────────────┐   │
-│  │ Lead spawns teammates:                                              │   │
-│  │                                                                      │   │
-│  │  ┌─────────────┐  ┌──────────┐  ┌───────────┐  ┌────────────┐     │   │
-│  │  │   Devil's   │  │ Optimist │  │ Creative  │  │ Researcher │     │   │
-│  │  │  Advocate   │  │          │  │ Explorer  │  │            │     │   │
-│  │  └──────┬──────┘  └────┬─────┘  └─────┬─────┘  └─────┬──────┘     │   │
-│  │         │              │              │              │             │   │
-│  │         └──────┬───────┴──────┬───────┴──────┬───────┘             │   │
-│  │                │              │              │                      │   │
-│  │                ▼              ▼              ▼                      │   │
-│  │         Teammates message each other to debate:                    │   │
-│  │         • Devil's Advocate challenges Optimist                     │   │
-│  │         • Researcher shares evidence with all                      │   │
-│  │         • Creative Explorer proposes alternatives                  │   │
-│  └──────────────────────────────────────┬──────────────────────────────┘   │
-│                                         │                                    │
-│  PHASE 4-5: Synthesis & Debate Resolution (Lead)                            │
-│  ┌─────────────────────────────────────────────────────────────────────┐   │
-│  │ • Where teammates agreed vs disagreed                               │   │
-│  │ • Strengths that survived adversarial scrutiny                      │   │
-│  │ • Risks the Optimist couldn't mitigate                              │   │
-│  │ • Best alternatives addressing top concerns                        │   │
-│  └──────────────────────────────────────┬──────────────────────────────┘   │
-│                                         │                                    │
-│                                         ▼                                    │
-│  Output: docs/brainstorms/2026-01-25-user-auth-team.md                     │
-│          + ADR documents + team shutdown + cleanup                          │
-│                                                                              │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
-
 ### Why Brainstorm?
 
 | Without Brainstorming | With Brainstorming |
@@ -178,9 +132,9 @@ Two skills are available depending on the depth needed:
 | Situation | Recommendation |
 |-----------|---------------|
 | Quick idea, low stakes | `/brainstorm` |
-| Critical architecture decision | `/team-brainstorm` |
+| Critical architecture decision | `/brainstorm` |
 | Bug fix or small change | Skip brainstorming |
-| Complex feature with trade-offs | `/team-brainstorm` |
+| Complex feature with trade-offs | `/brainstorm` |
 | Requirements are crystal clear | Skip or `/brainstorm` |
 
 ---
@@ -462,7 +416,7 @@ Functional Verification:
 │  Step 4: CODE REVIEW                                                         │
 │  ├── Invoke code-review skill                                              │
 │  ├── Check: Service delegation, framework standards, ADR compliance        │
-│  ├── PASS_WITH_NOTES? → Fix notes, re-run (must achieve clean PASS)        │
+│  ├── NEEDS_CHANGES? → Fix, re-run (must achieve PASS)                      │
 │  ├── Optional: security-review for sensitive code                          │
 │  └── Optional: adversarial-reviewer when code-review was clean but you     │
 │      want a second-opinion hostile-persona pass (Saboteur / New Hire /     │
@@ -545,7 +499,7 @@ Functional Verification:
 │  ┌─────────────────────────────────────────────────────────────────────┐   │
 │  │ Context cleared, fresh start                                         │   │
 │  │ BUT: Tasks persist on filesystem                                     │   │
-│  │ AND: Learnings saved to ~/.claude/skills/learned/                   │   │
+│  │ AND: Learned skills proposed (saved to ~/.claude/skills/learned-*/)│   │
 │  └─────────────────────────────────────────────────────────────────────┘   │
 │       │                                                                      │
 │       ▼                                                                      │
@@ -629,7 +583,7 @@ Functional Verification:
 ```
 ❌ WRONG THINKING:
    "It's just a recommendation, we can fix it later"
-   "PASS_WITH_NOTES is good enough"
+   "Recommendations are optional"
    "We'll address it in the next phase"
 
 ✅ CORRECT THINKING:
@@ -706,57 +660,22 @@ CLAUDE_CODE_TASK_LIST_ID=plan-my-feature claude
 
 ## Continuous Learning System
 
-### When Patterns Are Captured
-
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                    LEARNING CAPTURE POINTS                                   │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                              │
-│  ┌──────────────────┐                                                       │
-│  │ Phase Completion │ ◄── End of implement-phase Step 8                    │
-│  │                  │     Patterns from this phase captured                 │
-│  └────────┬─────────┘                                                       │
-│           │                                                                  │
-│           ▼                                                                  │
-│  ┌──────────────────┐                                                       │
-│  │    /compact      │ ◄── PreCompact hook triggers                         │
-│  │                  │     Patterns captured before context loss             │
-│  └────────┬─────────┘                                                       │
-│           │                                                                  │
-│           ▼                                                                  │
-│  ┌──────────────────┐                                                       │
-│  │   Session End    │ ◄── Stop hook triggers                               │
-│  │                  │     Final pattern extraction                          │
-│  └────────┬─────────┘                                                       │
-│           │                                                                  │
-│           ▼                                                                  │
-│  ~/.claude/skills/learned/                                                   │
-│                                                                              │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                              │
-│  ⚠️  /clear does NOT trigger learning capture                              │
-│      Patterns are captured at phase completion BEFORE you /clear            │
-│                                                                              │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
+`continuous-learning` runs on demand — when you ask ("save what we learned", `/continuous-learning`), when implement-phase / tt-implement-phase reach phase completion, or when Claude offers it at the end of a long session. No hook triggers it: a Stop hook fires after every response, and hooks cannot run skills.
 
 ### What Gets Learned
 
-| Pattern Type | Example |
-|--------------|---------|
-| **Error Resolution** | "When you see 'ECONNREFUSED', check if the service is running" |
-| **User Correction** | "User prefers functional style over class-based" |
-| **Workaround** | "This framework doesn't support X, use Y instead" |
-| **Project Pattern** | "All services in this codebase use dependency injection" |
-| **Debugging Technique** | "Enable DEBUG=* to see detailed logs" |
+Only multi-step procedures with a recognisable trigger become learned skills. One-line preferences, facts and corrections go to Claude Code's built-in auto-memory instead.
 
-### Future Session Usage
+| Pattern Type | Example trigger |
+|--------------|-----------------|
+| **Error Resolution** | `PrismaClientInitializationError` after a schema change in CI |
+| **Workaround** | A framework limitation and the way around it, plus when it stops being needed |
+| **Debugging Technique** | A repeatable investigation sequence for a recognisable symptom |
+| **Project Procedure** | A multi-step release / migration / codegen task specific to one repo |
 
-Learned patterns are loaded at session start and used for:
-- Automatic matching when similar errors occur
-- Pattern suggestions during debugging
-- Consistency with project conventions
+### Where They Go
+
+Each promoted pattern is its own skill at `~/.claude/skills/learned-<slug>/SKILL.md`, with a short trigger-specific description, so Claude Code loads it like any other skill from the next session on. The set is capped at 20 because every description sits in the always-loaded skill listing; past the cap, related skills are merged or retired first. Nothing is written without your confirmation — when it runs inside a forked phase, it returns proposals for you to approve.
 
 ---
 
@@ -783,15 +702,13 @@ Learned patterns are loaded at session start and used for:
 │  └── console-log-warn: Warn about console.log statements                   │
 │                                                                              │
 │  PreCompact:                                                                 │
-│  ├── continuous-learning: Extract patterns before compaction               │
 │  └── save-context-remind: Remind to save context                           │
 │                                                                              │
 │  SessionStart:                                                               │
 │  └── load-context: Detect saved context files                              │
 │                                                                              │
-│  Stop (session end):                                                         │
-│  ├── console-log-audit: Audit modified files for console.log               │
-│  └── continuous-learning: Extract patterns before exit                     │
+│  Stop (end of each response):                                                │
+│  └── console-log-audit: Audit modified files for console.log               │
 │                                                                              │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -801,8 +718,6 @@ Learned patterns are loaded at session start and used for:
 | Hook | How It Helps |
 |------|--------------|
 | strategic-compact | Suggests when to compact based on logical boundaries, not arbitrary thresholds |
-| continuous-learning (PreCompact) | Captures patterns before context loss |
-| continuous-learning (Stop) | Captures patterns when session ends |
 | prettier-format | Keeps code formatted automatically |
 | typescript-check | Catches type errors immediately |
 
@@ -960,16 +875,10 @@ This creates a D3.js force-directed graph showing:
 | Skill | Type | Context | Agent | Key Tools |
 |-------|------|---------|-------|-----------|
 | brainstorm | Interactive | main conversation | - | All |
-| deep-brainstorm | Interactive | main conversation | - | All |
-| team-brainstorm | Interactive (orchestrator) | main conversation | - | All (+ TeamCreate, SendMessage) |
-| tt-brainstorm | Interactive | main conversation | - | All |
 | create-plan | Interactive (orchestrator) | main conversation | - | All |
-| team-create-plan | Interactive (orchestrator) | main conversation | - | All |
 | tt-create-plan | Interactive (orchestrator) | main conversation | - | All |
 | user-story | Interactive | main conversation | - | All |
 | implement-plan | Interactive (orchestrator) | main conversation | - | All |
-| team-implement-plan | Interactive (orchestrator) | main conversation | - | All |
-| team-implement-plan-full | Interactive (orchestrator) | main conversation | - | All |
 | tt-implement-plan | Interactive (orchestrator) | main conversation | - | All |
 | tt-workflow-audit | Interactive (orchestrator) | main conversation | - | All (+ Workflow) |
 | tt-workflow-build | Interactive (orchestrator) | main conversation | - | All (+ Workflow) |

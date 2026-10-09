@@ -3,14 +3,15 @@
   "evals": [
     {
       "id": 1,
-      "name": "from-frozen-brainstorm",
-      "prompt": "There's a frozen tasktracker brainstorm for the expense tracker project — search 'expense'. Pick it up and create the implementation plan. The plan should land as phase tasks in tasktracker, not a markdown file.",
-      "expected_output": "Agent finds the project, calls getProjectReadiness (sees brainstorm: satisfied), reads the brainstorm tree, then walks requirements → architecture → plan stages: createRequirement+addAcceptanceCriterion for each capability (Given/When/Then), createArchitectureComponent for major pieces, presents design options, gets approval, then createPhaseFromTemplate per phase with requirementIds linked at the phase level. No docs/plans/*.md file is written.",
+      "name": "from-brainstorm-file",
+      "prompt": "We brainstormed the expense tracker with /brainstorm — it's docs/brainstorms/2026-10-01-expense-tracker.md (status Ready for Planning). The tasktracker project is the expense one — search 'expense'. Pick it up and create the implementation plan. The plan should land as phase tasks in tasktracker, not a markdown file.",
+      "expected_output": "Agent finds the project, calls getProjectReadiness, reads the brainstorm file in full and maps Key Clarifications / Suggested Plan Scope to requirements and Risks & Concerns to criteria or risk notes. If the brainstorm row is not satisfied it sets brainstormPolicy 'optional' via updateProject and completes the brainstorm-lifecycle phase with the file path as the status note. It then walks requirements → architecture → plan stages: createRequirement+addAcceptanceCriterion for each capability (Given/When/Then), createArchitectureComponent for major pieces, presents design options, gets approval, then createPhaseFromTemplate per phase with requirementIds linked at the phase level. No docs/plans/*.md file is written.",
       "files": [],
       "assertions": [
         { "text": "Agent calls tasktracker_listProjects with search 'expense'", "kind": "transcript_contains" },
         { "text": "Agent calls tasktracker_getProjectReadiness before any write", "kind": "transcript_contains" },
-        { "text": "Agent calls tasktracker_getBrainstorm and reads it", "kind": "transcript_contains" },
+        { "text": "Agent reads docs/brainstorms/2026-10-01-expense-tracker.md", "kind": "transcript_contains" },
+        { "text": "If the brainstorm row was not satisfied, agent calls tasktracker_updateProject with a brainstormPolicy and completes the brainstorm-lifecycle phase with a note naming the brainstorm file", "kind": "qualitative" },
         { "text": "Agent creates at least one requirement via tasktracker_createRequirement", "kind": "transcript_contains" },
         { "text": "Agent adds at least one acceptance criterion via tasktracker_addAcceptanceCriterion (Given/When/Then form)", "kind": "transcript_contains" },
         { "text": "Agent registers at least one architecture component", "kind": "transcript_contains" },
@@ -38,12 +39,13 @@
       "id": 3,
       "name": "no-brainstorm-yet",
       "prompt": "Plan the implementation for a new feature: add Slack notifications when a CI build fails. The project 'devtools-notifications' exists in tasktracker but there's no brainstorm yet. Just create the plan.",
-      "expected_output": "Agent calls getProjectReadiness, sees brainstorm row is NOT satisfied, and STOPS. Explains that the brainstorm stage is upstream of plan, and offers /tt-brainstorm first (or — if the project has brainstormPolicy: 'skipped-deliberately' — proceeds). Does NOT silently skip to requirements.",
+      "expected_output": "Agent calls getProjectReadiness, sees brainstorm row is NOT satisfied, finds no matching file in docs/brainstorms/, and STOPS. Explains that the brainstorm stage is upstream of plan and offers two ways on: /brainstorm first, or — if the user confirms the requirement is already clear — set brainstormPolicy: 'skipped-deliberately' and plan from it. Does NOT silently skip to requirements.",
       "files": [],
       "assertions": [
         { "text": "Agent calls tasktracker_getProjectReadiness before any planning", "kind": "transcript_contains" },
+        { "text": "Agent looks in docs/brainstorms/ for a matching brainstorm file", "kind": "transcript_contains" },
         { "text": "Agent stops planning when brainstorm row is not satisfied", "kind": "qualitative" },
-        { "text": "Agent offers /tt-brainstorm (or mentions skipped-deliberately as an alternative)", "kind": "transcript_contains" },
+        { "text": "Agent offers /brainstorm (and mentions skipped-deliberately as the alternative for a clear requirement)", "kind": "transcript_contains" },
         { "text": "Agent does NOT call createRequirement before brainstorm is satisfied", "kind": "transcript_negative" }
       ]
     }

@@ -95,38 +95,9 @@
           }
         ],
         "description": "Audit modified JS/TS files for console.log before session ends"
-      },
-      {
-        "name": "continuous-learning",
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "prompt",
-            "prompt": "The session is ending. Invoke the continuous-learning skill to extract reusable patterns from this session into ~/.claude/skills/learned/. Skip silently if nothing in the session is worth promoting."
-          }
-        ],
-        "config": {
-          "threshold": 0.7,
-          "interactive": false,
-          "summary": true,
-          "max_patterns": 10,
-          "auto_merge": true
-        },
-        "description": "Extract valuable patterns from session before exit (runs the continuous-learning skill)"
       }
     ],
     "SessionStart": [
-      {
-        "name": "load-learned-patterns",
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node -e \"const fs=require('fs');const path=require('path');const learnedDir=path.join(process.env.HOME,'.claude','skills','learned');if(fs.existsSync(learnedDir)){const files=fs.readdirSync(learnedDir).filter(f=>f.endsWith('.md'));if(files.length){console.error('[Hook] Learned patterns available: '+files.length);files.slice(0,5).forEach(f=>console.error('  - '+f.replace('.md','')));console.error('[Hook] Patterns will be applied automatically during this session')}}\""
-          }
-        ],
-        "description": "Load learned patterns from previous sessions"
-      },
       {
         "name": "load-context",
         "matcher": "*",
@@ -140,24 +111,6 @@
       }
     ],
     "PreCompact": [
-      {
-        "name": "continuous-learning-before-compact",
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "prompt",
-            "prompt": "Context is about to be compacted and detail will be lost. Invoke the continuous-learning skill first to capture any reusable patterns from the part of the session that is about to be summarized away."
-          }
-        ],
-        "config": {
-          "threshold": 0.7,
-          "interactive": false,
-          "summary": true,
-          "max_patterns": 10,
-          "auto_merge": true
-        },
-        "description": "Extract patterns before compaction loses context (runs the continuous-learning skill)"
-      },
       {
         "name": "save-context-before-compact",
         "matcher": "*",

@@ -8,8 +8,7 @@ Despite sitting alongside the skill directories, there is no `SKILL.md` here and
 
 | File | Used by | Purpose |
 |------|---------|---------|
-| `team-lifecycle.md` | `team-brainstorm`, `team-create-plan`, `team-implement-plan`, `team-implement-plan-full` | Common TeamCreate → spawn → coordinate → synthesize → TeamDelete pattern |
-| `quality-pipeline-distribution.md` | `implement-phase`, `team-implement-plan`, `team-implement-plan-full` | Maps the 8-step implement-phase pipeline to team roles per workflow mode |
+| `quality-pipeline-distribution.md` | `implement-phase` | Maps the 8-step implement-phase pipeline to its owners (orchestrator, subagents, skills) |
 
 ## When to add a file here
 

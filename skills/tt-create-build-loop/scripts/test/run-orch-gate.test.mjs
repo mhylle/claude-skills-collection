@@ -10,9 +10,27 @@ import { render } from "../render-template.mjs";
 const TEMPLATE = fs.readFileSync(path.join(import.meta.dirname, "..", "..", "assets", "run-orch-gate.sh"), "utf8");
 /** The gate needs pass.txt, and records when it starts and ends in $EVENTS. */
 const GATE = 'echo "start $(git rev-parse --short HEAD)" >> "$EVENTS"; sleep "${GATE_SLEEP:-0}"; test -f pass.txt; rc=$?; echo "end $(git rev-parse --short HEAD)" >> "$EVENTS"; exit $rc';
+const BASH = gitBash();
+
+/** On Windows the runner is meant for Git Bash, and the first bash on PATH may be another (WSL's). */
+function gitBash() {
+  if (process.platform !== "win32") return "bash";
+  const execPath = spawnSync("git", ["--exec-path"], { encoding: "utf8" }).stdout?.trim() ?? "";
+  const bash = path.join(execPath, "..", "..", "..", "bin", "bash.exe");
+  return execPath && fs.existsSync(bash) ? bash : "bash";
+}
+
+/**
+ * Another gate, named on its command line (`exec -a` renames a process for pgrep, but not the Windows
+ * command line PowerShell reads). It records "other-end" in `events` as it ends.
+ */
+function fakeGate(name, ms, events) {
+  const code = `setTimeout(() => require("node:fs").appendFileSync(process.env.EVENTS, "other-end\\n"), ${ms})`;
+  return spawn(process.execPath, ["-e", code, name], { stdio: "ignore", env: { ...process.env, EVENTS: events } });
+}
 
 function sh(cwd, command) {
-  const result = spawnSync("bash", ["-c", command], { cwd, encoding: "utf8" });
+  const result = spawnSync(BASH, ["-c", command], { cwd, encoding: "utf8" });
   assert.equal(result.status, 0, `${command}: ${result.stderr}`);
   return result.stdout.trim();
 }
@@ -35,15 +53,15 @@ function setup({ pattern = "fake-gate-[0-9]+", toolchain = ":" } = {}) {
     GATE_PROCESS_PATTERN: pattern,
     GATE_LOCKFILES: "deps.lock",
     GATE_TOOLCHAIN_SETUP: toolchain,
-    GATE_INSTALL_COMMAND: `echo "installed $(cat deps.lock)" | tee -a ${installs}`,
+    GATE_INSTALL_COMMAND: 'echo "installed $(cat deps.lock)" | tee -a "$INSTALLS"',
     GATE_COMMAND: GATE,
   };
   fs.writeFileSync(script, render(TEMPLATE, { flags: {}, values }, { markdown: false }), { mode: 0o755 });
-  const env = { ...process.env, GATE_POLL: "0.2", ORCH_GATE_WORKTREE: path.join(root, "wt"), EVENTS: path.join(root, "events.log") };
-  const run = (sha, log, { extraEnv = {} } = {}) => spawnSync("bash", [script, sha, log], { cwd: root, encoding: "utf8", timeout: 30_000, env: { ...env, ...extraEnv } });
-  const start = (sha, log, extraEnv = {}) => spawn("bash", [script, sha, log], { cwd: root, stdio: "ignore", env: { ...env, ...extraEnv } });
+  const env = { ...process.env, GATE_POLL: "0.2", ORCH_GATE_WORKTREE: path.join(root, "wt"), EVENTS: path.join(root, "events.log"), INSTALLS: installs };
+  const run = (sha, log, { extraEnv = {} } = {}) => spawnSync(BASH, [script, sha, log], { cwd: root, encoding: "utf8", timeout: 30_000, env: { ...env, ...extraEnv } });
+  const start = (sha, log, extraEnv = {}) => spawn(BASH, [script, sha, log], { cwd: root, stdio: "ignore", env: { ...env, ...extraEnv } });
   const events = () => (fs.existsSync(env.EVENTS) ? fs.readFileSync(env.EVENTS, "utf8").trim().split("\n") : []);
-  return { root, repo, installs, run, start, events, done: path.join(root, "wt.done"), lock: path.join(root, "wt.lock"), head: () => sh(repo, "git rev-parse HEAD") };
+  return { root, repo, installs, run, start, events, eventsLog: env.EVENTS, done: path.join(root, "wt.done"), lock: path.join(root, "wt.lock"), head: () => sh(repo, "git rev-parse HEAD") };
 }
 
 test("gates the commit in its own worktree, logs the run and the install, and installs once per lockfile version", () => {
@@ -98,7 +116,7 @@ test("two runners started together gate one after the other, never interleaved",
 
 test("waits for another running gate, and a lock left by a dead runner does not block", async () => {
   const env = setup();
-  const other = spawn("bash", ["-c", "exec -a fake-gate-42 sleep 2"], { stdio: "ignore" });
+  const other = fakeGate("fake-gate-42", 2000, env.eventsLog);
   await new Promise((resolve) => setTimeout(resolve, 200));
   fs.mkdirSync(env.lock);
   fs.writeFileSync(path.join(env.lock, "pid"), "999999\n");
@@ -106,13 +124,16 @@ test("waits for another running gate, and a lock left by a dead runner does not 
   const result = env.run(env.head(), path.join(env.root, "gate.log"));
   assert.equal(result.status, 0, result.stderr);
   const waited = Date.now() - started;
-  assert.ok(waited >= 1500 && waited < 6000, `waited ${waited} ms for a gate that ran about 1.8 s more`);
+  assert.deepEqual(env.events().map((line) => line.split(" ")[0]), ["other-end", "start", "end"], "the gate starts once the other has ended");
+  // On Windows each look at the process list starts PowerShell, which takes about a second.
+  const limit = process.platform === "win32" ? 10_000 : 6000;
+  assert.ok(waited >= 1500 && waited < limit, `waited ${waited} ms for a gate that ran about 1.8 s more`);
   other.kill();
 });
 
 test("gives up on another gate that never ends, after GATE_WAIT_MAX seconds", async () => {
   const env = setup();
-  const other = spawn("bash", ["-c", "exec -a fake-gate-7 sleep 20"], { stdio: "ignore" });
+  const other = fakeGate("fake-gate-7", 20_000, env.eventsLog);
   await new Promise((resolve) => setTimeout(resolve, 200));
   const result = env.run(env.head(), path.join(env.root, "gate.log"), { extraEnv: { GATE_WAIT_MAX: "1" } });
   other.kill();

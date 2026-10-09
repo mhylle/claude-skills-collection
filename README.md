@@ -62,13 +62,12 @@ Example: `/implement-plan docs/plans/my-feature.md` passes the path as `$0`.
 The core workflow for implementing features follows this hierarchy:
 
 ```
-                  ┌─────────────────┐   ┌──────────────────────┐
-                  │   brainstorm    │   │   team-brainstorm    │
-                  │  (quick, solo)  │   │  (deep, agent team)  │
-                  └────────┬────────┘   └──────────┬───────────┘
-                           └────────────┬──────────┘
+                              ┌─────────────────┐
+                              │   brainstorm    │
+                              │   (ideation)    │
+                              └────────┬────────┘
                                        │
-                           ┌───────────┼───────────┐
+                           ┌───────────┴───────────┐
                            ▼                       ▼
                   ┌─────────────────┐   ┌──────────────────┐
                   │      adr        │   │   user-story     │
@@ -137,14 +136,10 @@ The core workflow for implementing features follows this hierarchy:
 | Stage | Skill | Purpose |
 |-------|-------|---------|
 | **Ideation** | `brainstorm` | Refine rough ideas through Socratic questioning |
-| **Deep Ideation** | `team-brainstorm` | Adversarial multi-perspective analysis using agent teams |
 | **Requirements** | `user-story` | Generate hierarchical user stories with acceptance criteria |
 | **Planning** | `create-plan` | Create detailed, phased implementation plans |
-| **Deep Planning** | `team-create-plan` | Team-based planning with adversarial design review |
 | **Iteration** | `iterate-plan` | Update plans based on feedback |
-| **Execution** | `implement-plan` | Orchestrate full plan execution (solo) |
-| **Team Execution** | `team-implement-plan` | Small team: Implementer + adversarial Reviewer |
-| **Parallel Execution** | `team-implement-plan-full` | Full team: parallel waves + cross-phase Reviewer |
+| **Execution** | `implement-plan` | Orchestrate full plan execution |
 | **Phase Work** | `implement-phase` | Execute single phase with quality gates |
 | **Quality** | `code-review` | Verify code quality, patterns, ADR compliance |
 | **Adversarial Quality** | `adversarial-reviewer` | Subagent-based hostile review (Saboteur, New Hire, Security Auditor) to break self-review blind spots |
@@ -165,26 +160,28 @@ Skills are invoked via the `Skill` tool or `/skill-name` shorthand.
 
 | Skill | Trigger | Description |
 |-------|---------|-------------|
-| **brainstorm** | `/brainstorm`, "explore this idea" | Interactive idea refinement using Socratic questioning |
-| **team-brainstorm** | `/team-brainstorm`, "deep brainstorm" | Adversarial brainstorm using agent teams (Devil's Advocate, Optimist, Creative Explorer, Researcher) |
+| **brainstorm** | `/brainstorm`, "explore this idea" | Interactive idea refinement using Socratic questioning, written to `docs/brainstorms/` for `create-plan` or `tt-create-plan` |
 | **user-story** | `/user-story`, "create user stories" | Generate hierarchical user stories (epics/features/tasks) with Given/When/Then acceptance criteria |
 | **create-plan** | `/create-plan`, "plan the implementation" | Creates detailed implementation plans through research |
-| **team-create-plan** | `/team-create-plan`, "team plan" | Team-based planning with Architect, Risk Analyst, Researcher |
 | **iterate-plan** | "update the plan", "iterate on this plan" | Updates existing plans based on feedback |
 | **implement-plan** | `/implement-plan`, "implement the plan" | Orchestrates execution of complete plans (subagent mode) |
-| **team-implement-plan** | `/team-implement-plan` | Small team: Implementer + Reviewer + optional Integrator |
-| **team-implement-plan-full** | `/team-implement-plan-full` | Full team: per-phase implementers + shared Reviewer, parallel waves |
 | **implement-phase** | Called by implement-plan | Executes single phase with all quality gates |
+| **tt-create-plan** | `/tt-create-plan`, "plan this in tasktracker" | TaskTracker-native planning: requirements with acceptance criteria and phase tasks from templates instead of a `docs/plans/*.md` file |
+| **tt-implement-plan** | `/tt-implement-plan`, "execute the tasktracker plan" | Runs a TaskTracker plan phase by phase, delegating each phase to `tt-implement-phase`, with active-task time tracking and insight logging |
+| **tt-workflow-run** | `/tt-workflow-run`, "drive the backlog to done" | Autonomous gated run over a TaskTracker backlog: next ready slice → `tt-implement-phase` → drift and defect gates → measured-time projection, until the backlog drains |
+| **tt-workflow-build** | `/tt-workflow-build`, "parallel build (tasktracker)" | Parallel build of a TaskTracker project, on the `Workflow` tool when it is enabled and on parallel subagents otherwise, driven to done |
 | **tt-create-build-loop** | `/tt-create-build-loop`, "set up an autonomous build loop" | Writes `prompts/autonomous-build-loop.md`, the prompt a `/loop` re-reads every iteration to plan, implement and verify TaskTracker phases unattended under a zero-error gate, with a human-only queue and a per-phase cost ledger. Detects the repo, stack, CI and TaskTracker phases, asks only what it can't, creates missing queue/ledger phases, optionally installs the bundled token-usage tooling, and installs a clean-worktree gate runner |
-| **workflow-guide** | `/workflow-guide` | Recommends solo, small team, or full team mode based on task |
+| **workflow-guide** | `/workflow-guide`, "which workflow should I use" | Routes work to a lane: file-based or TaskTracker pipeline, autonomous run, unattended loop, parallel build or audit, or issue-to-merge |
 
 ### Quality & Documentation
 
 | Skill | Trigger | Description |
 |-------|---------|-------------|
-| **code-review** | `/code-review`, Step 3 of implement-phase | Systematic review: SRP, patterns, ADR compliance |
+| **code-review** | `/code-review`, Step 4 of implement-phase | Systematic review: SRP, patterns, ADR compliance |
 | **adversarial-reviewer** | `/adversarial-reviewer`, "adversarial review", "critical review", "audit this repo" | Spawns three hostile-persona subagents (Saboteur, New Hire, Security Auditor) in parallel; each must find ≥1 issue; cross-persona findings get severity-promoted. Default mode reviews a diff; `--codebase [path]` reviews a whole repo/subtree with strategic per-persona deep-dives |
+| **grumpy-reviewer** | `/grumpy-reviewer`, "structural review", "is this well factored" | One isolated-subagent reviewer that judges only maintainability (separation of concerns, helper extraction, small files, the rule of 7) and never learns how the code was produced |
 | **codebase-audit** | `/codebase-audit`, "comprehensive codebase review", "thorough audit", "code due diligence" | Long-running full-coverage audit. Partitions the repo, delegates to `/adversarial-reviewer --codebase` per partition, synthesizes systemic findings, produces written remediation report. Resumable. Pairs with `code-quality-audit` for qualitative + quantitative picture |
+| **tt-workflow-audit** | `/tt-workflow-audit`, "parallel audit (tasktracker)" | Read-only parallel audit of a TaskTracker project's repo, backlog or architecture: a ranked risk register, with fix tasks written back by the parent on approval. Resumable |
 | **adr** | `/adr`, "document decision" | Creates Architecture Decision Records |
 | **e2e-testing** | `/e2e-testing`, "test my webapp" | E2E testing with Playwright MCP |
 | **security-review** | `/security-review`, auth/input code | 10-category OWASP-aligned security audit |
@@ -204,7 +201,7 @@ Skills are invoked via the `Skill` tool or `/skill-name` shorthand.
 
 | Skill | Trigger | Description |
 |-------|---------|-------------|
-| **continuous-learning** | Stop hook, "save learnings" | Extracts patterns from sessions to `~/.claude/skills/learned/` |
+| **continuous-learning** | "save what we learned", `/continuous-learning` | Promotes reusable procedures from a session into learned skills at `~/.claude/skills/learned-<slug>/` (on demand; one-liners go to auto-memory) |
 | **strategic-compact** | PreToolUse hook | Suggests `/compact` at logical boundaries, not arbitrary thresholds |
 | **skill-visualizer** | `/skill-visualizer`, "visualize skills" | Generate interactive HTML visualizations of skills and codebase |
 
@@ -231,10 +228,13 @@ Skills are invoked via the `Skill` tool or `/skill-name` shorthand.
 
 ## Agents
 
-Agents are specialized sub-agents launched via the `Task` tool for parallel execution.
+Agents are specialized subagents launched with the `Agent` tool. When the collection is installed as a plugin they are named `devflow:<agent>`.
 
 | Agent | Purpose |
 |-------|---------|
+| **implementer** | `sonnet`, medium effort: writes code and tests for one briefed unit of work; used by tt-implement-phase for implementation and fix rounds |
+| **mechanic** | `haiku`, low effort: runs build/type/lint/test checks and verification-loop, report-only, never edits |
+| **reviewer** | `opus`, high effort (callers pass `fable` for security reviews): runs code-review / security-review on code it did not write |
 | **codebase-analyzer** | Traces implementation with file:line references |
 | **codebase-locator** | Finds files by topic/feature ("Super Grep/Glob") |
 | **codebase-pattern-finder** | Finds concrete code examples and patterns |
@@ -329,10 +329,7 @@ default component locations (`skills/`, `agents/`, `hooks/hooks.json`).
 | **PostToolUse** | typescript-check | `.ts/.tsx` edits | Run `tsc --noEmit` and show errors |
 | **PostToolUse** | console-log-warn | JS/TS file edits | Warn about `console.log` statements |
 | **Stop** | console-log-audit | Session end | Audit modified files for `console.log` |
-| **Stop** | continuous-learning | Session end | Extract patterns to `~/.claude/skills/learned/` |
-| **SessionStart** | load-learned-patterns | Session start | Surface patterns captured by continuous-learning |
 | **SessionStart** | load-context | Session start | Detect saved context files in `docs/context/` |
-| **PreCompact** | continuous-learning-before-compact | Before `/compact` | Capture patterns before context is summarized away |
 | **PreCompact** | save-context-before-compact | Before `/compact` | Remind to save context before compaction |
 
 ### CLAUDE.md Integration
@@ -518,7 +515,7 @@ Each phase passes through these gates:
 
 **Mandatory Exit Conditions** (non-negotiable):
 - `verification-loop` must PASS (all 6 phases: Build, Type, Lint, Test, Security, Diff)
-- Code review must be clean **PASS** (not PASS_WITH_NOTES)
+- Code review must return **PASS** — every recommendation is fixed; only informational NOTEs may remain
 - **All recommendations must be fixed** - recommendations are blocking, not optional
 - ADR compliance must PASS
 
@@ -595,17 +592,16 @@ claude-skills-collection/
 │   ├── security-review/          # NEW: OWASP security audit
 │   ├── strategic-compact/        # NEW: Smart compaction suggestions
 │   ├── skill-visualizer/         # NEW: Interactive HTML visualizations
-│   ├── team-brainstorm/          # Agent team adversarial brainstorm
 │   ├── user-story/               # Hierarchical user stories with Given/When/Then
-│   ├── team-create-plan/         # NEW: Agent team planning (Architect + Risk Analyst + Researcher)
-│   ├── team-implement-plan/      # NEW: Small review team (Implementer + Reviewer)
-│   ├── team-implement-plan-full/ # NEW: Full parallel team (per-phase + shared Reviewer)
 │   ├── tt-create-build-loop/     # NEW: Writes an unattended TaskTracker build loop (template, lessons, token tooling)
 │   ├── workflow-guide/           # NEW: Recommends workflow mode
 │   ├── ship-issue/               # NEW: Issue→merge pipeline (SKILL.md, references/, scripts/dashboard.py)
 │   └── verification-loop/        # 6-phase verification
 ├── agents/
 │   ├── browser-verification-agent.md  # NEW: UI testing
+│   ├── implementer.md                 # role agent: code + tests (sonnet)
+│   ├── mechanic.md                    # role agent: checks, report-only (haiku)
+│   ├── reviewer.md                    # role agent: code/security review (opus)
 │   ├── codebase-analyzer.md
 │   ├── codebase-locator.md
 │   ├── codebase-pattern-finder.md

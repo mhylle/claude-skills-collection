@@ -1,207 +1,74 @@
-# Pattern types — structures and extraction criteria
+# Pattern types — criteria and body sections
 
-Five pattern types. Each has specific extraction criteria and a YAML template for the **pattern body**. The surrounding file wrapper (metadata, usage tracking, confidence tracking, tags) is defined separately in `storage-format.md` — don't duplicate those fields inside the pattern body.
+Four pattern types. Every learned skill uses the common layout in `storage-format.md` (Trigger, Pattern, Fix, Evidence, Retire when); this file lists what each type must capture and any extra section it adds.
 
-> **Where fields live:** `id`, `created`, `updated`, `version`, `usage.times_applied`, `usage.times_successful`, `confidence.initial`, `confidence.current`, `tags` — all in the wrapper (`storage-format.md`). The pattern body under the `pattern:` key holds the type-specific fields below.
-
----
-
-## 1. Error Resolution Patterns
-
-**Definition:** Solutions to errors, exceptions, or unexpected behaviors that required non-obvious fixes.
-
-**Extraction criteria:**
-- Error was not immediately obvious from the error message.
-- Solution required investigation or research.
-- Fix involved understanding underlying cause, not just symptom.
-- Solution would be useful if the same error recurs.
-
-**Quality threshold:**
-- Must have a specific error trigger (not "it didn't work").
-- Must explain root cause, not just provide the fix.
-- Must include context for when the pattern applies.
-
-**Template:**
-```yaml
-type: error_resolution
-trigger: "[Exact error message or pattern]"
-symptoms:
-  - "[Observable symptom 1]"
-  - "[Observable symptom 2]"
-root_cause: "[Underlying cause]"
-solution:
-  steps:
-    - "[Step 1]"
-    - "[Step 2]"
-  code_example: |
-    // Before (problematic)
-    problematic_code_here
-
-    // After (fixed)
-    fixed_code_here
-context:
-  framework: "[Framework/library name]"
-  version: "[Version if relevant]"
-  environment: "[Environment factors]"
-```
-
-*(`confidence` and `times_applied` live in the wrapper — see `storage-format.md`.)*
+User corrections and single-rule conventions are not a pattern type. If the learning fits in one line ("use named exports in this repo", "don't mock the database in integration tests"), it belongs in Claude Code's auto-memory.
 
 ---
 
-## 2. User Correction Patterns
+## 1. Error resolution
 
-**Definition:** Insights gained when the user corrects Claude's approach, revealing better methods or project-specific preferences.
+**Definition:** a non-obvious fix for a specific error, exception or unexpected behaviour.
 
-**Extraction criteria:**
-- User explicitly corrected an approach or suggestion.
-- Correction revealed a preference not evident from code/docs.
-- Learning is transferable to similar situations.
-- Correction wasn't due to simple misunderstanding.
+**Promote when:**
+- The error message didn't point to the cause.
+- Finding the fix took investigation, not the first docs result.
+- The root cause is understood, not just the symptom silenced.
 
-**Quality threshold:**
-- Must capture the "why" behind the correction.
-- Must be generalizable (not a one-off preference).
-- Must include clear applicability criteria.
-
-**Template:**
-```yaml
-type: user_correction
-original_approach: "[What Claude initially did/suggested]"
-corrected_approach: "[What the user preferred]"
-reasoning: "[Why the corrected approach is better]"
-applies_when:
-  - "[Situation 1]"
-  - "[Situation 2]"
-project_specific: [true/false]
-project_identifier: "[Project name/path if specific]"
-```
-
-*(`confidence` and usage tracking live in the wrapper.)*
+**Must capture:**
+- **Trigger:** the exact error text (or the stable part of it) in a code span, plus where it shows up (CI only, after a schema change, on Windows).
+- **Pattern:** the root cause.
+- **Fix:** the steps, with a short before/after snippet if the fix is in code.
+- Framework/tool and version range, when the cause is version-specific.
 
 ---
 
-## 3. Workaround Patterns
+## 2. Workaround
 
-**Definition:** Clever solutions to limitations in tools, frameworks, or environments.
+**Definition:** a reliable way around a limitation in a tool, framework or environment.
 
-**Extraction criteria:**
-- Standard approach was blocked by a limitation.
-- Workaround achieved the goal despite the limitation.
-- Workaround is reliable and maintainable.
-- Limitation is likely to be encountered again.
+**Promote when:**
+- The standard approach was blocked by the limitation.
+- The workaround is reliable and maintainable, not a hack that hides a bug.
+- The limitation is likely to be hit again.
 
-**Quality threshold:**
-- Must clearly describe the limitation being worked around.
-- Must include caveats and risks.
-- Should note when the workaround becomes unnecessary.
-
-**Template:**
-```yaml
-type: workaround
-limitation: "[What was blocked/unavailable]"
-goal: "[What we were trying to achieve]"
-workaround:
-  approach: "[Description of the workaround]"
-  steps:
-    - "[Step 1]"
-    - "[Step 2]"
-  code_example: |
-    // Workaround implementation
-    code_here
-caveats:
-  - "[Caveat 1]"
-  - "[Caveat 2]"
-better_alternative: "[What to use when limitation is removed]"
-context:
-  tool: "[Tool/framework name]"
-  version: "[Version with limitation]"
-```
-
-*(`confidence` and usage tracking live in the wrapper.)*
+**Must capture:**
+- **Trigger:** what you tried and what blocked it (tool, version, error or missing feature).
+- **Pattern:** the limitation and why the workaround gets past it.
+- **Fix:** the workaround steps and snippet.
+- Extra section **Caveats:** risks or costs of the workaround.
+- **Retire when:** the release or change that removes the limitation, and what to switch back to.
 
 ---
 
-## 4. Debugging Technique Patterns
+## 3. Debugging technique
 
-**Definition:** Effective debugging approaches that proved particularly useful for specific types of problems.
+**Definition:** a repeatable investigation sequence that finds the cause for a recognisable class of problem.
 
-**Extraction criteria:**
-- Technique successfully identified a non-obvious issue.
-- Approach is systematic and repeatable.
-- Would accelerate debugging similar issues.
-- Goes beyond basic debugging (not just "add console.log").
+**Promote when:**
+- The technique found a non-obvious cause.
+- It is systematic and repeatable, beyond "add a log line".
+- The problem class is specific (not "debugging in general").
 
-**Quality threshold:**
-- Must be specific to a problem class (not generic "debugging").
-- Must include clear indicators for when to apply.
-- Must be actionable with concrete steps.
-
-**Template:**
-```yaml
-type: debugging_technique
-problem_class: "[Type of problem this technique addresses]"
-indicators:
-  - "[Sign that this technique might help]"
-  - "[Another indicator]"
-technique:
-  name: "[Descriptive name]"
-  description: "[How it works]"
-  steps:
-    - "[Step 1]"
-    - "[Step 2]"
-    - "[Step 3]"
-  tools_used:
-    - "[Tool 1]"
-    - "[Tool 2]"
-example_application: |
-  [Concrete example of using this technique]
-effectiveness:
-  typical_time_saved: "[Estimate]"
-  success_rate: "[Estimate]"
-```
-
-*(`confidence` and usage tracking live in the wrapper.)*
+**Must capture:**
+- Extra section **Indicators:** the observable signs that this technique applies — these drive the description.
+- **Fix:** the investigation steps in order, then the resolutions each outcome points to.
+- Tools used, if any (profiler, DevTools panel, a specific CLI flag).
 
 ---
 
-## 5. Project-Specific Patterns
+## 4. Project procedure
 
-**Definition:** Patterns unique to a particular project's conventions, architecture, or domain.
+**Definition:** a multi-step task specific to one codebase — a release, a migration, regenerating a client, setting up a fixture.
 
-**Extraction criteria:**
-- Pattern is specific to current project's codebase.
-- Reflects architectural decisions or conventions.
-- Would help future work in the same project.
-- Not obvious from reading documentation.
+**Promote when:**
+- It takes several steps that aren't written down in the repo (README, CLAUDE.md, scripts).
+- Getting the order or a step wrong caused a failure this session.
+- The task will be repeated.
 
-**Quality threshold:**
-- Must be truly project-specific (not general best practice).
-- Must include concrete examples from the codebase.
-- Must explain rationale, not just prescription.
+**Must capture:**
+- **Trigger:** project name and task ("adding a database migration in acme-api"). The description names the project so the skill doesn't load in other repos.
+- **Fix:** the steps with the exact commands and file paths.
+- **Pattern:** why the order matters or what the non-obvious step guards against.
 
-**Template:**
-```yaml
-type: project_specific
-project:
-  identifier: "[Unique project identifier]"
-  path: "[Project root path]"
-  description: "[Brief project description]"
-pattern:
-  name: "[Pattern name]"
-  category: "[e.g., naming, architecture, testing, deployment]"
-  description: "[What the pattern is]"
-  rationale: "[Why this project uses this pattern]"
-examples:
-  - file: "[file path]"
-    line_range: "[start-end]"
-    description: "[What this example shows]"
-applies_to:
-  - "[Situation 1]"
-  - "[Situation 2]"
-anti_patterns:
-  - "[What not to do]"
-discovered_date: "[ISO date]"
-```
-
-*(`confidence` and usage tracking live in the wrapper.)*
+A project rule that fits in one line ("acme-api errors use the `{error: {code, message}}` envelope") is a convention, not a procedure — leave it to auto-memory, or suggest adding it to the repo's CLAUDE.md.

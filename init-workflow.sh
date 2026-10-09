@@ -101,7 +101,7 @@ generate_minimal() {
 | Tests pass | **YES** |
 | Code review = PASS | **YES** |
 
-**PASS_WITH_NOTES is NOT acceptable.** Fix all recommendations first.
+**Code review must return PASS.** Fix every recommendation first; only informational NOTEs may remain.
 
 ### Key Rules
 
@@ -152,7 +152,7 @@ Every phase MUST pass ALL gates before completion:
 | Security | No vulnerabilities | **YES** |
 | Code Review | Clean PASS only | **YES** |
 
-**PASS_WITH_NOTES is NOT acceptable.** Fix all recommendations first.
+**Code review must return PASS.** Fix every recommendation first; only informational NOTEs may remain.
 **Recommendations are BLOCKING** - not optional suggestions.
 
 ### Coding Standards (Enforced)
@@ -254,7 +254,7 @@ Every phase MUST pass ALL gates before completion:
 | Security | No vulnerabilities | **YES** |
 | Code Review | Clean PASS only | **YES** |
 
-**PASS_WITH_NOTES is NOT acceptable.** Fix all recommendations first.
+**Code review must return PASS.** Fix every recommendation first; only informational NOTEs may remain.
 **Recommendations are BLOCKING** - not optional suggestions.
 
 ### Coding Standards (Enforced)

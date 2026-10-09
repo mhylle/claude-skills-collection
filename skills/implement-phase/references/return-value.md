@@ -48,8 +48,7 @@ PHASE_RESULT:
     # - "Check email arrived in inbox"
 
   learnings:
-    patterns_extracted: [count]
-    saved_to: "~/.claude/skills/learned/"
+    proposed: ["learned-<slug> — description"]   # from continuous-learning; nothing written until the user approves
 
   ready_for_next: true | false
   blocker: null | "description of blocker"
@@ -73,7 +72,7 @@ PHASE_RESULT:
 | plan_sync | PASS, FAIL |
 | prompt_archival | PASS, SKIPPED, FAIL (non-blocking) |
 
-Note: `code_review` can only be reported as PASS in the return value. PASS_WITH_NOTES and NEEDS_CHANGES must be resolved via fix loops before the step can be marked done.
+Note: `code_review` can only be reported as PASS in the return value. NEEDS_CHANGES (any blocking issue or recommendation) must be resolved via fix loops before the step can be marked done; code-review NOTES never block.
 
 ## `ready_for_next`
 

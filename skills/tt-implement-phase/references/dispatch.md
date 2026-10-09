@@ -1,0 +1,82 @@
+# Dispatching Work by Role
+
+How the phase lead hands work to the implementer, the mechanic and the reviewer: which agent, which model, what each brief contains, when to escalate, and what to do when an agent isn't installed.
+
+## Why roles
+
+Writing code, running checks and reviewing need different strengths, and the cost difference between models is large (per million tokens, input / output: Fable 5.1 $10 / $50, Opus 5.5 $4 / $20, Sonnet 5.5 $2 / $10, Haiku 5.5 $0.10 / $0.50). Each role runs on the cheapest model that does that job well, and the review is done by a different, stronger model than the one that wrote the code, so the author's blind spots aren't reviewed by the same blind spots.
+
+| Role | Agent | Model and effort | Escalation |
+|---|---|---|---|
+| Implementer | `implementer` | Sonnet 5.5, medium (its definition) | fix round 3: pass `model: "opus"` |
+| Mechanic | `mechanic` | Haiku 5.5, low | none; it only reports |
+| Reviewer | `reviewer` | Opus 5.5, high | security review (Step 4.5): pass `model: "fable"` |
+
+A `model` you pass on the `Agent` call overrides the agent definition's model. Use the escalations above, and no others, so the phase's cost stays predictable; note every escalation in the result's `dispatch` line.
+
+## Finding the agents
+
+The agents are named `implementer`, `mechanic` and `reviewer`, or `devflow:implementer` and so on when this collection is installed as a plugin. Use whichever form is in your agent list. If a role's agent is missing, use `general-purpose` with the role's model (`sonnet`, `haiku` or `opus`) and put that role's **fallback rules** (below) at the top of the brief. If `Agent` itself isn't in your tool list, do the role's work yourself in this context.
+
+Send independent dispatches in one message so they run in parallel, for example two sub-tasks that touch different files. Sub-tasks that build on each other go one at a time.
+
+## Implementer brief
+
+```
+Agent({
+  description: "<sub-task in 3–5 words>",
+  subagent_type: "implementer",
+  prompt: "<one-sentence goal>
+    Phase <id> — <title>; sub-task <id> — <title>.
+    Acceptance criteria: <the exact linked ACs this sub-task serves>.
+    Files in scope: <paths>.
+    Conventions: <the standards doc path if the repo has one; otherwise 'follow the neighbouring code'>.
+    TDD: <yes — tests first, RED before GREEN | no>.
+    Active TaskTracker task: <sub-task id> — heartbeat on it.
+    <For a fix round: what failed, with log paths and file:line findings, and which round this is.>"
+})
+```
+
+**Fallback rules** (only when using `general-purpose`): Implement exactly this brief. Write tests first when asked; never weaken a test to pass it. Stay in the files in scope and list any other file you touch, with the reason. Before reporting, run the tests and the build for what you touched. Don't start subagents, commit, push, or change TaskTracker status. Heartbeat: call `tasktracker_getCurrentTimer({taskId})` for the named task after each step and at least every ~4 minutes; never `setActiveTask`, `clearActiveTask` or `startTimer`. Reply only with `STATUS: PASS | FAIL | BLOCKED — <reason>`, `FILES:`, `TESTS:` (counts and log path), `ERRORS:` (one line each); long output goes to `logs/<name>.log`.
+
+## Mechanic brief
+
+```
+Agent({
+  description: "Verify phase <N> changes",
+  subagent_type: "mechanic",
+  prompt: "Run the verification-loop skill, report-only, on these changes.
+    Files changed: <list from Step 1>.
+    Project type: <detected or from project metadata>.
+    Active TaskTracker task: <phase id> — heartbeat on it.
+    Skip any auto-fix or formatting step and report what it would have changed."
+})
+```
+
+**Fallback rules:** Run the named skill or commands and report; never edit files, apply auto-fixes or spawn fix agents, even when the skill says to. Write each check's output to `logs/<check>.log`. Heartbeat as above. Reply with `RESULT: PASS | FAIL`, one line per check (`PASS | FAIL | SKIPPED`, counts, log path) and up to five first errors with `file:line`.
+
+## Reviewer brief
+
+```
+Agent({
+  description: "Review phase <N>",
+  subagent_type: "reviewer",
+  model: "fable",                    # Step 4.5 security review only
+  prompt: "Run <code-review | security-review> on the changes from phase <id> — <title>.
+    Files changed: <list>.
+    Requirements and ACs: <linked requirements with their criteria>.
+    Principles: <only those that constrain this phase>.
+    Standards: <standards doc path, or 'neighbouring code'>.
+    Active TaskTracker task: <phase id> — heartbeat on it.
+    <For a re-review: the previous findings and what the fix round changed.>"
+})
+```
+
+**Fallback rules:** Review only; never edit, format or commit. Run the named skill yourself and work through every dimension in this context rather than starting subagents. You may run read-only commands (git diff, tests, build) to confirm behaviour. Heartbeat as above. Reply with the skill's own result block only (for code-review: `STATUS`, `BLOCKING_ISSUES`, `RECOMMENDATIONS`, `NOTES` with `file:line`).
+
+## Reading the replies
+
+- **Implementer `FAIL`:** start the next fix round with its `ERRORS` and log paths. **`BLOCKED`:** check it really is something only a person can resolve; if so, follow the blocker protocol, otherwise treat it as `FAIL`.
+- **Mechanic `FAIL`:** pass its first errors and log paths to the implementer's fix round, then dispatch the mechanic again. A check reported `SKIPPED` (the project has no command for it) is acceptable; say so in the result.
+- **Reviewer `NEEDS_CHANGES`:** pass the BLOCKING and RECOMMENDATION findings to the implementer, then re-review with the previous findings attached so the reviewer checks the fixes instead of starting over.
+- A reply that is prose instead of the required block: ask once more for the block with `SendMessage` to that agent; if it still isn't usable, run that step yourself in-context and note it in the result.
