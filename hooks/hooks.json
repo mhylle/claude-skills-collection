@@ -1,4 +1,7 @@
 {
+  "modules": [
+    "./register.tsx"
+  ],
   "hooks": {
     "PreToolUse": [
       {

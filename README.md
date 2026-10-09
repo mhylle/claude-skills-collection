@@ -332,6 +332,11 @@ default component locations (`skills/`, `agents/`, `hooks/hooks.json`).
 | **SessionStart** | load-context | Session start | Detect saved context files in `docs/context/` |
 | **PreCompact** | save-context-before-compact | Before `/compact` | Remind to save context before compaction |
 
+**HUD** (function hooks, `hooks/register.tsx`): a progress band above the prompt and a `/hud` pane for TaskTracker
+phases (sub-tasks, acceptance criteria, running agents, the last build or test result), plus an orchestrator guard
+that refuses main-thread file edits while a phase lead runs, an in-flight reminder while agents work, a heartbeat
+while agents run, and alarms for failed or missing test projects. See the [devflow HUD guide](docs/guides/devflow-hud.md).
+
 ### CLAUDE.md Integration
 
 Enforce the skill workflow in your projects using the init script:

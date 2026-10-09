@@ -26,3 +26,6 @@ docs/evidence/
 
 # Playwright MCP scratch output
 .playwright-mcp/
+
+# Claude Code writes the mod API types here while the plugin hot-reloads
+.claude-plugin/types/

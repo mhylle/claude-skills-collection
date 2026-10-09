@@ -3,7 +3,7 @@
   "name": "devflow",
   "displayName": "DevFlow Skills Collection",
   "version": "2.1.0",
-  "description": "A verification-first development pipeline for Claude Code: brainstorm to plan to phased implementation, with quality gates (verification-loop, code-review, security-review), adversarial review, and TaskTracker-native variants.",
+  "description": "A verification-first development pipeline for Claude Code: brainstorm to plan to phased implementation, with quality gates (verification-loop, code-review, security-review), adversarial review, TaskTracker-native variants, and a HUD that shows a phase's progress and guards the orchestrator.",
   "author": {
     "name": "Martin Hylleberg",
     "url": "https://github.com/mhylle"
@@ -19,5 +19,20 @@
     "tdd",
     "quality-gates",
     "tasktracker"
-  ]
+  ],
+  "types": "./types/index.d.ts",
+  "userConfig": {
+    "projectId": {
+      "type": "string",
+      "title": "TaskTracker project id",
+      "description": "Used by the HUD to find the requirements linked to the active phase. Learned from TaskTracker calls when left empty.",
+      "default": ""
+    },
+    "orchestratorSkills": {
+      "type": "string",
+      "title": "Orchestrator skills (regex)",
+      "description": "A main-thread Skill call matching this turns the HUD's orchestrator guard on.",
+      "default": "implement-plan|implement-phase|tt-workflow-run"
+    }
+  }
 }
