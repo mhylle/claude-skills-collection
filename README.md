@@ -177,14 +177,14 @@ Skills are invoked via the `Skill` tool or `/skill-name` shorthand.
 
 | Skill | Trigger | Description |
 |-------|---------|-------------|
-| **code-review** | `/code-review`, Step 4 of implement-phase | Systematic review: SRP, patterns, ADR compliance |
+| **code-review** | `/devflow:code-review` (bare `/code-review` is Claude Code's built-in review), Step 4 of implement-phase and tt-implement-phase | Systematic review: SRP, patterns, ADR compliance |
 | **adversarial-reviewer** | `/adversarial-reviewer`, "adversarial review", "critical review", "audit this repo" | Spawns three hostile-persona subagents (Saboteur, New Hire, Security Auditor) in parallel; each must find ≥1 issue; cross-persona findings get severity-promoted. Default mode reviews a diff; `--codebase [path]` reviews a whole repo/subtree with strategic per-persona deep-dives |
 | **grumpy-reviewer** | `/grumpy-reviewer`, "structural review", "is this well factored" | One isolated-subagent reviewer that judges only maintainability (separation of concerns, helper extraction, small files, the rule of 7) and never learns how the code was produced |
 | **codebase-audit** | `/codebase-audit`, "comprehensive codebase review", "thorough audit", "code due diligence" | Long-running full-coverage audit. Partitions the repo, delegates to `/adversarial-reviewer --codebase` per partition, synthesizes systemic findings, produces written remediation report. Resumable. Pairs with `code-quality-audit` for qualitative + quantitative picture |
 | **tt-workflow-audit** | `/tt-workflow-audit`, "parallel audit (tasktracker)" | Read-only parallel audit of a TaskTracker project's repo, backlog or architecture: a ranked risk register, with fix tasks written back by the parent on approval. Resumable |
 | **adr** | `/adr`, "document decision" | Creates Architecture Decision Records |
 | **e2e-testing** | `/e2e-testing`, "test my webapp" | E2E testing with Playwright MCP |
-| **security-review** | `/security-review`, auth/input code | 10-category OWASP-aligned security audit |
+| **security-review** | `/devflow:security-review` (bare `/security-review` is the built-in), auth/input code | 10-category OWASP-aligned security audit |
 | **verification-loop** | `/verification-loop`, "verify implementation" | 6-phase verification: build, type, lint, test, security, diff |
 | **code-quality-audit** | `/code-quality-audit`, "audit code quality", "run mutation testing" | Coverage + complexity + module size + dependency cycles + mutation score. Gate or on-demand modes |
 | **eval-harness** | `/eval-harness`, "run evals" | Formal evaluation framework with pass@k metrics |

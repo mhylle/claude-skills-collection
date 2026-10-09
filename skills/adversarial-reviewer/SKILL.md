@@ -6,10 +6,10 @@ description: >-
   Claude's earlier conclusions. Reviews a diff by default (staged/unstaged, a ref or a file);
   --codebase reviews a whole repo or subtree for tech debt, attack surface and knowledge
   silos. Use before merging a PR; when the user asks for a hostile, harsh, critical, skeptical
-  or second-opinion review; when a /code-review came back suspiciously clean; when the user is
+  or second-opinion review; when a /devflow:code-review came back suspiciously clean; when the user is
   tired after a long session or has a gut feeling something is off; or for a quick audit of an
-  inherited repo ("what am I inheriting"). Differs from /code-review (routine per-phase
-  review, no isolation) and /security-review (single-lens OWASP depth).
+  inherited repo ("what am I inheriting"). Differs from /devflow:code-review (routine per-phase
+  review, no isolation) and /devflow:security-review (single-lens OWASP depth).
 allowed-tools: Read, Grep, Glob, Bash, Agent
 argument-hint: "[--diff <ref> | --file <path> | --codebase [path]]"
 ---
@@ -417,6 +417,6 @@ Why the terminology difference: codebase reviews aren't gating merges, they're c
 
 ## Relationship to Other Skills
 
-- `code-review` — systematic per-phase quality gate used by `implement-phase`. Focuses on architectural principles, ADR compliance, and framework standards. Run that skill for routine implementation reviews; run this one when you specifically want adversarial perspective.
-- `security-review` — deeper, dedicated security audit. Use instead of this skill when the change is heavily security-relevant (auth, crypto, payment, PII); the Security Auditor persona here is breadth, not depth.
+- `devflow:code-review` — systematic per-phase quality gate used by `implement-phase`. Focuses on architectural principles, ADR compliance, and framework standards. Run that skill for routine implementation reviews; run this one when you specifically want adversarial perspective.
+- `devflow:security-review` — deeper, dedicated security audit. Use instead of this skill when the change is heavily security-relevant (auth, crypto, payment, PII); the Security Auditor persona here is breadth, not depth.
 - `verification-loop` — build/type/lint/test gates. Complementary — those verify correctness; this skill verifies judgment.

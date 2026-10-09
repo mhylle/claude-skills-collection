@@ -579,5 +579,5 @@ npm run security:scan && \
 ## Related skills
 
 - `implement-phase` — parent skill that invokes verification-loop in Step 2
-- `code-review` — follows verification-loop in the implement-phase pipeline
-- `security-review` — deep security analysis (beyond Check 5)
+- `devflow:code-review` — follows verification-loop in the implement-phase pipeline
+- `devflow:security-review` — deep security analysis (beyond Check 5)

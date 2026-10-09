@@ -24,7 +24,7 @@ Single orchestrator delegates all work to subagents.
 | 1. Implementation | Subagents | Orchestrator spawns subagents to write code |
 | 2. Verification-loop | Subagents | Orchestrator spawns subagent to run checks |
 | 3. Integration Testing | Subagents | Orchestrator spawns test subagents |
-| 4. Code Review | `code-review` skill | Orchestrator invokes skill |
+| 4. Code Review | `devflow:code-review` | Orchestrator invokes skill |
 | 5. ADR Compliance | `adr` skill | Orchestrator invokes skill |
 | 6. Plan Sync | Orchestrator | Reads plan, verifies items, updates tasks |
 | 7. Prompt Archival | Orchestrator | Moves prompt file |

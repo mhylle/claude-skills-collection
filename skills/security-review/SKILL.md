@@ -1,6 +1,6 @@
 ---
 name: security-review
-description: Comprehensive security audit for code changes. Use this skill when implementing authentication, authorization, user input handling, API endpoints, secrets/credentials, payment features, or file uploads. Provides security checklists, vulnerability patterns, and remediation guidance. Integrates with implement-phase as a security quality gate.
+description: Comprehensive security audit for code changes. Use this skill when implementing authentication, authorization, user input handling, API endpoints, secrets/credentials, payment features, or file uploads. Provides security checklists, vulnerability patterns, and remediation guidance. Integrates with implement-phase and tt-implement-phase as a security quality gate. Invoked as devflow:security-review; Claude Code's built-in /security-review is a different review of the pending branch changes.
 allowed-tools: Read, Glob, Grep, Bash
 ---
 

@@ -38,7 +38,7 @@ The default pipeline executes these steps in order:
 | 1 | implementation | Yes | None | All tasks complete, tests pass |
 | 2 | exit_conditions | Yes | verification-loop | All 6 verification checks pass |
 | 3 | integration_testing | Yes | None (orchestrator + browser-verification-agent) | API/UI tests pass end-to-end |
-| 4 | code_review | Yes | code-review | PASS (no blocking issues or recommendations) |
+| 4 | code_review | Yes | devflow:code-review | PASS (no blocking issues or recommendations) |
 | 5 | adr_compliance | Yes | adr | All applicable ADRs followed |
 | 6 | plan_sync | Yes | None | Task status updated via TaskUpdate |
 | 7 | prompt_archival | No | None | Prompt moved to completed/ (if provided) |
@@ -243,7 +243,7 @@ details: {}
 
 **Input**: Phase context, changed files
 **Process**:
-1. Invoke code-review skill
+1. Invoke devflow:code-review
 2. Receive structured review
 3. If NEEDS_CHANGES, spawn fixes and re-review
 

@@ -123,8 +123,8 @@ With the slice still active, on the INTEGRATED tree (where the agent's `deferred
 1. **Requirement link** — the slice task has a linked requirement in its hierarchy (`listRequirementTaskLinks`); if missing, `linkRequirementToTask` before completing. (Parallel equivalent of `/tt-workflow-run`'s Gate-3 link check.)
 2. **verification-loop** (build / type / lint / test / security-grep / diff) → clean.
 3. **AC proof** — every acceptance criterion of the slice's requirement has a passing test on the integrated tree; mark each satisfied: `updateAcceptanceCriterion({ criterionId, satisfied: true, satisfiedByTaskId: <slice> })`. Zero unsatisfied linked ACs.
-4. **`code-review`** → clean PASS.
-5. **`/security-review`** when the slice touches a sensitive surface (auth / authz / input / crypto / payment / uploads / API endpoints / DB queries) → clean PASS; else N/A.
+4. **`devflow:code-review`** → clean PASS.
+5. **`devflow:security-review`** when the slice touches a sensitive surface (auth / authz / input / crypto / payment / uploads / API endpoints / DB queries) → clean PASS; else N/A.
 6. **Architecture** — register/refresh `ArchitectureComponent`s for any new/changed structural piece this slice added (principle #8), then `scanArchitectureDrift` vs the pre-run baseline → **no net-new drift** (fix-loop: register the delta until clean).
 7. **`getDefectStats`** → no new defects above the pre-run baseline.
 

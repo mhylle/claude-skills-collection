@@ -62,7 +62,7 @@ Agent({
   description: "Review phase <N>",
   subagent_type: "reviewer",
   model: "fable",                    # Step 4.5 security review only
-  prompt: "Run <code-review | security-review> on the changes from phase <id> — <title>.
+  prompt: "Run <devflow:code-review | devflow:security-review> on the changes from phase <id> — <title>.
     Files changed: <list>.
     Requirements and ACs: <linked requirements with their criteria>.
     Principles: <only those that constrain this phase>.
@@ -72,7 +72,7 @@ Agent({
 })
 ```
 
-**Fallback rules:** Review only; never edit, format or commit. Run the named skill yourself and work through every dimension in this context rather than starting subagents. You may run read-only commands (git diff, tests, build) to confirm behaviour. Heartbeat as above. Reply with the skill's own result block only (for code-review: `STATUS`, `BLOCKING_ISSUES`, `RECOMMENDATIONS`, `NOTES` with `file:line`).
+**Fallback rules:** Review only; never edit, format or commit. Run the named skill yourself by its full `devflow:` name (the bare `code-review` and `security-review` are Claude Code's built-in reviews) and work through every dimension in this context rather than starting subagents. You may run read-only commands (git diff, tests, build) to confirm behaviour. Heartbeat as above. Reply with the skill's own result block only (for devflow:code-review: `STATUS`, `BLOCKING_ISSUES`, `RECOMMENDATIONS`, `NOTES` with `file:line`).
 
 ## Reading the replies
 

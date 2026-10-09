@@ -194,7 +194,7 @@ Gate: PASS. On failure, spawn fix subagents → re-run failed tests → repeat.
 ## Step 4: Code Review
 
 **What the orchestrator does:**
-1. Invoke `code-review` skill with phase context (plan path, phase number, changed files).
+1. Invoke `devflow:code-review` (not the built-in `/code-review`) with phase context (plan path, phase number, changed files).
 2. Receive structured review result.
 
 **Output format:**

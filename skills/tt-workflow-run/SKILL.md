@@ -313,7 +313,7 @@ This skill reuses the tasktracker references already shipped with the sibling sk
 - `/tt-implement-plan` — the no-run-entity alternative: executes phases in order without projection or per-slice gates.
 - `/tt-create-plan` — upstream: produces the requirements + linked tasks Gate 1 checks for.
 - `/loop` — optional outer cadence; orthogonal to the run.
-- `/code-review`, `/verification-loop`, `/adr` — quality gates inside `/tt-implement-phase`.
+- `/devflow:code-review`, `/verification-loop`, `/adr` — quality gates inside `/tt-implement-phase`.
 
 ## Key principles
 

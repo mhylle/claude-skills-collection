@@ -248,7 +248,7 @@ Invoke the `verification-loop` skill. It runs 6 checks (Build, Type, Lint, Test,
 **Output:** aggregated `INTEGRATION_TEST_STATUS`, pass/fail counts, evidence paths. **Gate:** PASS. **Next:** Step 4.
 
 ### Step 4 — Code Review
-Invoke the `code-review` skill with phase context. PASS is required; NEEDS_CHANGES (any blocking issue or recommendation) requires fix subagents and re-review (max 3 retries). NOTEs are informational and never block.
+Invoke `devflow:code-review` (this collection's skill, invoked as `devflow:code-review`; not Claude Code's built-in `/code-review`, which returns a different result) with phase context. PASS is required; NEEDS_CHANGES (any blocking issue or recommendation) requires fix subagents and re-review (max 3 retries). NOTEs are informational and never block.
 **Output:** `CODE_REVIEW_STATUS`, blocking issues, recommendations, notes. **Gate:** PASS. **Next:** Step 5.
 
 ### Step 5 — ADR Compliance Check
@@ -272,7 +272,7 @@ Final. Generate the summary (see `references/step-details.md` for the format), i
 
 Some pipelines insert additional steps at specific points. See `references/optional-steps.md` for the full list and enablement mechanism. Currently supported:
 
-- **Security Review** (inserts at Step 4.5) — enable for auth/input/crypto/payment phases. Skill: `security-review`.
+- **Security Review** (inserts at Step 4.5) — enable for auth/input/crypto/payment phases. Skill: `devflow:security-review` (not the built-in `/security-review`).
 
 ---
 
@@ -291,7 +291,7 @@ PHASE_STEPS = [
   { name: "implementation",       required: true,  skill: null },
   { name: "exit_conditions",      required: true,  skill: null },
   { name: "integration_testing",  required: true,  skill: null },
-  { name: "code_review",          required: true,  skill: "code-review" },
+  { name: "code_review",          required: true,  skill: "devflow:code-review" },
   { name: "adr_compliance",       required: true,  skill: "adr" },
   { name: "plan_sync",            required: true,  skill: null },
   { name: "prompt_archival",      required: false, skill: null },
@@ -388,10 +388,10 @@ When called by `implement-plan`, returns a structured `PHASE_RESULT` object with
 
 ## Integration with other skills
 
-- **code-review** — called in Step 4. Receives phase context, returns structured review.
+- **devflow:code-review** — called in Step 4. Receives phase context, returns structured review.
 - **adr** — called in Step 5 when new architectural decisions need documentation or compliance check finds undocumented decisions.
 - **verification-loop** — called in Step 2. Default exit-condition check (6 checks).
-- **security-review** — called in optional Step 4.5 when enabled.
+- **devflow:security-review** — called in optional Step 4.5 when enabled.
 - **continuous-learning** — called in Step 8 to capture phase patterns before `/clear` or `/compact`.
 
 Future extensibility: the step design allows adding `security-scan`, `performance-check`, `documentation-update`, `changelog-entry`, and similar quality gates without modifying the core logic.

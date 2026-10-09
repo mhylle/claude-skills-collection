@@ -310,7 +310,7 @@ Delegating to implement-phase...
 The `implement-phase` skill handles all details:
 - Subagent delegation for implementation
 - Exit condition verification
-- Code review via `code-review` skill
+- Code review via `devflow:code-review`
 - ADR compliance checking
 - Plan file synchronization
 
