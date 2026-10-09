@@ -27,4 +27,4 @@ When the brief names an active TaskTracker task, call `tasktracker_getCurrentTim
 
 ## Report
 
-Return the skill's own result block (for devflow:code-review: `STATUS: PASS | NEEDS_CHANGES`, then BLOCKING_ISSUES, RECOMMENDATIONS and NOTES with `file:line`). When devflow:security-review also ran, add its verdict block after it. Nothing else: no summary of the change, no praise, no restating the brief.
+Return the skill's own result block (for devflow:code-review: `STATUS: PASS | NEEDS_CHANGES`, then BLOCKING_ISSUES, RECOMMENDATIONS and NOTES with `file:line`). When devflow:security-review also ran, add its verdict block after it. End with `HEARTBEAT: called getCurrentTimer <n> times` (or "not asked" when the brief named no task). Nothing else: no summary of the change, no praise, no restating the brief.

@@ -45,7 +45,7 @@ implement-plan (this session - ORCHESTRATOR)
     │   ⛔ NEVER uses Write/Edit tools
     │   ⛔ NEVER creates files
     │
-    └── implement-phase (ORCHESTRATOR for phase)
+    └── implement-phase (ORCHESTRATOR for phase, run in this same session)
             │
             │   ⛔ NEVER writes code
             │   ⛔ NEVER uses Write/Edit tools
@@ -58,6 +58,8 @@ implement-plan (this session - ORCHESTRATOR)
                     ✅ Run tests
                     ✅ Fix issues
 ```
+
+This holds whenever the Agent tool is available. A user's "foreground", "no background agents" or "don't poll" is about how this session waits for agents, not about who writes the code; only an explicit "write the code yourself in this session" overrides the rule, so ask when unsure.
 
 ### What This Session Does
 
@@ -76,7 +78,7 @@ If you find yourself about to use Write, Edit, or NotebookEdit tools in this ses
 
 ```
 ⛔ STOP - You are violating the orchestrator pattern
-✅ INSTEAD - Delegate to implement-phase which will spawn subagents
+✅ INSTEAD - Run implement-phase's procedure, which spawns subagents
 ```
 
 ---
@@ -104,7 +106,7 @@ implement-plan (this skill - plan orchestrator)
 ### This Skill (implement-plan)
 - Read and understand the full plan
 - Sequence phases correctly
-- Delegate each phase to `implement-phase`
+- Run each phase through `implement-phase`, in this session
 - Handle user confirmation between phases
 - Track overall plan progress
 - Generate final completion report
@@ -237,7 +239,7 @@ Tasks (2 done, 3 open):
 
 For each phase:
 1. Mark task as in_progress: `TaskUpdate(task_id, status: "in_progress")`
-2. Delegate to `implement-phase`
+2. Invoke `implement-phase`. Its procedure loads into this session, which then acts as the phase lead through Steps 1–8; nothing comes back from elsewhere, so continue from the `PHASE_RESULT` block that ends Step 8.
 3. On completion: `TaskUpdate(task_id, status: "completed")`
 
 ```
@@ -250,7 +252,7 @@ Context:
 - Prompt: [prompt file path, if discovered]
 - Previous Phase Status: [Complete/N/A]
 
-Execute all quality gates and return structured result.
+Execute all quality gates and end with the PHASE_RESULT block.
 ```
 
 **With Prompt (preferred)**:
@@ -302,21 +304,23 @@ Objectives:
 Dependencies:
 - Phase 1 (Database Schema) must be complete ✅
 
-Delegating to implement-phase...
+Running implement-phase...
 ```
 
 ### During Phase Execution
 
-The `implement-phase` skill handles all details:
+The `implement-phase` procedure, running in this session, handles all details:
 - Subagent delegation for implementation
 - Exit condition verification
 - Code review via `devflow:code-review`
 - ADR compliance checking
 - Plan file synchronization
 
+Its agents report asynchronously, so this session ends turns while it waits for them. That is the phase still in progress, not the phase ending: each report resumes the phase, which runs on until Step 8.
+
 ### After Each Phase
 
-Receive structured result from `implement-phase`:
+Continue from the structured result that ends `implement-phase`'s Step 8:
 
 ```yaml
 PHASE_RESULT:
@@ -364,7 +368,7 @@ proceed to Phase 3: API Endpoints
 
 ## Handling Blockers
 
-When `implement-phase` returns a blocker:
+During a phase, `implement-phase` asks the user about a blocker itself, since it runs in this session, and resumes the blocked step after the answer. A `PHASE_RESULT` with `status: BLOCKED` only ends a phase when no one could be asked (an unattended run):
 
 ### From implement-phase
 
@@ -519,7 +523,7 @@ See `references/plan-format.md` for:
 1. **Delegate phase execution** - Use `implement-phase` for all phase work
 2. **Orchestrate, don't implement** - This skill coordinates, not codes
 3. **User confirmation between phases** - Pause for human validation (current mode)
-4. **Trust implement-phase results** - Act on structured return values
+4. **Trust implement-phase results** - Act on the `PHASE_RESULT` block that ends each phase
 5. **Surface blockers immediately** - Don't hide problems from the user
 6. **Track at plan level** - Let implement-phase handle phase-level tracking
 7. **Prepare for automation** - Structure supports future autonomous mode

@@ -1,7 +1,6 @@
 ---
 name: implement-phase
 description: Execute a single phase from an implementation plan with all quality gates. This skill is the unit of work for implement-plan, handling implementation, verification, code review, ADR compliance, and plan synchronization for ONE phase. Triggers when implement-plan delegates a phase, or manually with "/implement-phase" and a phase reference.
-context: fork
 user-invocable: false
 argument-hint: "[plan-path] [phase-number]"
 ---
@@ -46,13 +45,13 @@ Reference files (open one when a step points to it):
 - `references/tdd-mode.md`: TDD Mode (optional)
 <!-- /contents -->
 
-Execute a **single phase** from an implementation plan with comprehensive quality gates. Designed to be called by `implement-plan`, but can also be invoked directly.
+Execute a **single phase** from an implementation plan with comprehensive quality gates. Designed to be called by `implement-plan`, but can also be invoked directly. Either way it runs inline: the session that invoked it is the phase lead.
 
 ---
 
 ## Orchestrator pattern (non-negotiable)
 
-**This session is an orchestrator. Never implement code directly.**
+**This session is the phase lead and an orchestrator. Never implement code directly.**
 
 | DO (orchestrator) | DON'T (direct implementation) |
 |---|---|
@@ -66,6 +65,8 @@ Execute a **single phase** from an implementation plan with comprehensive qualit
 
 **Violations:** using Write/Edit/NotebookEdit directly, creating files without spawning a subagent, fixing code without spawning a subagent, running implementation commands directly.
 
+This holds whenever the Agent tool is available. "Foreground", "no background agents" or "don't poll" in the user's words is about how you wait for agents, not about who writes the code; only an explicit "write the code yourself in this session" overrides the rule, and when you're unsure, ask. If `Agent` isn't in your tool list at all, do the steps' work in this session.
+
 **Why orchestrate?**
 - **Context preservation** — main session retains full plan context.
 - **Parallelization** — independent tasks run concurrently.
@@ -78,7 +79,7 @@ Execute a **single phase** from an implementation plan with comprehensive qualit
 
 ## Execution contract (read before starting)
 
-Steps 1–8 execute as **one continuous operation**. The orchestrator does not pause between them.
+Steps 1–8 execute as **one continuous operation**. The phase lead does not stop for the user between them.
 
 ```
 current_step = 1
@@ -89,13 +90,17 @@ while current_step <= 8:
     elif result == FAIL:
         fix_and_retry(current_step)  # Stay on step, spawn fix subagent, retry
     elif result == BLOCKED:
-        return BLOCKED               # Only valid early exit
+        ask_user()                   # Blocker protocol, then resume this step
 return COMPLETE                      # Only stop here (after Step 8)
 ```
 
+**Agents report asynchronously.** An `Agent` call returns at once; the agent's report arrives later as a message in this session, and that message resumes you. After dispatching, do any independent work that's left (another independent dispatch, preparing the next step's context). When nothing is left, end the turn with one line saying what you're waiting for, e.g. `Waiting for: test writer (1a), implementer (1b).` Waiting on a report is not a pause: the report resumes the step. Never poll with sleep or wait loops, never say you'll wait and then stop, and never do the dispatched work yourself in the meantime, since it would collide with the agent's.
+
+**Keep track of what's in flight.** Before ending a turn, note which agents are running and for which step or sub-task (the tracker's IN FLIGHT line), so a resumed or compacted session can tell what is still outstanding.
+
 **The only valid pause points are:**
-1. **BLOCKED** — something you cannot fix without user intervention (see Blocker Protocol below).
-2. **After Step 8** — the Completion Report has been presented; await user before the next phase.
+1. **BLOCKED** — something you cannot fix without the user (see Blocker protocol below). Ask them, then resume the blocked step.
+2. **After Step 8** — the Completion Report and `PHASE_RESULT` have been presented; the next phase waits for the user.
 
 **Everything else is a fix loop, not a pause.** Verification failed → spawn fix subagent → re-run → PASS → continue. Code review returned NEEDS_CHANGES → spawn fix subagent → re-run → PASS → continue. None of these require user input; they require retries.
 
@@ -113,11 +118,12 @@ return COMPLETE                      # Only stop here (after Step 8)
 │ ⬚ Step 7: Prompt Archival   [PENDING]  │
 │ ⬚ Step 8: Completion Report [PENDING]  │
 ├─────────────────────────────────────────┤
+│ IN FLIGHT: none                         │
 │ NEXT ACTION: Check ADR compliance now   │
 └─────────────────────────────────────────┘
 ```
 
-NEXT ACTION must describe executing the next step, not "waiting for user confirmation." Any tracker whose NEXT ACTION says otherwise (before Step 8) is a contract violation.
+NEXT ACTION must describe executing the next step (or, mid-step, the reports you're waiting for), not "waiting for user confirmation." Any tracker whose NEXT ACTION says otherwise (before Step 8) is a contract violation.
 
 **Self-check after a skill invocation (like code-review):**
 1. Did it return PASS? → continue to next step immediately.
@@ -144,7 +150,7 @@ A blocker is something you **cannot fix autonomously**. Do not stop for fixable 
 
 **NOT blockers — fix these yourself:** test fails, lint errors, build errors, type errors, code-review feedback, API returning an error, UI element not found.
 
-**When you hit a genuine blocker:**
+**When you hit a genuine blocker**, ask the user directly — you're running in their session. Stop dispatching new work, note what's still in flight, and present the blocker (with AskUserQuestion for the options when it's available):
 ```
 ⛔ BLOCKED: [brief description]
 
@@ -164,7 +170,7 @@ B) [skip this verification and proceed with risk]
 C) [abort phase]
 ```
 
-After the user resolves, resume from the blocked step (not Step 1).
+After the user answers, resume from the blocked step (not Step 1). End the phase with `status: BLOCKED` in `PHASE_RESULT` only when the caller said the run is unattended and no one can be asked; fill in `blocker` with what would unblock it.
 
 ---
 
@@ -217,7 +223,7 @@ If a **Prompt Path** is provided (from `prompt-generator`):
 ```
 implement-plan (orchestrates full plan)
     │
-    └── implement-phase (this skill — one phase at a time)
+    └── implement-phase (this skill — one phase at a time, in the same session)
             │
             ├── 1. Implementation (spawn subagents)
             ├── 2. Exit Condition Verification (verification-loop skill)
@@ -244,7 +250,7 @@ Invoke the `verification-loop` skill. It runs 6 checks (Build, Type, Lint, Test,
 **Output:** `VERIFICATION_LOOP_STATUS`, per-check results. **Gate:** all 6 PASS. **Next:** Step 3.
 
 ### Step 3 — Automated Integration Testing
-**You are the tester.** Not the user. API → curl/httpie/fetch subagent. Web UI → `browser-verification-agent` (one test scenario per spawn). CLI → execute and verify output. Database → query and verify.
+**You are the tester.** Not the user. API → curl/httpie/fetch subagent. Web UI → `browser-verification-agent` (one test scenario per spawn; or general-purpose with claude-in-chrome if it isn't in your agent list). CLI → execute and verify output. Database → query and verify.
 **Output:** aggregated `INTEGRATION_TEST_STATUS`, pass/fail counts, evidence paths. **Gate:** PASS. **Next:** Step 4.
 
 ### Step 4 — Code Review
@@ -264,7 +270,7 @@ If a prompt file was used, move it to `docs/prompts/completed/`. If none, mark s
 **Output:** `PROMPT_ARCHIVAL_STATUS`. **Gate:** non-blocking (a failed archive logs but doesn't stop completion). **Next:** Step 8.
 
 ### Step 8 — Phase Completion Report
-Final. Generate the summary (see `references/step-details.md` for the format), invoke `continuous-learning` (from a fork it returns proposed learned skills instead of writing them — include them in the report), present to user, stop.
+Final. Generate the summary (see `references/step-details.md` for the format), invoke `continuous-learning` (it confirms any learned skills with the user before writing them), present the report and the `PHASE_RESULT` block, stop. If `implement-plan` invoked you, it continues from that block in this same session.
 
 ---
 
@@ -325,7 +331,7 @@ C) Abort phase and return to plan
 How should I proceed?
 ```
 
-**Blocker protocol** (above): stop all pending work, preserve state for resume, report with full context, await decision.
+**Blocker protocol** (above): stop dispatching new work, note what's in flight, ask the user with full context, resume the blocked step after their answer.
 
 ---
 
@@ -363,8 +369,10 @@ Context:
 - Phase: 2 (Authentication Service)
 - Previous Phase Status: Complete
 
-Execute all quality gates and return structured result.
+Execute all quality gates and end with the PHASE_RESULT block.
 ```
+
+The procedure loads into implement-plan's session, which becomes the phase lead; implement-plan picks up again from the `PHASE_RESULT` block.
 
 **Manual:**
 ```
@@ -382,7 +390,7 @@ Or interactively:
 
 ## Return value
 
-When called by `implement-plan`, returns a structured `PHASE_RESULT` object with per-step status, files changed, test results, ADR info, and a `ready_for_next` flag. Full schema in `references/return-value.md`.
+Step 8 ends with a structured `PHASE_RESULT` block, the phase's closing summary in the same session, with per-step status, files changed, test results, ADR info, and a `ready_for_next` flag. When `implement-plan` invoked the phase, it reads this block and continues. Full schema in `references/return-value.md`.
 
 ---
 
@@ -402,8 +410,8 @@ Future extensibility: the step design allows adding `security-scan`, `performanc
 
 **For implement-plan authors:**
 1. Provide complete phase context when calling.
-2. Trust the structured return value.
-3. Handle BLOCKED status appropriately.
+2. Trust the `PHASE_RESULT` block that ends the phase.
+3. Expect `status: BLOCKED` only from unattended runs; otherwise the phase asks the user itself.
 4. Present manual verification steps to the user only if they were actually needed (should be rare — Step 3 covers automated testing).
 
 **For direct users:**

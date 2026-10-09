@@ -103,48 +103,62 @@ Step 1: Implementation (TDD mode)
 
 **Step 1b — write failing tests (RED):**
 ```
-Agent (general-purpose): "Write unit tests for UserAuthService.
+Agent({
+  description: "Write failing auth tests",
+  subagent_type: "general-purpose",
+  prompt: "Write unit tests for UserAuthService.
 
-Context: Phase 3 - User Authentication (TDD Mode - RED phase)
-Location: src/auth/user-auth.service.spec.ts
+    Context: Phase 3 - User Authentication (TDD Mode - RED phase)
+    Location: src/auth/user-auth.service.spec.ts
 
-Test scenarios (from requirements):
-- authenticateUser() returns token for valid credentials
-- authenticateUser() throws UnauthorizedError for invalid password
-- authenticateUser() throws NotFoundError for unknown user
-- refreshToken() extends session for valid refresh token
+    Test scenarios (from requirements):
+    - authenticateUser() returns token for valid credentials
+    - authenticateUser() throws UnauthorizedError for invalid password
+    - authenticateUser() throws NotFoundError for unknown user
+    - refreshToken() extends session for valid refresh token
 
-IMPORTANT: Implementation does NOT exist yet. Tests MUST fail.
-Write tests that will drive the implementation.
+    IMPORTANT: Implementation does NOT exist yet. Tests MUST fail.
+    Write tests that will drive the implementation.
 
-RESPONSE FORMAT: STATUS, FILES created, test count, ERRORS if any."
+    RESPONSE FORMAT: STATUS, FILES created, test count, ERRORS if any."
+})
 ```
 
 **Step 1c — verify tests fail:**
 ```
-Task: "Run tests and verify they FAIL.
+Agent({
+  description: "Confirm auth tests fail",
+  subagent_type: "general-purpose",
+  prompt: "Run tests and verify they FAIL.
 
-Command: npm test -- --testPathPattern=user-auth.service.spec.ts
-Expected: Tests should FAIL (RED phase of TDD)
+    Command: npm test -- --testPathPattern=user-auth.service.spec.ts
+    Expected: Tests should FAIL (RED phase of TDD)
 
-If tests PASS, there is a problem — either tests are wrong or feature already exists.
+    If tests PASS, there is a problem — either tests are wrong or feature already exists.
 
-RESPONSE FORMAT: STATUS (expect FAIL), test count, failure summary."
+    RESPONSE FORMAT: STATUS (expect FAIL), test count, failure summary."
+})
 ```
 
 **Step 1d — minimal implementation (GREEN):**
 ```
-Agent (general-purpose): "Implement UserAuthService to pass tests.
+Agent({
+  description: "Implement UserAuthService",
+  subagent_type: "general-purpose",
+  prompt: "Implement UserAuthService to pass tests.
 
-Context: Phase 3 - User Authentication (TDD Mode - GREEN phase)
-Location: src/auth/user-auth.service.ts
-Tests at: src/auth/user-auth.service.spec.ts
+    Context: Phase 3 - User Authentication (TDD Mode - GREEN phase)
+    Location: src/auth/user-auth.service.ts
+    Tests at: src/auth/user-auth.service.spec.ts
 
-Write MINIMAL code to make all tests pass. Do not add extra functionality.
-Follow the interface defined by the tests.
+    Write MINIMAL code to make all tests pass. Do not add extra functionality.
+    Follow the interface defined by the tests.
 
-RESPONSE FORMAT: STATUS, FILES created/modified, ERRORS if any."
+    RESPONSE FORMAT: STATUS, FILES created/modified, ERRORS if any."
+})
 ```
+
+Each step waits for the previous agent's report (it arrives as a message in this session), since GREEN builds on RED.
 
 ---
 
@@ -153,20 +167,24 @@ RESPONSE FORMAT: STATUS, FILES created/modified, ERRORS if any."
 TDD mode enforces a minimum coverage threshold (default 80%). After Step 1 completes, spawn a coverage verification subagent:
 
 ```
-Task: "Verify code coverage meets TDD threshold.
+Agent({
+  description: "Check TDD coverage",
+  subagent_type: "general-purpose",
+  prompt: "Verify code coverage meets TDD threshold.
 
-Commands:
-1. npm test -- --coverage --coverageReporters=text
-2. Parse coverage percentage from output
+    Commands:
+    1. npm test -- --coverage --coverageReporters=text
+    2. Parse coverage percentage from output
 
-Threshold: 80%
-Scope: Files created/modified in this phase
+    Threshold: 80%
+    Scope: Files created/modified in this phase
 
-RESPONSE FORMAT:
-STATUS: PASS | FAIL
-COVERAGE: [percentage]%
-UNCOVERED_LINES: [count]
-DETAILS: [brief summary or path to full report]"
+    RESPONSE FORMAT:
+    STATUS: PASS | FAIL
+    COVERAGE: [percentage]%
+    UNCOVERED_LINES: [count]
+    DETAILS: [brief summary or path to full report]"
+})
 ```
 
 **On coverage failure:**

@@ -3,9 +3,10 @@ name: tt-implement-plan
 description: >-
   Tasktracker-native plan orchestrator. Drives a plan whose phases are stored
   as tasktracker phase tasks (not a docs/plans/*.md file): resumes at the
-  first incomplete implementation phase, delegates each phase to
-  /tt-implement-phase, waits for its PHASE_RESULT, then completes the phase or
-  puts a BLOCKED phase's options to the user and resumes it. Keeps
+  first incomplete implementation phase, runs each phase by following
+  /tt-implement-phase in this session (dispatching its role agents and acting on
+  their reports as they arrive), then completes the phase or settles a blocker
+  with the user. Keeps
   active-task discipline, never edits a locked phase body (notes go to
   sub-tasks), logs cross-phase defects/learnings/frictions as insights, and
   closes with the getProjectDoneness gate. Use when the user wants to
@@ -65,36 +66,39 @@ If the plan came from `/create-plan` (file-based), use `/implement-plan`. If the
 
 ## CRITICAL: Orchestrator pattern (kept from /implement-plan)
 
-> **THIS SESSION IS A PLAN-LEVEL ORCHESTRATOR. IT NEVER IMPLEMENTS CODE DIRECTLY — it walks phases and delegates each to `/tt-implement-phase`.** That holds in every environment. What varies is one level down: `/tt-implement-phase` writes code via subagents when a subagent-dispatch tool exists, or **in-context itself when none does** (its graceful-degradation mode). Either way, *this* session's job is unchanged — drive the plan, never the code.
+> **THIS SESSION IS THE ORCHESTRATOR. IT NEVER IMPLEMENTS CODE DIRECTLY — it walks the phases and, for each, follows `/tt-implement-phase` as the phase lead: it dispatches the role agents, waits for their reports, and keeps TaskTracker accurate.** The phase runs in this session because agent reports arrive here; a forked lead can't receive them. Code is written by the implementer agent, or by this session only when no subagent tool exists at all (`/tt-implement-phase`'s in-context mode).
 
 ```
-tt-implement-plan (this session — PLAN ORCHESTRATOR)
+tt-implement-plan (this session — ORCHESTRATOR and PHASE LEAD)
     │
-    │   ⛔ NEVER writes code   ⛔ NEVER uses Write/Edit   (in EVERY mode)
+    │   ⛔ NEVER writes code   ⛔ NEVER uses Write/Edit   (while Agent is available)
     │   (creates files only via tasktracker MCP calls)
     │
-    └── tt-implement-phase (per-phase executor)
+    └── follows tt-implement-phase for each phase, in this session
             │
-            ├── orchestrated mode → Subagents write code / create files / run tests
-            └── in-context mode  → tt-implement-phase does it directly (no subagent tool)
+            ├── orchestrated mode → implementer / mechanic / reviewer agents do the work;
+            │                       their reports arrive here as messages
+            └── in-context mode  → only when no subagent tool exists
 ```
 
 | DO | DO NOT |
 |---|---|
 | Read task tree, principles, requirements | Write code |
 | Set/pause/clear active task | Create files (other than via MCP) |
-| Invoke `/tt-implement-phase` per phase | Use Write/Edit/NotebookEdit |
+| Follow `/tt-implement-phase` per phase, dispatching its agents | Use Write/Edit/NotebookEdit |
 | Track plan-level progress via task status | Run implementation commands |
 | Log defects / learnings / frictions | Edit a locked phase body |
 | Pause between phases (unless the user asked for an unattended run) | Skip readiness gates |
+
+"Foreground", "no background agents" or "don't poll" in the user's words is about waiting, not about who writes the code: dispatch the role agents and wait for their reports, never polling with sleep loops. Only an explicit "write the code yourself in this session" overrides the orchestrator rule; ask when unsure. (On a Strago run, "do the work in the foreground" was read as permission to write a step in-context, and the user had to correct it.)
 
 If you find yourself about to use Write/Edit/NotebookEdit:
 
 ```
 ⛔ STOP — you are violating the plan-orchestrator pattern.
-✅ Delegate to /tt-implement-phase. (It will spawn subagents, or — with no
-   subagent tool — do the work in-context. Plan-level code-writing is the bug,
-   regardless of which mode the phase runs in.)
+✅ Dispatch the implementer agent, as /tt-implement-phase describes. (Only with no
+   subagent tool at all does the work happen in-context. Writing code here while
+   the Agent tool exists is the bug.)
 ```
 
 ## Workflow
@@ -178,7 +182,7 @@ tasktracker_updateTaskStatus({taskId: <phase-task-id>, status: "in_progress", ve
 
 `setActiveTask` returns a digest containing principles, the phase body, acceptance criteria, and (if present) the directional-work block. Read this carefully — it's the ground truth for the phase scope. **Do not** re-derive scope from the original brainstorm; the phase body is the locked contract.
 
-**Time comes from heartbeats, not timers.** Tasktracker books time only while tasktracker MCP calls keep arriving for the active task; a segment closes after ~5 minutes without one. `/tt-implement-phase` keeps the phase heartbeating while it works (`getCurrentTimer` at least every ~4 minutes, from itself and its subagents). Don't call `startTimer` — started timers create lease-less rows that absorb other sessions' cost (one phase read 12h18m against 3h16m of real work) — and don't switch or pause the active task while the phase is in flight.
+**Time comes from heartbeats, not timers.** Tasktracker books time only while tasktracker MCP calls keep arriving for the active task; a segment closes after ~5 minutes without one. While role agents work, they keep the time segment open (`getCurrentTimer` at least every ~4 minutes, confirmed by a `HEARTBEAT:` line in each report); this session can't heartbeat while it waits for them. Don't call `startTimer` — started timers create lease-less rows that absorb other sessions' cost (one phase read 12h18m against 3h16m of real work) — and don't switch or pause the active task while agents are working.
 
 #### 4b. Announce
 
@@ -196,7 +200,7 @@ Principles in play: <any directly relevant>
 Delegating to /tt-implement-phase...
 ```
 
-#### 4c. Delegate to /tt-implement-phase
+#### 4c. Run the phase with /tt-implement-phase
 
 ```
 Skill(skill="tt-implement-phase", args=<the block below>)
@@ -209,9 +213,10 @@ Phase title: <title>
 Sub-tasks: <list from getChildTasks>
 Requirements: <list of (id, title, criteria) from listAcceptanceCriteria>
 Principles: <surfaced from setActiveTask digest>
+Checkpoints: <per-unit when the user wants a report after each step>
 
 Execute all quality gates. Update each sub-task's status as it
-completes. Return PHASE_RESULT.
+completes. Finish with PHASE_RESULT.
 
 CRITICAL: do NOT update the phase description — it is locked
 once sub-tasks exist (HTTP 422). Any design rationale or new
@@ -219,11 +224,11 @@ finding goes to the "Design + decision note" sub-task (or a
 new sub-task if that one is already closed).
 ```
 
-`/tt-implement-phase` handles: dispatching the work by role (a Sonnet implementer, a Haiku mechanic, an Opus reviewer), sub-task `setActiveTask`/`updateTaskStatus` discipline, exit-condition verification via `/verification-loop`, integration testing, code review via `/code-review`, ADR compliance, task-tree synchronization, and insight logging. This skill does **not** do any of that work directly.
+The `Skill` call loads `/tt-implement-phase`'s procedure into **this** session, and you follow it as the phase lead: dispatching the work by role (a Sonnet implementer, a Haiku mechanic checking every unit, an Opus reviewer), sub-task `setActiveTask`/`updateTaskStatus` discipline, exit-condition verification via `/verification-loop`, integration testing, code review via `/devflow:code-review`, ADR compliance, task-tree synchronization and insight logging. The code itself comes from the implementer agent.
 
-**The call returns the result.** `/tt-implement-phase` runs as a forked subagent in the foreground: the `Skill` call returns when the phase is done, and its result is the `PHASE_RESULT`. (If an older Claude Code reports that the fork started in the background instead, wait for its completion notification and don't report on the phase, start the next one or touch the active task until it arrives.)
+**Agent reports arrive later, as messages.** Each `Agent` call returns at once; when nothing else is left to do, end the turn with one line naming what you're waiting for, and the agent's report resumes you. Don't poll with sleep loops, and don't write the code yourself while an agent is on it. When the user asked for a report after each step, pass `Checkpoints: per-unit`: the phase then prints a three-line checkpoint after every unit's independent check and carries on.
 
-**The pre-flight and completion summaries come inside the `PHASE_RESULT`** (`preflight`, `sub_tasks`, `evidence`, `insights_logged`) — a forked run can't write to the main chat. Relay them in the Step 5 block; don't restate more than that.
+**The phase ends with its `PHASE_RESULT`** (`preflight`, `sub_tasks`, `evidence`, `insights_logged`) written in this conversation. Use it for the Step 5 block; don't restate more than that.
 
 #### 4d. Insight logging (during, not after)
 
@@ -240,21 +245,21 @@ If a principle should be added based on this phase's experience, propose it to t
 
 #### 4e. Pause before any user wait
 
-Before any message that ends with a question, `tasktracker_pauseActiveTask`. The user's thinking time is not work time — `pauseActiveTask` closes the running time segment for exactly the wait, and the next tool call opens a fresh one. Never pause while a phase is in flight: the fork shares the pointer, and pausing would cut its segment.
+Before any message that ends with a question, `tasktracker_pauseActiveTask`. The user's thinking time is not work time — `pauseActiveTask` closes the running time segment for exactly the wait, and the next tool call opens a fresh one. Never pause while role agents are working: pausing would cut the segment their heartbeats keep open.
 
 #### 4f. Phase done
 
-Parse the `PHASE_RESULT` the call returned. The child leaves the active task on the phase so the writes below are attributed.
+Read the `PHASE_RESULT` the phase procedure wrote. It leaves the active task on the phase so the writes below are attributed.
 
 On `status: PASS`:
 
-1. `tasktracker_getTask({taskId: <phase-task-id>})`. The child normally completed the phase in its Step 8 (`phase_status: completed` or `completed_with_caveat`) — then there is nothing to write. If the phase isn't `completed`, check that every sub-task is `completed` (or archived, with a one-line reason logged), then `tasktracker_updateTaskStatus({taskId: <phase-task-id>, status: "completed", version})`.
-2. `tasktracker_clearActiveTask()` — this session owns the pointer; the child left it for you.
+1. `tasktracker_getTask({taskId: <phase-task-id>})`. The procedure normally completed the phase in its Step 8 (`phase_status: completed` or `completed_with_caveat`) — then there is nothing to write. If the phase isn't `completed`, check that every sub-task is `completed` (or archived, with a one-line reason logged), then `tasktracker_updateTaskStatus({taskId: <phase-task-id>, status: "completed", version})`.
+2. `tasktracker_clearActiveTask()` — Step 8 of the phase left the pointer on the phase for you.
 3. Show the user the result block (Step 5).
 
-On `status: BLOCKED` or `FAILED`, **stop**. Put the blocker and options to the user (see "Handling blockers" below). Do not auto-proceed.
+On `status: FAILED` (or `BLOCKED`, which only an unattended run returns), **stop**. Put it to the user (see "Handling blockers" below). Do not auto-proceed.
 
-If the phase was completed with a caveat (`phase_status: completed_with_caveat`), the child called `completeWithCaveat` itself — just propagate the caveat in the user-facing summary.
+If the phase was completed with a caveat (`phase_status: completed_with_caveat`), the procedure called `completeWithCaveat` itself — just propagate the caveat in the user-facing summary.
 
 ### Step 5: Between phases — user confirmation
 
@@ -338,13 +343,13 @@ Active task cleared. Ready for review.
 
 ## Handling blockers
 
-When `/tt-implement-phase` returns `BLOCKED` (or `FAILED`):
+A blocker found mid-phase is put to the user by the phase procedure itself (its blocker protocol: persist it, pause, ask, continue from the blocked step). The steps below are for a phase that ended `FAILED`, or `BLOCKED` in an unattended run:
 
 1. **STOP** further phase execution.
-2. **PAUSE** — `tasktracker_pauseActiveTask()`. The child left the pointer on the phase; the user's thinking time isn't work.
+2. **PAUSE** — `tasktracker_pauseActiveTask()`. The pointer is still on the phase; the user's thinking time isn't work.
 3. **ASK** with `AskUserQuestion`: the blocker, the options from `PHASE_RESULT.blocked.options`, and your recommendation. A FAILED result has no options — offer retrying the failed step, a follow-up phase, or abort.
 4. **RESUME or ABORT** based on the answer:
-   - Resume → re-invoke `/tt-implement-phase` as in 4c, adding `Resume From Step: <blocked.step>`, the user's decision, and the BLOCKED `PHASE_RESULT` verbatim, then continue at 4f with the new result.
+   - Resume → run `/tt-implement-phase` again as in 4c, adding `Resume From Step: <blocked.step>`, the user's decision, and the earlier `PHASE_RESULT` verbatim, then continue at 4f with the new result.
    - Abort → `tasktracker_clearActiveTask()`. The phase keeps its blocked sub-task, whose `blockedReason` records why.
 
 Don't auto-fix. Don't auto-revise the plan. Don't auto-edit the phase body (it's locked anyway). The user owns the call.
@@ -382,10 +387,11 @@ This is not bureaucracy — it's the audit trail. The phase body shows "what we 
 
 ## Anti-patterns to avoid
 
-- ❌ Writing code in this session. Delegate to `/tt-implement-phase`.
+- ❌ Writing code in this session while the Agent tool is available — including when the user asked for "foreground" work. Dispatch the implementer.
 - ❌ Skipping `setActiveTask` before phase work — principles won't surface.
-- ❌ Calling `startTimer` for phase time, or switching/pausing the active task while a phase is in flight. Time comes from heartbeats (4a).
-- ❌ Reporting on a phase, or starting the next one, before its `PHASE_RESULT` is in.
+- ❌ Calling `startTimer` for phase time, or switching/pausing the active task while agents are working. Time comes from heartbeats (4a).
+- ❌ Polling agents with sleep/wait loops, or saying "I'll wait for the agent" and then ending the phase. End the turn; the report resumes you.
+- ❌ Reporting on a phase as done, or starting the next one, before its `PHASE_RESULT` is written.
 - ❌ Forgetting `pauseActiveTask` before user-wait messages.
 - ❌ Editing a phase description after sub-tasks exist (HTTP 422).
 - ❌ Auto-fixing a blocker without user confirmation.
@@ -397,15 +403,15 @@ This is not bureaucracy — it's the audit trail. The phase body shows "what we 
 ## Quality checklist (per phase)
 
 - [ ] `setActiveTask` set before the first artifact-producing call.
-- [ ] No `startTimer`; the active task was not switched or paused while the phase was in flight.
+- [ ] No `startTimer`; the active task was not switched or paused while agents were working.
 - [ ] Phase body read from the `setActiveTask` digest (not re-derived).
 - [ ] Principles surfaced and acknowledged where they constrain the phase.
-- [ ] `/tt-implement-phase` did the actual work; this session orchestrated and acted on the returned `PHASE_RESULT`.
+- [ ] The role agents did the code work; this session led the phase per `/tt-implement-phase` and acted on its `PHASE_RESULT`.
 - [ ] Sub-tasks marked `completed` as each finished.
 - [ ] No edits to the phase description.
 - [ ] Defects/learnings/frictions logged via tasktracker insights, not chat.
 - [ ] `pauseActiveTask` before every user-wait message.
-- [ ] Phase marked `completed` only when all sub-tasks are completed (or archived with a reason); active task cleared after the phase returned.
+- [ ] Phase marked `completed` only when all sub-tasks are completed (or archived with a reason); active task cleared after the phase finished.
 - [ ] User confirmed before moving to the next phase (unless they asked for an unattended run).
 
 ## Quality checklist (final)
@@ -433,11 +439,11 @@ This is not bureaucracy — it's the audit trail. The phase body shows "what we 
 
 ## Key principles
 
-1. **Delegate phase execution** — `/tt-implement-phase` for all phase work.
-2. **Orchestrate, don't implement** — this skill coordinates, never codes.
-3. **Active-task discipline** — `setActiveTask` / `pauseActiveTask` / `clearActiveTask` are not optional; time comes from heartbeats, never `startTimer`. Leave the pointer alone while a phase is in flight.
+1. **Lead each phase by `/tt-implement-phase`** — in this session, where the agents' reports arrive.
+2. **Orchestrate, don't implement** — this session coordinates and dispatches; the implementer agent codes.
+3. **Active-task discipline** — `setActiveTask` / `pauseActiveTask` / `clearActiveTask` are not optional; time comes from heartbeats, never `startTimer`. Leave the pointer alone while agents are working.
 4. **Locked phase body is sacred** — sub-tasks are the right place for mid-implementation notes.
 5. **Insights belong in tasktracker** — `logDefect` / `logLearning` / `logFriction`, not just chat.
 6. **Pause between phases by default** — run them back-to-back only when the user asked to run the whole plan or run unattended.
 7. **Surface blockers immediately** — the user owns the resolution call.
-8. **Trust `/tt-implement-phase` results** — act on the structured `PHASE_RESULT` the call returns.
+8. **Act on the `PHASE_RESULT`** — the structured block the phase procedure ends with.

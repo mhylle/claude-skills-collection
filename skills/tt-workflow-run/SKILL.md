@@ -5,8 +5,8 @@ description: >-
   workflow_run end-to-end: resumes the project's open run or starts one
   through the start gates (lifecycle completeness, zero defects in), then
   loops over getNextReadyTask — activate the slice's phase, take a drift
-  baseline, delegate the phase to /tt-implement-phase and wait for its
-  PHASE_RESULT, re-scan drift and defects, read measured time, and call
+  baseline, run the phase by following /tt-implement-phase in this session
+  until its PHASE_RESULT, re-scan drift and defects, read measured time, and call
   workflow_recordIteration (per-slice architecture and defect gates plus a
   versioned, measured-only by-layer effort projection) — until the backlog
   drains, then workflow_completeRun. Logs the run's own insights (no-data
@@ -63,14 +63,15 @@ If you just want to execute phases in order with no measured run, use `/tt-imple
 
 ## CRITICAL: Orchestrator pattern (kept from /tt-implement-plan)
 
-> **THIS SESSION IS THE RUN ORCHESTRATOR + the SINGLE writer of run state. IT NEVER IMPLEMENTS CODE DIRECTLY — it delegates each slice to `/tt-implement-phase`.** That holds in every environment. One level down, `/tt-implement-phase` writes code via subagents when a subagent-dispatch tool exists, or **in-context itself when none does** (its graceful-degradation mode). Run-state writes (workflow_* MCP calls) are always yours and always main-context, regardless of mode.
+> **THIS SESSION IS THE RUN ORCHESTRATOR + the SINGLE writer of run state. IT NEVER IMPLEMENTS CODE DIRECTLY — for each slice it follows `/tt-implement-phase` as the phase lead, in this session, and the role agents write the code.** The slice runs here because agent reports arrive in this session; a forked lead can't receive them. Only with no subagent tool at all does the code get written in-context (the graceful-degradation mode). "Foreground" or "don't poll" in the user's words is about waiting, not about who writes the code. Run-state writes (workflow_* MCP calls) are always yours and always main-context, regardless of mode.
 
 ```
 tt-workflow-run (this session — RUN ORCHESTRATOR + the SINGLE writer of run state)
-    │   ⛔ NEVER writes code     ⛔ NEVER uses Write/Edit     (in EVERY mode)
-    └── /tt-implement-phase (per-slice executor)
-            ├── orchestrated mode → Subagents write code / create files / run tests
-            └── in-context mode  → tt-implement-phase does it directly (no subagent tool)
+    │   ⛔ NEVER writes code     ⛔ NEVER uses Write/Edit     (while Agent is available)
+    └── follows /tt-implement-phase for each slice, in this session
+            ├── orchestrated mode → implementer / mechanic / reviewer agents do the work;
+            │                       their reports arrive here as messages
+            └── in-context mode  → only when no subagent tool exists
 ```
 
 | DO (this session) | DO NOT |
@@ -78,11 +79,11 @@ tt-workflow-run (this session — RUN ORCHESTRATOR + the SINGLE writer of run st
 | Create + drive the `workflow_run` (start/record/pause/complete) | Write code or edit files |
 | `setActiveTask` / `pauseActiveTask` / `clearActiveTask` | Edit a locked phase body (HTTP 422) |
 | Pick the next slice via `getNextReadyTask` | Invent a new backend Workflow API (none exists — Fork B) |
-| Delegate each slice to `/tt-implement-phase` | Estimate a slice's duration (principle #11) |
+| Lead each slice by `/tt-implement-phase` | Estimate a slice's duration (principle #11) |
 | Run the two start gates + three per-slice gates | Advance past a blocked gate without resolving it |
 | Log the run's own defects/learnings/frictions | Bury insights in chat narrative |
 
-This skill is **main-loop-only** (it needs to ask the user at gates): it calls sibling skills via the `Skill` tool, never via an `Agent` dispatch. `/tt-implement-phase` is a forked skill that runs in the foreground, so its `Skill` call returns the `PHASE_RESULT` when the phase is done (Step 2c). The `tasktracker_workflow_*` MCP tools are module-cached at MCP boot — if one isn't visible, the MCP needs a restart (mcp-server/CLAUDE.md), not a workaround. **This restart caveat applies ONLY to those MCP tools.** The built-in `Workflow` and `Agent` tools are top-level main-loop tools — never MCP, never in `ToolSearch`, never affected by an MCP restart; don't conflate the two.
+This skill is **main-loop-only** (it needs to ask the user at gates): it calls sibling skills via the `Skill` tool, never via an `Agent` dispatch. Invoking `/tt-implement-phase` loads its procedure into this session, which then leads the slice: agents are dispatched, their reports arrive here as messages, and the slice ends with the `PHASE_RESULT` (Step 2c). The `tasktracker_workflow_*` MCP tools are module-cached at MCP boot — if one isn't visible, the MCP needs a restart (mcp-server/CLAUDE.md), not a workaround. **This restart caveat applies ONLY to those MCP tools.** The built-in `Workflow` and `Agent` tools are top-level main-loop tools — never MCP, never in `ToolSearch`, never affected by an MCP restart; don't conflate the two.
 
 ## The MCP surface this skill uses (all already shipped, P100/P101)
 
@@ -181,22 +182,23 @@ loop:
   # 2b. Pre-slice drift baseline (Gate 3 input — baseline-subtracted so only the slice's delta is charged)
   baselineDrift = tasktracker_scanArchitectureDrift({projectId})   # capture missing/stale/orphaned key arrays
 
-  # 2c. Delegate the actual work to /tt-implement-phase (forked, foreground — the call returns PHASE_RESULT)
+  # 2c. Run the slice by /tt-implement-phase, in this session (you are the phase lead)
   Skill(skill="tt-implement-phase", args=
     "Execute the slice. Caller: tt-workflow-run. Phase task id: <slice.id>. Project: <name + id>.
-     Sub-tasks (getChildTasks), linked requirements + ACs, principles from the setActiveTask digest.")
-    /tt-implement-phase: does the code (Sonnet implementer, Haiku mechanic, Opus reviewer), registers the architecture delta in the SAME
+     Sub-tasks (getChildTasks), linked requirements + ACs, principles from the setActiveTask digest.
+     Unattended: yes   # only when this run is wrapped in /loop with no one to answer")
+    /tt-implement-phase: the role agents do the code (Sonnet implementer, Haiku mechanic per unit, Opus reviewer); registers the architecture delta in the SAME
     slice (principle #8 — so the slice's own drift re-scan stays clean), runs verification-loop +
     code-review + ADR compliance, auto-logs defects/learnings/frictions with relatedTaskId = slice.id,
     keeps the slice heartbeating, and leaves the active task on the slice for you.
-  Parse the PHASE_RESULT the call returns. (If an older Claude Code reports that the fork started in the
-    background, wait for its completion notification; until then don't scan, read time, or touch the active task.)
-  PHASE_RESULT BLOCKED / FAILED →
+  Agents report asynchronously: when nothing else is left, end the turn naming what you wait for; the
+    report resumes you. Never poll with sleep loops. Blockers mid-slice are asked by the procedure itself.
+  PHASE_RESULT FAILED (or BLOCKED, from an unattended run) →
     tasktracker_workflow_pauseRun({runId, reason: "<blocked step — what is needed>"})
     tasktracker_pauseActiveTask()
-    ask the user (AskUserQuestion) with PHASE_RESULT.blocked.options; on resume:
+    ask the user (AskUserQuestion) with the PHASE_RESULT's options; on resume:
     tasktracker_workflow_resumeRun({runId})        # the pointer is still on the slice
-    re-invoke 2c with Resume From Step + the decision + the BLOCKED PHASE_RESULT, and wait again.
+    run 2c again with Resume From Step + the decision + the earlier PHASE_RESULT.
     Never record an iteration for an unfinished slice.
 
   # 2d. Slice-end gate inputs (only after PHASE_RESULT status PASS)
@@ -226,7 +228,7 @@ loop:
   # Don't clear the active task between slices — the next 2a moves it; Step 3 clears it.
 ```
 
-**Time comes from heartbeats, not timers.** `getTimeSummary` only sees time-log segments that tasktracker MCP calls kept alive; a segment closes after ~5 minutes without one. `/tt-implement-phase` keeps the slice heartbeating (`getCurrentTimer` at least every ~4 minutes, from itself and its subagents), and this session doesn't switch or pause the active task while it runs. Never call `startTimer` — started timers create lease-less rows that absorb other sessions' cost (one phase read 12h18m against 3h16m of real work); `stopTimer` is only for a timer found still running on a slice at its close.
+**Time comes from heartbeats, not timers.** `getTimeSummary` only sees time-log segments that tasktracker MCP calls kept alive; a segment closes after ~5 minutes without one. While the role agents work they keep the slice heartbeating (`getCurrentTimer` at least every ~4 minutes, confirmed by a `HEARTBEAT:` line in each report; this session can't heartbeat while it waits), and this session doesn't switch or pause the active task while they run. Never call `startTimer` — started timers create lease-less rows that absorb other sessions' cost (one phase read 12h18m against 3h16m of real work); `stopTimer` is only for a timer found still running on a slice at its close.
 
 #### The run's OWN insights (R3 — log these, don't narrate them)
 
@@ -277,12 +279,13 @@ On any 412 the run sits in `enforcing` (start) or `blocked_on_gate` (advance). `
 
 ## Anti-patterns to avoid
 
-- ❌ Writing code in this session. Delegate every slice to `/tt-implement-phase`.
+- ❌ Writing code in this session while the Agent tool is available, including when the user asked for "foreground" work. Dispatch the implementer, as `/tt-implement-phase` describes.
+- ❌ Polling agents with sleep/wait loops, or saying "I'll wait" and then ending the slice. End the turn; the report resumes you.
 - ❌ Inventing a backend Workflow API. Fork B is loose coupling — the loop is a skill over existing MCP tools only.
 - ❌ Estimating a slice's duration when heartbeating was off. The answer is "no data" → friction (principle #11). Never synthesize a `measuredMs`.
 - ❌ Skipping `setActiveTask` before a slice — no heartbeats, no measured time, the projection goes blind.
-- ❌ Calling `startTimer`, or switching/pausing the active task while `/tt-implement-phase` runs.
-- ❌ Scanning drift, reading time, or recording an iteration before `/tt-implement-phase` has returned its `PHASE_RESULT`.
+- ❌ Calling `startTimer`, or switching/pausing the active task while role agents are working.
+- ❌ Scanning drift, reading time, or recording an iteration before the slice's `PHASE_RESULT` is written.
 - ❌ Starting a new run while the project already has a `running`, `paused` or `blocked_on_gate` one — resume it (Step 0).
 - ❌ Routing around a gate (editing data to dodge a 412, or skipping a blocked slice). Resolve the cause.
 - ❌ Editing a locked phase/slice body. Design notes go to a sub-task; the body is the contract.
@@ -295,12 +298,12 @@ On any 412 the run sits in `enforcing` (start) or `blocked_on_gate` (advance). `
 
 - [ ] Step 0: project located; an open run (`running` / `paused` / `blocked_on_gate`) resumed rather than duplicated; otherwise Gate 1 inputs (solution description, requirements satisfied, zero unlinked) checked and Gate 2 baseline (`.open`) noted.
 - [ ] Step 1: `startRun` ran the gates; strict by default; `acknowledgeBaseline` used ONLY for the documented bootstrap case, with the inaugural slice resolving a baseline defect.
-- [ ] Step 2: every slice was a phase (a non-phase pick mapped to its phase), did `setActiveTask` + `setCurrentTask`, captured a pre-slice drift baseline, delegated to `/tt-implement-phase` and waited for its `PHASE_RESULT`, re-scanned drift + re-read defect stats, read `getTimeSummary`, and `recordIteration`'d (with the slice active) with the right layer + drift arrays + `remainingByLayer`. No `startTimer`.
+- [ ] Step 2: every slice was a phase (a non-phase pick mapped to its phase), did `setActiveTask` + `setCurrentTask`, captured a pre-slice drift baseline, led the slice by `/tt-implement-phase` until its `PHASE_RESULT`, re-scanned drift + re-read defect stats, read `getTimeSummary`, and `recordIteration`'d (with the slice active) with the right layer + drift arrays + `remainingByLayer`. No `startTimer`.
 - [ ] R3: slice insights carry `relatedTaskId` + run_id/iteration_id; the run logged its OWN "no data" friction whenever heartbeating was off.
 - [ ] `pauseActiveTask` before every human-gate message.
 - [ ] No locked-body edits; no invented backend API; no synthesized durations.
 - [ ] Step 3: `completeRun`; projection series populated; `.open` back at baseline; `clearActiveTask`.
-- [ ] No code written in this session (Write/Edit unused); all slice code came from `/tt-implement-phase` (via its subagents, or its in-context mode when no subagent tool exists).
+- [ ] No code written in this session (Write/Edit unused); all slice code came from the role agents (or the in-context mode when no subagent tool exists).
 
 ## Resources
 
@@ -309,7 +312,7 @@ This skill reuses the tasktracker references already shipped with the sibling sk
 - `/tt-workflow-audit` `references/workflow-tasktracker-contract.md` — the shared `tt-workflow-*` contract (parent owns writes, no Date/RNG in any workflow script, MCP reachability, prod safety). This skill is sequential (single active task) — it does NOT use the parallel `Workflow` tool — but the active-task / locked-body / prod-write rules in that contract still apply. **Namespace note:** the `tasktracker_workflow_*` MCP tools this skill uses (`workflow_startRun`, `workflow_recordIteration`, …) are run-TRACKING tools — NOT the built-in `Workflow` orchestration tool; they only share the word "workflow". The siblings `/tt-workflow-audit` and `/tt-workflow-build` are the ones that invoke the built-in `Workflow` tool.
 
 ### Related skills
-- `/tt-implement-phase` — per-slice executor. This skill delegates every slice to it.
+- `/tt-implement-phase` — the per-slice procedure. This session follows it for every slice.
 - `/tt-implement-plan` — the no-run-entity alternative: executes phases in order without projection or per-slice gates.
 - `/tt-create-plan` — upstream: produces the requirements + linked tasks Gate 1 checks for.
 - `/loop` — optional outer cadence; orthogonal to the run.
@@ -317,7 +320,7 @@ This skill reuses the tasktracker references already shipped with the sibling sk
 
 ## Key principles
 
-1. **Orchestrate, never implement.** `/tt-implement-phase` (→ subagents) does the code; this session drives the run.
+1. **Orchestrate, never implement.** The role agents do the code; this session drives the run and leads each slice by `/tt-implement-phase`.
 2. **Loose coupling (Fork B).** The run is pure tasktracker data over existing MCP tools; no backend Workflow API; `/loop` optional.
 3. **Enforce, don't record.** The three gates (lifecycle, zero-defects-in, architecture-followed) are 412s, not advisories.
 4. **Measured time only (principle #11).** Projection consumes `getTimeSummary` (stopped segments); no heartbeat data ⇒ "no data" friction, never an estimate.

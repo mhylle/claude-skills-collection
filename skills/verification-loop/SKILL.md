@@ -186,11 +186,15 @@ CHECK_3_LINT_VERIFICATION:
 
 **Purpose:** ensure all tests pass and new code has appropriate coverage.
 
-**PASS:** all tests pass (exit 0), no unjustified skips, coverage thresholds met (if configured), no flaky failures.
+**PASS:** every test project reported, all tests pass (exit 0) in every stability run, no unjustified skips, coverage thresholds met (if configured).
 
-**FAIL:** any test failure, coverage below threshold, test timeout, test infrastructure errors.
+**FAIL:** any test failure, a test project that produced no result (NOT RUN), a test whose result differs between runs (FLAKY), coverage below threshold, test timeout, test infrastructure errors.
 
 Commands → language reference.
+
+**Account for every test project.** List the test projects first (for .NET from the `.sln` or `dotnet sln list`; for workspaces and monorepos from the workspace config) and compare them with the projects that printed a result. Report each missing project as **NOT RUN**, then run it on its own and report its counts. A run is green only when every test project reported: `dotnet test <sln>` skips a test project when a project it references fails to run and prints nothing for it, so summing the summary lines reports a green-looking subset.
+
+**Check stability.** Run the full suite three times by default, and five times when the change touches performance, allocation, timing or concurrency tests. Report every test whose result differs between runs as FLAKY, with its fail/pass counts. When one full run takes longer than about ten minutes, run the full suite once and repeat only the test projects the change touched, plus any that failed or were flaky.
 
 **Failure handling:** identify failing tests → categorize (test bug → fix the test; implementation bug → fix the code; environmental → fix test setup) → spawn fix subagent → re-run failing tests first (faster feedback), then full suite after fix. Max 3 retries.
 
@@ -205,6 +209,10 @@ CHECK_4_TEST_VERIFICATION:
   TESTS_PASSED: [count]
   TESTS_FAILED: [count]
   TESTS_SKIPPED: [count]
+  TEST_PROJECTS: [reported]/[expected]
+  NOT_RUN: [] | [ { project, counts when run alone } ]
+  STABILITY_RUNS: [count]
+  FLAKY: [] | [ { test, failed, passed } ]
   COVERAGE: [percent]
   FAILURES: [] | [ { test, file, error } ]
 ```

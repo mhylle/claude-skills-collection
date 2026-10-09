@@ -25,46 +25,58 @@ Detailed subagent-spawning patterns and output formats for each of the 8 pipelin
 3. Identify which tasks can run in parallel (independent file sets).
 4. Spawn **test subagents first** (verification-first pattern — unless TDD mode is active, in which case see `references/tdd-mode.md`).
 5. Spawn implementation subagents with the coding-standards reference embedded.
-6. Monitor completion, collect created/modified files.
+6. Collect created/modified files as the agents' reports arrive. Each report comes back as a message that resumes you (SKILL.md §Execution contract); independent dispatches go in one message so they run in parallel.
 
 **Subagent-spawning examples:**
 
 ```
-# Writing tests
-Task (run_in_background: true): "Write unit tests for SummaryAgentService.
+# Writing tests (dispatched first)
+Agent({
+  description: "Write SummaryAgent tests",
+  subagent_type: "general-purpose",
+  prompt: "Write unit tests for SummaryAgentService.
 
-Context: Phase 5b-ii - SummaryAgent Service
-Location: agentic-core/src/agents/implementations/summary-agent/
+    Context: Phase 5b-ii - SummaryAgent Service
+    Location: agentic-core/src/agents/implementations/summary-agent/
 
-Test scenarios:
-- Successful summarization
-- Retry with feedback
-- Error handling
+    Test scenarios:
+    - Successful summarization
+    - Retry with feedback
+    - Error handling
 
-RESPONSE FORMAT: STATUS, FILES created, test count. Write output to logs/."
+    RESPONSE FORMAT: STATUS, FILES created, test count. Write output to logs/."
+})
 
-# Implementation
-Task (run_in_background: true): "Implement SummaryAgentService.
+# Implementation (after the test writer reports)
+Agent({
+  description: "Implement SummaryAgentService",
+  subagent_type: "general-purpose",
+  prompt: "Implement SummaryAgentService.
 
-Context: Phase 5b-ii - SummaryAgent Service
-Requirements from plan: [list]
-Must pass the tests at: [test file path]
+    Context: Phase 5b-ii - SummaryAgent Service
+    Requirements from plan: [list]
+    Must pass the tests at: [test file path]
 
-CODING STANDARDS (MANDATORY):
-- Services: <500 lines, single responsibility
-- Interfaces: Required for DTOs and response types
-- Errors: Domain exceptions, no empty catch blocks
-- Logging: Use project logger, no console.log
-Ref: docs/standards/CODING_STANDARDS.md
+    CODING STANDARDS (MANDATORY):
+    - Services: <500 lines, single responsibility
+    - Interfaces: Required for DTOs and response types
+    - Errors: Domain exceptions, no empty catch blocks
+    - Logging: Use project logger, no console.log
+    Ref: docs/standards/CODING_STANDARDS.md
 
-RESPONSE FORMAT: STATUS, FILES created/modified, ERRORS if any."
+    RESPONSE FORMAT: STATUS, FILES created/modified, ERRORS if any."
+})
 
 # Verification
-Task (run_in_background: true): "Run build and test verification.
+Agent({
+  description: "Verify phase 5b-ii build",
+  subagent_type: "general-purpose",
+  prompt: "Run build and test verification.
 
-Commands: npm run build && npm run lint && npm test
-Report: PASS/FAIL per command, error details if any.
-Write full output to logs/verify-phase-5b-ii.log"
+    Commands: npm run build && npm run lint && npm test
+    Report: PASS/FAIL per command, error details if any.
+    Write full output to logs/verify-phase-5b-ii.log"
+})
 ```
 
 **Output format:**
@@ -138,7 +150,7 @@ phase_config:
 |---|---|---|
 | REST API | Make HTTP requests, verify responses | curl, httpie, fetch subagent |
 | GraphQL | Execute queries/mutations | curl with GraphQL payload |
-| Web UI | Navigate, interact, assert | `browser-verification-agent` — **one test per spawn** |
+| Web UI | Navigate, interact, assert | `browser-verification-agent` — **one test per spawn** (or general-purpose with claude-in-chrome if it isn't in your agent list) |
 | Database | Query and verify data | psql, mysql, prisma |
 | Background jobs | Trigger and verify completion | API calls + polling |
 | File processing | Provide input, check output | Bash, Read tool |
@@ -146,25 +158,35 @@ phase_config:
 **Subagent examples:**
 
 ```
-# API testing (general-purpose subagent)
-Task: "Test the new /api/users endpoint.
+# API testing
+Agent({
+  description: "Test /api/users endpoint",
+  subagent_type: "general-purpose",
+  prompt: "Test the new /api/users endpoint.
 
-Make these API calls and report results:
-1. POST /api/users with valid payload - expect 201
-2. POST /api/users with invalid email - expect 400
-3. GET /api/users/:id - expect 200 with user data
-4. GET /api/users/nonexistent - expect 404
+    Make these API calls and report results:
+    1. POST /api/users with valid payload - expect 201
+    2. POST /api/users with invalid email - expect 400
+    3. GET /api/users/:id - expect 200 with user data
+    4. GET /api/users/nonexistent - expect 404
 
-RESPONSE FORMAT: STATUS, test results summary, ERRORS if any."
+    RESPONSE FORMAT: STATUS, test results summary, ERRORS if any."
+})
 
 # UI testing — ONE test per agent spawn
-Task(subagent_type="browser-verification-agent"): "Verify login with valid credentials.
+# (devflow:browser-verification-agent when installed as a plugin; or
+#  general-purpose with claude-in-chrome if it isn't in your agent list)
+Agent({
+  description: "Verify login flow",
+  subagent_type: "browser-verification-agent",
+  prompt: "Verify login with valid credentials.
 
-base_url: http://localhost:3000
-test_description: Navigate to /login, enter 'test@example.com' in email field,
-                  enter 'password123' in password field, click Login button
-expected_outcome: URL changes to /dashboard, welcome message visible
-session_context: fresh"
+    base_url: http://localhost:3000
+    test_description: Navigate to /login, enter 'test@example.com' in email field,
+                      enter 'password123' in password field, click Login button
+    expected_outcome: URL changes to /dashboard, welcome message visible
+    session_context: fresh"
+})
 ```
 
 **UI testing response format** (from browser-verification-agent):
@@ -331,9 +353,8 @@ User Verification (only if truly not automatable):
   - [ ] [Third-party dashboard verification]
 
 Learnings (from continuous-learning):
-  Proposed: [learned-<slug> — description, one per line, or "none"]
-  (A forked phase can't ask for confirmation, so nothing is written yet —
-   approve them and re-run /continuous-learning to save.)
+  Saved: [learned-<slug> — description, one per line, or "none"]
+  (continuous-learning confirmed these with the user before writing them.)
 
 ═══════════════════════════════════════════════════════════════
 PHASE STATUS: ✅ COMPLETE - Ready for next phase
@@ -345,5 +366,5 @@ PHASE STATUS: ✅ COMPLETE - Ready for next phase
 **After the report:**
 1. Output final Progress Tracker showing all steps ✅ DONE.
 2. Invoke `continuous-learning` skill to capture patterns from this phase (phase completion is a natural learning boundary — user may `/clear` before next phase, and the patterns are freshest now).
-3. Present the report.
-4. **Now** (and only now) await user confirmation before proceeding to the next phase.
+3. Present the report, followed by the `PHASE_RESULT` block (`references/return-value.md`).
+4. **Now** (and only now) the phase is done. The next phase waits for the user: at implement-plan's confirmation point when implement-plan invoked you (it continues from the `PHASE_RESULT` block in this session), otherwise for the user's next request.

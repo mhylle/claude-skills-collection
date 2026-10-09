@@ -1,6 +1,6 @@
 # Return value
 
-When `implement-phase` is called by `implement-plan`, it returns a structured result. This is the full schema.
+Step 8 ends with this block: the phase's closing summary, written in the same session that ran the phase. When `implement-plan` invoked the phase, it reads the block and continues from it. This is the full schema.
 
 ```
 PHASE_RESULT:
@@ -48,7 +48,8 @@ PHASE_RESULT:
     # - "Check email arrived in inbox"
 
   learnings:
-    proposed: ["learned-<slug> — description"]   # from continuous-learning; nothing written until the user approves
+    saved: ["learned-<slug> — description"]   # from continuous-learning, after the user approved them
+    proposed: []                               # unattended runs only: no one could approve, so nothing was written
 
   ready_for_next: true | false
   blocker: null | "description of blocker"
@@ -58,7 +59,7 @@ PHASE_RESULT:
 
 - `COMPLETE` — all required steps passed, phase is shippable.
 - `FAILED` — one or more steps exhausted retries without passing. `implement-plan` should decide whether to pause the whole plan.
-- `BLOCKED` — hit a genuine blocking element (permission, infrastructure, credentials, etc.). `blocker` field describes what unblocks it.
+- `BLOCKED` — hit a genuine blocking element (permission, infrastructure, credentials, etc.) in a run the caller said is unattended, so no one could be asked. In an attended run the phase asks the user and resumes instead. `blocker` field describes what unblocks it.
 
 ## Step status values per step
 

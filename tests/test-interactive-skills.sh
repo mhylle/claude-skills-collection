@@ -19,13 +19,18 @@ SKILLS_DIR="$REPO_ROOT/skills"
 
 # Skills whose SKILL.md body depends on a live user turn-by-turn, or that must
 # hold the parent's tool set (Agent/Workflow/Write) to do their job at all.
+# The phase leads (implement-phase, tt-implement-phase) belong here too: Agent
+# calls are asynchronous and their reports arrive in the top-level session, so a
+# forked lead never hears back from its own agents.
 INTERACTIVE_SKILLS=(
   agent-creator
   brainstorm
   create-plan
+  implement-phase
   implement-plan
   tt-create-build-loop
   tt-create-plan
+  tt-implement-phase
   tt-implement-plan
   tt-workflow-audit
   tt-workflow-build
@@ -40,8 +45,6 @@ INTERACTIVE_SKILLS=(
 # that writes a file or spawns subagents cannot run under them.
 FORKED_SKILLS=(
   codebase-research
-  implement-phase
-  tt-implement-phase
 )
 
 PASS_COUNT=0

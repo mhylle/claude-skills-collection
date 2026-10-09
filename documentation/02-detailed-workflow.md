@@ -885,8 +885,8 @@ This creates a D3.js force-directed graph showing:
 | tt-workflow-run | Interactive (orchestrator) | main conversation | - | All |
 | workflow-guide | Interactive | main conversation | - | Read |
 | agent-creator | Interactive | main conversation | - | All |
-| implement-phase | Orchestrator | fork | - | All |
-| tt-implement-phase | Orchestrator | fork | - | All |
+| implement-phase | Orchestrator (phase lead) | main conversation | - | All |
+| tt-implement-phase | Orchestrator (phase lead) | main conversation | - | All |
 | codebase-research | Orchestrator | fork | - | Read, Glob, Grep, Bash, Agent |
 | code-review | Read-only | - | - | Read, Grep, Glob, Bash |
 | adversarial-reviewer | Read-only (orchestrator) | - | - | Read, Grep, Glob, Bash, Agent |

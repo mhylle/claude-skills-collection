@@ -14,7 +14,7 @@
   - [Locked phase body: what to do instead](#locked-phase-body-what-to-do-instead)
 - [Step 7: Insight capture](#step-7-insight-capture)
 - [Step 8: Phase close](#step-8-phase-close)
-- [Checklist before returning](#checklist-before-returning)
+- [Checklist before the PHASE_RESULT](#checklist-before-the-phase_result)
 <!-- /contents -->
 
 The detail for each of the phase's steps: the TaskTracker calls, who does the work, the gate, and what to record for the `PHASE_RESULT`. SKILL.md has the summary table; open this file when you run the steps.
@@ -47,29 +47,43 @@ Surface only the principles that materially constrain this phase. If the directi
 Walk the sub-tasks in order. The standard phase templates already put the test sub-tasks first; don't reorder without a reason.
 
 ```
-for each sub-task:
+for each sub-task (one unit):
   1. tasktracker_setActiveTask({taskId: <sub-task-id>})
   2. tasktracker_updateTaskStatus({taskId: <sub-task-id>, status: "in_progress", version})
-  3. dispatch the implementer with the sub-task brief (references/dispatch.md) and use
-     its STATUS block when it returns
-  4. PASS    → tasktracker_updateTaskStatus({..., status: "completed", version})
-     FAIL    → fix round (SKILL.md "Fix rounds"); out of rounds → return FAILED
-     BLOCKED → blocker protocol (references/phase-result.md)
+  3. dispatch the implementer with the sub-task brief (references/dispatch.md); note it as
+     in flight and end your turn — its report arrives as a message
+  4. implementer PASS → dispatch the mechanic for the unit check (dispatch.md); end your turn
+     implementer FAIL or FLAKY → fix round (SKILL.md "Fix rounds")
+     implementer BLOCKED → blocker protocol (references/phase-result.md)
+  5. mechanic RESULT PASS, every test project reported, nothing flaky
+        → tasktracker_updateTaskStatus({..., status: "completed", version})
+        → checkpoint, when Checkpoints: per-unit
+     anything else → fix round with the mechanic's facts, then a fresh unit check
 ```
 
-Keep a running list of every `FILES` line; Steps 2–8 use it.
+Sub-tasks that touch different files may run in parallel: dispatch their implementers in one message and check each unit as its report arrives. Keep a running list of every `FILES` line; Steps 2–8 use it.
+
+**The unit check, not the implementer's counts, decides the unit.** The implementer runs its own tests; the mechanic then runs the build and the full test suite once, independently, with the test-project inventory (every test project must report, `verification-loop` Check 4). Stability re-runs are for Step 2.
+
+**Checkpoint** (only with `Checkpoints: per-unit`), three lines and then carry on:
+
+```
+CHECKPOINT <n>/<total> — <sub-task title>: PASS
+  tests: <project> <passed>/<total>; <project> <passed>/<total>; NOT RUN: <none>; FLAKY: <none>
+  next: <next sub-task title> | Step 2 (verification)
+```
 
 **TDD mode.** The test sub-task drives RED → GREEN → REFACTOR: the implementer writes the tests and runs them to see them fail for the right reason, implements the minimum that makes them pass, then refactors with the tests green; afterwards check coverage of the changed files against the threshold (default 80%). Full detail: `../../implement-phase/references/tdd-mode.md`.
 
 **Register architecture as you build.** When a sub-task introduces or changes a structural piece (service, controller, module, entity, endpoint, significant component), register or update it now with `tasktracker_createArchitectureComponent` (and its relationships). Step 5 gates on zero net-new drift, and registering as you go is cheaper than reconciling there.
 
-**Record:** sub-tasks completed, the files list.
+**Record:** sub-tasks completed, the files list, each unit check's counts.
 
 ## Step 2: Exit-condition verification
 
-Set the phase active again (`setActiveTask` on the phase), then dispatch the mechanic to run `verification-loop` on the files from Step 1 (brief in `references/dispatch.md`). The six checks: build, type, lint, test, security scan, diff scope.
+Set the phase active again (`setActiveTask` on the phase), then dispatch the mechanic to run `verification-loop` on the files from Step 1 (brief in `references/dispatch.md`). The six checks: build, type, lint, test, security scan, diff scope. The test check includes the test-project inventory and the stability runs: the suite runs three times by default, more when the phase touched performance, allocation, timing or concurrency tests.
 
-**Gate:** all six PASS. A FAIL goes to a fix round with the mechanic's log paths and first errors; then the mechanic runs the checks again. **Record:** `verification` — k/6 PASS and the log path.
+**Gate:** all six PASS, every test project reported in every run, and no test whose result changed between runs. A FAIL, a NOT RUN project or a FLAKY test goes to a fix round with the mechanic's log paths and first errors; then the mechanic runs the checks again. **Record:** `verification` — k/6 PASS, projects reported / expected, stability runs and flaky tests, and the log path.
 
 ## Step 3: Integration testing and AC proof
 
@@ -176,14 +190,17 @@ tasktracker_getCurrentTimer({taskId})        # running → tasktracker_stopTimer
 
 The active-task step runs on every exit: PASS, BLOCKED and FAILED.
 
-If the phase solved something non-obvious (an error that took several attempts, a workaround, a hard-won debugging sequence), invoke `continuous-learning`. From a forked run it writes nothing and returns proposed learned skills; put them in the result's `learned_skills`. Otherwise skip it.
+If the phase solved something non-obvious (an error that took several attempts, a workaround, a hard-won debugging sequence), invoke `continuous-learning`. It shows the user the learned skills it proposes and writes them once they confirm; in an unattended run it writes nothing and returns the proposals. Either way, list them in the result's `learned_skills`. Otherwise skip it.
 
-Then return the `PHASE_RESULT` (`phase-result.md`).
+Then write the `PHASE_RESULT` (`phase-result.md`).
 
-## Checklist before returning
+## Checklist before the PHASE_RESULT
 
 - Step 0 used `digest: "full"`; the pre-flight summary is ready.
 - Each sub-task was active while worked; every status write passed a version; no `startTimer`.
+- Every unit had an independent mechanic check; no agent's work was redone in this session while it was in flight.
+- Every test project reported in every run; no flaky test is open.
+- Every agent report carried a `HEARTBEAT:` line, or the gap is noted in the result's `time` line.
 - verification-loop 6/6, every linked AC proven and recorded, code review PASS, security PASS or N/A with a reason.
 - No net-new drift; applicable ADRs honoured; new decisions recorded with a reference sub-task.
 - Zero open sub-tasks; the phase description was never edited.

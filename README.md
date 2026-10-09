@@ -34,7 +34,7 @@ This collection uses modern Claude Code skill features (v2.1.16+):
 
 | Feature | Skills Using It | Purpose |
 |---------|-----------------|---------|
-| `context: fork` | implement-phase, tt-implement-phase, codebase-research | Run in isolated subagent context. Only for skills that run to completion without the user. |
+| `context: fork` | codebase-research | Run in isolated subagent context. Only for skills that run to completion without the user and don't wait on agents of their own: agent reports arrive in the top-level session, so the phase leads (implement-phase, tt-implement-phase) run inline. |
 | `agent: Explore/Plan` | (none) | Subagent type for a forked skill. Both built-ins are read-only and lack the `Agent` tool, so any skill that writes files or spawns subagents must leave this unset. |
 | `allowed-tools` | code-review, verification-loop, security-review, adversarial-reviewer, codebase-research, strategic-compact | Restrict available tools (read-only enforcement) |
 | `argument-hint` | implement-plan, implement-phase, adr, e2e-testing, code-review, adversarial-reviewer, context-saver, prompt-generator | Show usage hints in autocomplete |

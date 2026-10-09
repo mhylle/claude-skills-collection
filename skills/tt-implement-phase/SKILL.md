@@ -1,20 +1,17 @@
 ---
 name: tt-implement-phase
 description: >-
-  TaskTracker-native executor for ONE phase whose scope and sub-tasks live as TaskTracker
-  phase and task rows (not a docs/plans/*.md file). Runs as a forked, foreground subagent
-  on Opus that leads the phase and dispatches the work by role: a Sonnet implementer writes
-  code and tests, a Haiku mechanic runs the checks, an Opus reviewer reviews (Fable for
-  security-sensitive changes). It keeps active-task discipline, never edits the locked
-  phase body, proves and records every linked acceptance criterion, logs defects,
-  learnings and frictions as insights, and returns a PHASE_RESULT (PASS, BLOCKED with
-  options, or FAILED). The per-phase unit of work for /tt-implement-plan and
-  /tt-workflow-run, or run directly with "/tt-implement-phase <phase-task-id>". Use
-  /implement-phase instead when the phase lives in a markdown plan.
-context: fork
-background: false
-model: opus
-effort: high
+  TaskTracker-native procedure for ONE phase whose scope and sub-tasks live as TaskTracker
+  phase and task rows (not a docs/plans/*.md file). Runs inline: the session that invokes
+  it leads the phase and dispatches the work by role (a Sonnet implementer writes code and
+  tests, a Haiku mechanic checks every unit, an Opus reviewer reviews, Fable for
+  security-sensitive changes), handling their reports as they arrive. It keeps
+  active-task discipline, never edits the locked phase body, proves and records every
+  linked acceptance criterion, logs defects, learnings and frictions as insights, can
+  report a checkpoint after each unit, and ends with a PHASE_RESULT (PASS, BLOCKED or
+  FAILED). Followed by /tt-implement-plan and /tt-workflow-run for each phase, or run
+  directly with "/tt-implement-phase <phase-task-id>". Use /implement-phase instead when
+  the phase lives in a markdown plan.
 user-invocable: true
 argument-hint: "[phase-task-id]"
 ---
@@ -40,13 +37,14 @@ Reference files (open one when a step points to it):
 - `references/step-guide.md`: Step Guide
 <!-- /contents -->
 
-Execute a **single phase** whose spec lives in TaskTracker: a phase task with sub-tasks, linked requirements and acceptance criteria. You lead the phase; other agents do the volume work; TaskTracker records everything; the caller gets one `PHASE_RESULT`.
+Execute a **single phase** whose spec lives in TaskTracker: a phase task with sub-tasks, linked requirements and acceptance criteria. This session leads the phase; role agents do the volume work; TaskTracker records everything; the phase ends with one `PHASE_RESULT`.
 
 ## How this skill runs
 
-- **Forked and in the foreground.** You run as a subagent with your own context and no conversation history. The caller waits, and your final message, the `PHASE_RESULT`, is what its `Skill` call returns.
-- **No one can answer you mid-run.** You don't have AskUserQuestion. When only a person can unblock the phase, persist the blocker and return BLOCKED with options; the caller asks the user and re-invokes you with `Resume From Step`.
-- **You lead; roles do the work.** You run on Opus at high effort (set in the frontmatter) because you judge: you write the briefs, map acceptance criteria to tests, decide fix rounds, classify blockers, and keep TaskTracker accurate. The volume work goes to cheaper role agents:
+- **Inline: this session leads.** The procedure runs in the session that invoked it: yours, or the plan session of `/tt-implement-plan` or `/tt-workflow-run`. A forked lead can't hear back from its own agents, because their reports arrive in the top-level session, so the lead stays here.
+- **Agents report back asynchronously.** An `Agent` call returns at once; the agent's report arrives later as a message in this session. After dispatching, do whatever independent work is left (TaskTracker bookkeeping, the next brief); when nothing is, end the turn with one line naming what you are waiting for, and the report resumes you. Never poll with sleep or wait loops, never say you will wait and then wander off the phase, and never do a dispatched agent's work yourself meanwhile.
+- **Keep the in-flight list.** Before ending a turn, note which agents are running and for which sub-task (those sub-tasks are `in_progress` in TaskTracker too), so a resumed or compacted session knows what is still outstanding.
+- **You lead; roles do the work.** You judge: you write the briefs, map acceptance criteria to tests, decide fix rounds, classify blockers, and keep TaskTracker accurate. While the `Agent` tool is available you don't write code; a user asking for "foreground" work or "no background agents" means don't poll, not "write it yourself". Run the session on Opus 5.5 (or Fable 5.1) for this judgement; the volume work goes to cheaper role agents:
 
 | Role | Agent | Model, effort | Does |
 |---|---|---|---|
@@ -55,6 +53,7 @@ Execute a **single phase** whose spec lives in TaskTracker: a phase task with su
 | Reviewer | `reviewer` | Opus 5.5, high; Fable 5.1 for security | code review, security review |
 
   Briefs, the escalation rules and the fallback when an agent isn't installed → `references/dispatch.md`.
+- **Blockers go to the user.** You are in the user's session: pause time tracking and ask, with two or three options and your recommendation first (`references/phase-result.md`). Return a BLOCKED `PHASE_RESULT` instead only when the input says `Unattended: yes`.
 - **If `Agent` isn't in your tool list,** do each role's work yourself in this context. Every gate still applies.
 
 ## Input
@@ -67,28 +66,33 @@ Caller:           [optional — the skill or loop that invoked you, e.g. "tt-imp
 Plan context:     [optional — surfaced from the caller]
 Skip Steps:       [optional]
 TDD Mode:         [enabled | disabled]
-Resume From Step: [optional — after a BLOCKED return: the step to restart at, the user's
-                   decision, and the BLOCKED PHASE_RESULT]
+Checkpoints:      [optional — none (default) | per-unit: report after every implementer unit
+                   and its mechanic check, then carry on]
+Unattended:       [optional — yes when no one can answer questions (an unattended loop):
+                   return BLOCKED instead of asking]
+Resume From Step: [optional — after an interruption or a BLOCKED return: the step to restart
+                   at (with the unit, for Step 1), the decision taken, and the earlier
+                   PHASE_RESULT if there is one]
 ```
 
 Scope comes from the phase itself (Step 0: the `setActiveTask` digest, `getTask`, `getChildTasks`). The phase description is the locked contract; the sub-tasks are the work plan. Don't re-derive scope from anywhere else.
 
 ## Run contract
 
-Steps 0–8 are one continuous run. Nothing you write mid-run reaches the caller or the user, so don't stop to report progress or wait for confirmation; record each step's status as you go.
+Steps 0–8 run in order, across several turns, because agents report asynchronously. Between checkpoints (when `Checkpoints: per-unit`) and the final `PHASE_RESULT`, keep going: don't stop to report progress or wait for confirmation, and record each step's status as you go.
 
 ```
 run Step 0                                   # always, also on a resume
 step = Resume From Step or 1
 while step <= 8:
-    result = run(step)
+    run(step)       # dispatch, end the turn while agents work, continue on their reports
     PASS    → step += 1
-    FAIL    → fix round, re-run the step     # out of rounds → return FAILED
-    BLOCKED → persist it, return BLOCKED     # only for what you can't fix yourself
-return PHASE_RESULT (PASS)
+    FAIL    → fix round, re-run the step     # out of rounds → FAILED
+    BLOCKED → ask the user                   # Unattended: yes → return BLOCKED
+finish with PHASE_RESULT (PASS)
 ```
 
-The only exits are BLOCKED, FAILED, and Step 8's PASS. Test failures, lint and build errors, type errors, review findings and transient API errors are fix rounds, not blockers.
+The run ends only with PASS after Step 8, FAILED, or a BLOCKED return in an unattended run. Test failures, lint and build errors, type errors, review findings and transient API errors are fix rounds, not blockers. A test that failed and then passed is FLAKY, and counts as a failure until a fix round explains it with evidence and removes it.
 
 ## The steps
 
@@ -97,7 +101,7 @@ Detail for every step, with the exact TaskTracker calls → `references/step-gui
 | Step | What | Who | Gate |
 |---|---|---|---|
 | 0 | Active task, read phase and sub-tasks, phase in_progress, drift baseline | you | phase loaded; pre-flight summary kept for the result |
-| 1 | Implement each sub-task in order (tests first) | implementer | every required sub-task completed |
+| 1 | Implement each sub-task in order (tests first); check every unit | implementer, then mechanic | every required sub-task completed, each with a green unit check (every test project reported, nothing flaky) |
 | 2 | Exit-condition checks (`verification-loop`) | mechanic | all 6 checks PASS |
 | 3 | Integration tests; prove and record every linked AC | implementer runs, you record | every linked AC has a passing test and is marked satisfied |
 | 4 | Code review (`devflow:code-review`) | reviewer | `STATUS: PASS` |
@@ -105,23 +109,27 @@ Detail for every step, with the exact TaskTracker calls → `references/step-gui
 | 5 | Architecture drift vs baseline; ADR compliance | you | no net-new drift; ADRs honoured, new decisions recorded |
 | 6 | Task tree consistent | you | zero open sub-tasks |
 | 7 | Insights logged in TaskTracker | you | non-blocking |
-| 8 | Close the phase, set the active task, return `PHASE_RESULT` | you | — |
+| 8 | Close the phase, set the active task, write the `PHASE_RESULT` | you | — |
 
-**Fix rounds.** A failed gate goes back to the implementer with the failure facts (log paths, findings with `file:line`), then the gate re-runs. Rounds one and two use the implementer's default model; round three passes `model: "opus"`; after round three, return FAILED. Review findings are fixed the same way: every BLOCKING and RECOMMENDATION finding is fixed and re-reviewed, while NOTEs never trigger a round and go into the result.
+**The unit check is mandatory.** After every implementer unit the mechanic re-runs the build and tests independently, and the unit counts only when the mechanic's run is green. Don't take the implementer's own counts as the check: on the Strago run the independent check confirmed them every time and caught a flaky allocation test the implementer had reported as PASS.
+
+**Checkpoints.** With `Checkpoints: per-unit`, after each unit's check print three lines: the unit, the mechanic's pass/fail counts per test project (with any NOT RUN or FLAKY), and the next unit. Then carry on, unless the user asked to confirm each step.
+
+**Fix rounds.** A failed gate goes back to the implementer with the failure facts (log paths, findings with `file:line`), then the gate re-runs. Rounds one and two use the implementer's default model; round three passes `model: "opus"`; after round three the phase is FAILED: put it to the user, or return FAILED when unattended. Review findings are fixed the same way: every BLOCKING and RECOMMENDATION finding is fixed and re-reviewed, while NOTEs never trigger a round and go into the result.
 
 ## TaskTracker discipline
 
 These hold whichever way the work is done:
 
-- **Active task.** The phase is active during Step 0 and Steps 2–8; each sub-task is active while it is worked in Step 1. Don't switch the active task while an agent is working on it.
-- **Heartbeats, never timers.** Time is booked only while TaskTracker calls keep arriving; a segment closes after ~5 minutes without one. Every brief carries the heartbeat rule, and you follow it yourself when working in-context. Never call `startTimer`: started timers absorb other sessions' cost (one phase read 12h18m against 3h16m of real work).
+- **Active task.** The phase is active during Step 0 and Steps 2–8; each sub-task is active while it is worked in Step 1. Don't switch or pause the active task while an agent is working on it.
+- **Heartbeats, never timers.** Time is booked only while TaskTracker calls keep arriving; a segment closes after ~5 minutes without one. You can't heartbeat while you wait for an agent (your turn has ended), so the agents carry it: every brief includes the heartbeat rule and every report must confirm it with a `HEARTBEAT:` line. A report without one means its time went unbooked; note that in the result's `time` line. Follow the rule yourself when working in-context. Never call `startTimer`: started timers absorb other sessions' cost (one phase read 12h18m against 3h16m of real work).
 - **Versions.** Every `updateTaskStatus` passes the `version` from your latest read of that task, or from your previous write to it.
 - **Locked phase body.** Never edit the phase description (HTTP 422). Decisions, discovered gaps, ADR references and notes become sub-tasks; the table is in `references/step-guide.md`.
 - **Insights, not chat.** Defects, learnings and frictions go through `logDefect` / `logLearning` / `logFriction` (`references/insight-cookbook.md`); problems with TaskTracker itself go upstream with `reportToTaskTracker`. Candidate principles are surfaced in the result, never auto-added.
 
 ## Returning
 
-Your final message is the `PHASE_RESULT`: status, evidence, insights, what each role did, and, on BLOCKED, the step, the options and the drift baseline. Schema, what to leave out, and the blocker protocol → `references/phase-result.md`. On every exit, run Step 8's active-task step first: with a `Caller`, leave the phase active for the caller to clear; standalone, clear it.
+The phase ends with the `PHASE_RESULT` block, written in this session: status, evidence, insights, what each role did, and, on a BLOCKED return, the step, the options and the drift baseline. A caller reads it from the conversation and continues. Schema, what to leave out, and the blocker protocol → `references/phase-result.md`. On every exit, run Step 8's active-task step first: with a `Caller`, leave the phase active for the caller to clear; standalone, clear it.
 
 ## Invocation
 
@@ -138,16 +146,18 @@ Phase title: <title>
 Sub-tasks: <list from getChildTasks>
 Requirements: <list of (id, title, criteria)>
 Principles: <surfaced from the setActiveTask digest>
-Resume From Step: <only when re-invoking after BLOCKED>
+Checkpoints: <per-unit when the user wants a report after each step>
+Unattended: <yes only for an unattended loop>
+Resume From Step: <only when picking a phase up again>
 
-Execute all quality gates and return PHASE_RESULT.
+Execute all quality gates and finish with PHASE_RESULT.
 ```
 
-The call returns when the phase is done, with the `PHASE_RESULT` as its result. Run manually with `/tt-implement-phase <phase-task-uuid>`; with no `Caller`, the active task is cleared at the end.
+The `Skill` call loads this procedure into the calling session, which then leads the phase until it writes the `PHASE_RESULT`. Run manually with `/tt-implement-phase <phase-task-uuid>`; with no `Caller`, the active task is cleared at the end.
 
 ## Related skills
 
 - `verification-loop` (Step 2, via the mechanic), `devflow:code-review` (Step 4) and `devflow:security-review` (Step 4.5, via the reviewer), `adr` (Step 5). Always use the full `devflow:` names for these two: the bare names are Claude Code's built-in reviews.
 - `continuous-learning` (Step 8, only when the phase solved something non-obvious).
-- `/tt-implement-plan`, `/tt-workflow-run`: the callers. They parse the `PHASE_RESULT`, talk to the user and clear the active task.
+- `/tt-implement-plan`, `/tt-workflow-run`: the callers. They run this procedure in their own session, then act on its `PHASE_RESULT` and clear the active task.
 - `/implement-phase`: the same pipeline for phases in a markdown plan.
