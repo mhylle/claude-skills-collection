@@ -41,7 +41,7 @@ Long-running comprehensive adversarial audit. Orchestrates per-partition reviews
 
 | Skill | What it does | Coverage | Output | When |
 |-------|-------------|----------|--------|------|
-| `/code-review` | Per-phase quality gate | Changed files | Verdict + notes | During implementation |
+| `/devflow:code-review` | Per-phase quality gate | Changed files | Verdict + notes | During implementation |
 | `/adversarial-reviewer` (diff) | Hostile pre-merge review | Changed files | BLOCK/CONCERNS/CLEAN | Before a merge |
 | `/adversarial-reviewer --codebase` | Adversarial sample of repo | 5-10 files per persona | HIGH/MEDIUM/LOW-RISK + most-concerning area | Quick whole-repo sanity check |
 | **`/codebase-audit`** | **Methodical full audit** | **Every partition** | **Written report + risk register** | **Onboarding / due diligence / tech-debt review** |
@@ -241,7 +241,7 @@ The audit directory name includes the date, so re-runs the next day create a fre
 - **Delegates to:** `adversarial-reviewer` (one call per partition, `--codebase` mode)
 - **Complements:** `code-quality-audit` — qualitative (this skill) + quantitative (that skill) gives you the complete picture
 - **Different from:** `codebase-research` — that skill explains *how the code works*; this skill assesses *what's wrong with it*
-- **Not a replacement for:** `code-review` or `security-review` — per-change quality gates still belong in their own skills
+- **Not a replacement for:** `devflow:code-review` or `devflow:security-review` — per-change quality gates still belong in their own skills
 
 ## Design Note: Why This Is a Separate Skill
 

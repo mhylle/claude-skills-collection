@@ -425,7 +425,7 @@ This is not bureaucracy — it's the audit trail. The phase body shows "what we 
 
 ### Related tasktracker skills
 - `/tt-implement-phase` — Per-phase orchestrator. This skill delegates to it for every phase.
-- `/code-review` — Per-phase quality gate inside `/tt-implement-phase`.
+- `/devflow:code-review` — Per-phase quality gate inside `/tt-implement-phase` (not Claude Code's built-in `/code-review`).
 - `/adr` — Recording mid-implementation design decisions (the ADR file lives in `docs/decisions/`; the reference goes to a sub-task).
 - `/verification-loop` — 6-check verification framework used inside `/tt-implement-phase`.
 - `tasktracker_getProjectReadiness` — Useful at start and end as a sanity check.

@@ -6,9 +6,10 @@ description: >-
   Returns a binary PASS or NEEDS_CHANGES verdict with every finding classed
   BLOCKING, RECOMMENDATION or NOTE. Used by implement-phase as its Step 4
   quality gate, or manually to review a set of changes against the project's
-  own standards and ADRs. Triggers on "review code", "code review",
-  "/code-review". For a hostile multi-persona review use adversarial-reviewer;
-  for security depth use security-review.
+  own standards and ADRs. Invoked as devflow:code-review; Claude Code's built-in
+  /code-review is a different, bug-focused review of the current diff. For a hostile
+  multi-persona review use adversarial-reviewer; for security depth use
+  devflow:security-review.
 allowed-tools: Read, Grep, Glob, Bash, Agent
 argument-hint: "[files-or-path?]"
 ---
@@ -335,7 +336,7 @@ NOTES never start a fix loop; deviation notes feed Step 6 (plan synchronization)
 ### From implement-phase (automatic)
 
 ```
-Skill(skill="code-review"): Review Phase 2 implementation.
+Skill(skill="devflow:code-review"): Review Phase 2 implementation.
 
 Context:
 - Plan: docs/plans/auth-implementation.md
@@ -348,7 +349,7 @@ Return structured result for implement-phase orchestrator.
 ### Manual invocation
 
 ```
-/code-review
+/devflow:code-review
 
 Review the authentication changes in src/auth/.
 Focus on: service delegation, NestJS patterns, and ADR-0012 compliance.

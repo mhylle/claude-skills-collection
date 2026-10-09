@@ -8,7 +8,7 @@ Steps that don't run by default. Enable explicitly via plan metadata or global s
 
 | Step | Skill | Purpose | Default |
 |---|---|---|---|
-| Security Review | `security-review` | OWASP-aligned security audit | Disabled |
+| Security Review | `devflow:security-review` | OWASP-aligned security audit | Disabled |
 
 `verification-loop` is **not** listed here — it's the default exit-condition check in Step 2, not optional.
 
@@ -21,7 +21,7 @@ Optional steps:
 
 ## Security Review step
 
-**Skill:** `security-review`
+**Skill:** `devflow:security-review` (not the built-in `/security-review`)
 
 **Purpose:** OWASP-aligned security audit for implementations that touch sensitive operations, user data, or security-critical code paths.
 

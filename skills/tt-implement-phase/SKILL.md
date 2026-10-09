@@ -100,7 +100,7 @@ Detail for every step, with the exact TaskTracker calls → `references/step-gui
 | 1 | Implement each sub-task in order (tests first) | implementer | every required sub-task completed |
 | 2 | Exit-condition checks (`verification-loop`) | mechanic | all 6 checks PASS |
 | 3 | Integration tests; prove and record every linked AC | implementer runs, you record | every linked AC has a passing test and is marked satisfied |
-| 4 | Code review (`code-review`) | reviewer | `STATUS: PASS` |
+| 4 | Code review (`devflow:code-review`) | reviewer | `STATUS: PASS` |
 | 4.5 | Security review when the phase touches a sensitive surface | reviewer on Fable | `STATUS: PASS`, or N/A |
 | 5 | Architecture drift vs baseline; ADR compliance | you | no net-new drift; ADRs honoured, new decisions recorded |
 | 6 | Task tree consistent | you | zero open sub-tasks |
@@ -147,7 +147,7 @@ The call returns when the phase is done, with the `PHASE_RESULT` as its result. 
 
 ## Related skills
 
-- `verification-loop` (Step 2, via the mechanic), `code-review` (Step 4) and `security-review` (Step 4.5, via the reviewer), `adr` (Step 5).
+- `verification-loop` (Step 2, via the mechanic), `devflow:code-review` (Step 4) and `devflow:security-review` (Step 4.5, via the reviewer), `adr` (Step 5). Always use the full `devflow:` names for these two: the bare names are Claude Code's built-in reviews.
 - `continuous-learning` (Step 8, only when the phase solved something non-obvious).
 - `/tt-implement-plan`, `/tt-workflow-run`: the callers. They parse the `PHASE_RESULT`, talk to the user and clear the active task.
 - `/implement-phase`: the same pipeline for phases in a markdown plan.

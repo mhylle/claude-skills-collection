@@ -96,13 +96,13 @@ Naming the proving task is what enforces the AC-to-test mapping. An AC with no t
 
 ## Step 4: Code review
 
-Dispatch the reviewer to run `code-review` on the files changed this phase, with the linked requirements and ACs and the constraining principles (brief in `references/dispatch.md`).
+Dispatch the reviewer to run `devflow:code-review` on the files changed this phase, with the linked requirements and ACs and the constraining principles (brief in `references/dispatch.md`).
 
 **Gate:** `STATUS: PASS`. NEEDS_CHANGES means every BLOCKING and RECOMMENDATION finding goes to a fix round, then the reviewer re-reviews (at most three rounds). Recommendations are blocking because unfixed ones accumulate across phases as debt, and each phase must end clean. NOTEs never trigger a round. **Record:** `code_review` — PASS after k rounds, and the NOTES.
 
 ## Step 4.5: Security review, when it applies
 
-`code-review` and the mechanic's secret scan are not a security review. If the phase's changes touch authentication, authorization or access control, user input handling, API endpoints, database queries, secrets or credentials, file uploads, payments, or a linked requirement tagged security, dispatch the reviewer with `model: "fable"` to run `security-review`. Decide applicability from the changed files and the linked requirements.
+`devflow:code-review` and the mechanic's secret scan are not a security review. If the phase's changes touch authentication, authorization or access control, user input handling, API endpoints, database queries, secrets or credentials, file uploads, payments, or a linked requirement tagged security, dispatch the reviewer with `model: "fable"` to run `devflow:security-review`. Decide applicability from the changed files and the linked requirements.
 
 **Gate:** `STATUS: PASS`. PASS_WITH_ISSUES or FAIL goes to a fix round and a re-review, like Step 4. If no sensitive surface is touched, record `N/A` and say why in one line; never skip it silently when it does apply.
 

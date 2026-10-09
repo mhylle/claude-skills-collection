@@ -9,8 +9,8 @@ description: >-
   or whenever the user wants a harsh structural opinion: a file, class, function or parameter
   list feels too big, responsibilities look tangled, a layer does too much, or they ask
   whether to split something, extract helpers, or where the code will rot. Not for correctness
-  or bug hunting (/adversarial-reviewer), security (/security-review), or the per-phase ADR
-  gate (/code-review).
+  or bug hunting (/adversarial-reviewer), security (/devflow:security-review), or the per-phase ADR
+  gate (/devflow:code-review).
 allowed-tools: Read, Grep, Glob, Bash, Agent
 argument-hint: "[--diff <ref> | <file-or-dir> ...]  (defaults to staged/unstaged diff)"
 ---
@@ -282,6 +282,6 @@ names the three things that matter beats an exhaustive one nobody acts on.
 ## Relationship to Other Skills
 
 - **`/adversarial-reviewer`** — three personas hunting bugs, confusion, and security holes. Use it for correctness; use this for structure. They're complementary, not redundant.
-- **`/code-review`** — the per-phase compliance gate inside `implement-phase`; checks ADRs, framework standards, plan sync. It's part of the implementation flow. This skill is deliberately *outside* it.
-- **`/security-review`** — OWASP depth on a security-relevant change. Out of scope here.
+- **`/devflow:code-review`** — the per-phase compliance gate inside `implement-phase`; checks ADRs, framework standards, plan sync. It's part of the implementation flow. This skill is deliberately *outside* it.
+- **`/devflow:security-review`** — OWASP depth on a security-relevant change. Out of scope here.
 - **`/code-quality-audit`** — produces metrics (complexity, coverage, cycles). Pair them: the audit gives you the numbers, the Grumpy Reviewer gives you the opinion about what they mean.
