@@ -1,162 +1,84 @@
 # Storage format
 
-How learned patterns are organized on disk and the schema for individual pattern files.
+Each learned pattern is a standalone Claude Code skill. Claude Code discovers personal skills at `~/.claude/skills/<name>/SKILL.md` and lists each one's `description` in every session; the model reads the body when the description matches the situation. Nothing else is read — no index file, no per-type subdirectories.
 
 ---
 
-## Storage location
+## Location and naming
 
-All learned patterns live in:
 ```
-~/.claude/skills/learned/
+~/.claude/skills/
+  learned-prisma-client-not-generated/
+    SKILL.md
+  learned-jest-esm-json-imports/
+    SKILL.md
+  learned-react-stale-closure-debugging/
+    SKILL.md
+  learned-acme-api-add-migration/
+    SKILL.md
 ```
 
-This location is persistent across sessions, backed up with the user's home directory, and searchable during future sessions.
+- Directory name = frontmatter `name` = `learned-<slug>`.
+- `<slug>`: lowercase letters, digits and hyphens, derived from the trigger (`prisma-client-not-generated`, not `fix-1`). Keep the whole name at most 64 characters.
+- One directory per pattern, containing only `SKILL.md`. If the pattern needs more than one screen of text, it is too broad — split or trim it.
+
+The `learned-` prefix keeps these apart from hand-written skills and lets the workflow count them with one glob: `~/.claude/skills/learned-*/SKILL.md`.
 
 ---
 
-## Directory layout
+## File layout
 
+```markdown
+---
+name: learned-<slug>
+description: >-
+  Use when <trigger: exact error text, tool + version, symptom, or project + task>.
+  <The fix in a few words.>
+---
+
+# <Title>
+
+Type: <error resolution | workaround | debugging technique | project procedure>
+Saved: <YYYY-MM-DD> · Last confirmed: <YYYY-MM-DD>
+
+## Trigger
+<What a future session will see that means this applies. Exact error text in a code span.>
+
+## Pattern
+<Why it happens: the root cause or the limitation, in one to three sentences.>
+
+## Fix
+1. <Step>
+2. <Step>
+
+<Optional short code block.>
+
+## Evidence
+- <YYYY-MM-DD> — <repo>: <what was observed and what confirmed the fix>
+
+## Retire when
+<The condition that makes this skill obsolete.>
 ```
-~/.claude/skills/learned/
-  ├── index.yaml                    # Pattern index for quick lookup
-  ├── error_resolution/
-  │   ├── typescript-null-check.yaml
-  │   └── react-hook-deps.yaml
-  ├── user_corrections/
-  │   └── test-naming-convention.yaml
-  ├── workarounds/
-  │   └── jest-esm-modules.yaml
-  ├── debugging_techniques/
-  │   └── async-race-condition.yaml
-  └── project_specific/
-      └── myproject-123/
-          ├── api-naming.yaml
-          └── state-management.yaml
-```
+
+Type-specific extra sections (for example `Indicators` for a debugging technique) → `pattern-types.md`.
+
+### Frontmatter rules
+
+- Only `name` and `description`, and the block must parse as YAML.
+- Always write `description` as a folded block scalar (`description: >-` followed by indented lines). Error messages usually contain `: `, which breaks a plain YAML value.
+- At most 300 characters. Name the trigger concretely and say exactly when the skill applies; the description decides whether the skill loads, and it costs space in every session's skill listing.
+- A project procedure names the project or repo in its description so it doesn't load elsewhere.
+
+After writing, re-read the frontmatter and confirm it parses (for example with Python's `yaml.safe_load`, if available) and that `name` matches the directory.
 
 ---
 
-## File naming
+## Updating, merging, retiring
 
-```
-{type}/{slug}.yaml
+The cap and the per-run limit are in `SKILL.md`. To stay under them:
 
-type: one of [error_resolution, user_corrections, workarounds,
-              debugging_techniques, project_specific]
-slug: kebab-case descriptive name derived from pattern content
-```
+- **Update** when a candidate shares the trigger or root cause with an existing learned skill: extend the Fix, add an Evidence line, set `Last confirmed`, tighten the description.
+- **Merge** two skills that would load in the same situations: keep the clearer name, combine the triggers in one description (still at most 300 characters), combine Fix and Evidence, then delete the other directory.
+- **Retire** by deleting the `learned-<slug>/` directory when its "Retire when" condition is met, the tool or version is gone, or a merge superseded it.
 
-Examples:
-- `error_resolution/typescript-circular-dependency.yaml`
-- `workarounds/prisma-connection-pooling.yaml`
-- `project_specific/acme-corp/api-versioning.yaml`
-
----
-
-## Skill file structure
-
-Each learned skill file contains metadata, pattern content (per type), usage tracking, confidence tracking, relationships, and tags.
-
-```yaml
-# Metadata
-id: "[UUID]"
-type: "[pattern_type]"
-created: "[ISO timestamp]"
-updated: "[ISO timestamp]"
-version: 1
-
-# Pattern content (type-specific structure — see pattern-types.md)
-pattern:
-  # ... type-specific fields ...
-
-# Usage tracking
-usage:
-  times_applied: 0
-  times_successful: 0
-  times_failed: 0
-  last_applied: null
-
-# Confidence tracking
-confidence:
-  initial: 0.7
-  current: 0.7
-  adjustments:
-    - date: "[ISO timestamp]"
-      reason: "[Why confidence changed]"
-      delta: 0.0
-
-# Relationships
-related_patterns:
-  - id: "[Related pattern UUID]"
-    relationship: "[supersedes|supplements|conflicts]"
-
-# Tags for retrieval
-tags:
-  - "[tag1]"
-  - "[tag2]"
-```
-
----
-
-## Index file structure
-
-The `index.yaml` file enables fast pattern lookup without reading every pattern file.
-
-```yaml
-# ~/.claude/skills/learned/index.yaml
-version: 1
-last_updated: "[ISO timestamp]"
-pattern_count: 42
-
-patterns:
-  - id: "[UUID]"
-    type: "[type]"
-    file: "[relative path]"
-    triggers:
-      - "[trigger phrase 1]"
-      - "[trigger phrase 2]"
-    tags:
-      - "[tag1]"
-    confidence: 0.85
-    project: null   # or project identifier
-
-# Inverted index for fast lookup
-trigger_index:
-  "TypeError: Cannot read":
-    - "[pattern-id-1]"
-    - "[pattern-id-2]"
-  "ECONNREFUSED":
-    - "[pattern-id-3]"
-
-tag_index:
-  typescript:
-    - "[pattern-id-1]"
-    - "[pattern-id-4]"
-  react:
-    - "[pattern-id-2]"
-```
-
----
-
-## Pattern lifecycle
-
-Patterns aren't static. They gain confidence through successful use, lose it through failures, and eventually get deprecated or archived.
-
-```yaml
-lifecycle:
-  active: true          # Currently in use
-  deprecated: false     # Superseded but kept for reference
-  archived: false       # No longer relevant
-
-  # Automatic deprecation triggers
-  deprecate_if:
-    - confidence_below: 0.3
-    - months_unused: 12
-    - failed_applications: 5
-```
-
-Patterns should be reviewed periodically (monthly is a reasonable cadence):
-- Increase confidence after successful reuse
-- Deprecate patterns for outdated framework versions
-- Merge similar patterns to reduce duplication
+Evidence lines are the only record of use. When a later session confirms the fix again, add a dated line and update `Last confirmed`; there are no counters or confidence scores.

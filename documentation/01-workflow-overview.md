@@ -13,12 +13,9 @@ flowchart TD
     idea([You have an idea])
 
     idea --> brainstorm
-    idea --> teambrainstorm
-    brainstorm["/brainstorm<br><i>Quick: single-agent analysis</i>"]
-    teambrainstorm["/team-brainstorm<br><i>Deep: adversarial agent team</i>"]
+    brainstorm["/brainstorm<br><i>Clarify the idea</i>"]
 
     brainstorm --> postbrainstorm
-    teambrainstorm --> postbrainstorm
 
     subgraph postbrainstorm [" "]
         direction LR
@@ -49,7 +46,6 @@ flowchart TD
     %% Muted color styling
     style idea fill:#e8f4f8,stroke:#94a3b8,color:#475569
     style brainstorm fill:#f0fdf4,stroke:#86efac,color:#166534
-    style teambrainstorm fill:#f0fdf4,stroke:#4ade80,color:#14532d
     style createplan fill:#fef3c7,stroke:#fcd34d,color:#92400e
     style complete fill:#dbeafe,stroke:#93c5fd,color:#1e40af
     style implnote fill:#f8fafc,stroke:#cbd5e1,color:#64748b,stroke-dasharray: 5 5
@@ -124,29 +120,14 @@ flowchart TD
 
 ### Step 1: Brainstorm (Optional but Recommended)
 
-Two options depending on depth needed:
-
 ```
-Quick exploration (single agent):
   You: /brainstorm
        "I want to add user authentication"
   Claude: Asks clarifying questions, applies analysis frameworks
   Result: Clear, refined idea ready for planning (~8-12K tokens)
-
-Deep analysis (agent team):
-  You: /team-brainstorm
-       "I want to add user authentication"
-  Claude: Asks clarifying questions, then spawns a team:
-          - Devil's Advocate attacks the idea
-          - Optimist champions benefits
-          - Creative Explorer generates alternatives
-          - Researcher gathers evidence
-          - (Optional) Architect evaluates feasibility
-          Teammates debate each other for adversarial depth
-  Result: Thoroughly contested, evidence-backed concept (~25-40K tokens)
 ```
 
-**Why?** Prevents building the wrong thing. Use `/brainstorm` for quick ideas, `/team-brainstorm` for critical decisions where adversarial depth matters.
+**Why?** Prevents building the wrong thing. For a large topic, run `/brainstorm` again with the earlier file to continue where you left off.
 
 ---
 
@@ -299,7 +280,7 @@ Phase 2 complete
 │   └────────┬─────────┘                                          │
 │            │                                                     │
 │            ▼                                                     │
-│   ~/.claude/skills/learned/                                      │
+│   ~/.claude/skills/learned-*/                                    │
 │   ├── error-resolution-001.md                                    │
 │   ├── workaround-002.md                                          │
 │   └── pattern-003.md                                             │
@@ -376,8 +357,7 @@ Opens a browser with:
 
 | What | Command | Result |
 |------|---------|--------|
-| Clarify idea (quick) | `/brainstorm` | Refined concept |
-| Clarify idea (deep) | `/team-brainstorm` | Adversarially tested concept |
+| Clarify idea | `/brainstorm` | Refined concept |
 | Define requirements | `/user-story` | Hierarchical stories + acceptance criteria |
 | Create plan | `/create-plan` | Phased plan + tasks |
 | Implement | `/implement-plan [path]` | Working code |

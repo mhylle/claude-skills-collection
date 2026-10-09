@@ -166,7 +166,20 @@ test("CLI: a name the placeholder registry does not document is a typo, even whe
   assert.match(typoFlag.stderr, /wbe/);
 });
 
-test("CLI: runs the same through a symlink", () => {
+/** Windows makes symlinks only with Developer Mode or admin rights; without them the symlink case is skipped, not failed. */
+function symlinkRefused() {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "symlink-probe-"));
+  try {
+    fs.symlinkSync(RENDER, path.join(dir, "probe.mjs"));
+    return false;
+  } catch (error) {
+    return process.platform === "win32" && error.code === "EPERM" ? "Windows refuses to make symlinks here (no Developer Mode or admin rights)" : false;
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+test("CLI: runs the same through a symlink", { skip: symlinkRefused() }, () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "render-template-"));
   const link = path.join(dir, "linked.mjs");
   fs.symlinkSync(RENDER, link);

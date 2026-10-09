@@ -47,7 +47,7 @@ Or copy the **Essential Snippet** below:
 | Tests pass | **YES** |
 | Code review = PASS | **YES** |
 
-**PASS_WITH_NOTES is NOT acceptable.** Fix all recommendations first.
+**Code review must return PASS.** Fix every recommendation first; only informational NOTEs may remain.
 ```
 
 ---
@@ -94,7 +94,7 @@ Every implementation phase MUST pass these quality gates before completion:
 
 ### Code Review Requirements
 - All code review recommendations are BLOCKING (not optional)
-- PASS_WITH_NOTES is NOT acceptable - must achieve clean PASS
+- Recommendations are not optional - must achieve PASS
 - Fix all issues before proceeding to next phase
 
 ### Clean Baseline Principle
@@ -349,7 +349,7 @@ Every phase must pass:
 3. Lint passes
 4. Tests pass
 5. Security verified
-6. Code review achieves PASS (not PASS_WITH_NOTES)
+6. Code review achieves PASS (all recommendations fixed)
 
 **Recommendations are BLOCKING** - fix before proceeding.
 

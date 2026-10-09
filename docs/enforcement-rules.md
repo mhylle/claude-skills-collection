@@ -30,7 +30,7 @@ Threshold: If task touches 3+ files or requires architectural decisions → use 
 | Security | No obvious vulnerabilities | YES |
 | Code Review | Must be clean PASS | YES |
 
-**PASS_WITH_NOTES is NOT acceptable** - fix all recommendations first.
+**Code review must return PASS** - fix all recommendations first; only informational NOTEs may remain.
 
 ---
 

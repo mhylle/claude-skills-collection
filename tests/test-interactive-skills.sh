@@ -23,13 +23,7 @@ INTERACTIVE_SKILLS=(
   agent-creator
   brainstorm
   create-plan
-  deep-brainstorm
   implement-plan
-  team-brainstorm
-  team-create-plan
-  team-implement-plan
-  team-implement-plan-full
-  tt-brainstorm
   tt-create-build-loop
   tt-create-plan
   tt-implement-plan

@@ -168,13 +168,28 @@ test("a hook group holding ours beside another command gains nothing; CRLF gitig
   assert.equal(read(target, ".gitignore").split(/\r?\n/).filter((line) => line === ".claude/usage/state.json").length, 1);
 });
 
-test("refuses a target that is not an existing git work tree, and runs the same through a symlink", () => {
+/** Windows makes symlinks only with Developer Mode or admin rights; without them the symlink case is skipped, not failed. */
+function symlinkRefused() {
+  const dir = tmp("symlink-probe-");
+  try {
+    fs.symlinkSync(INSTALL, path.join(dir, "probe.mjs"));
+    return false;
+  } catch (error) {
+    return process.platform === "win32" && error.code === "EPERM" ? "Windows refuses to make symlinks here (no Developer Mode or admin rights)" : false;
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+test("refuses a target that is not an existing git work tree", () => {
   const missing = path.join(tmp("parent-"), "no-such-repo");
   const result = spawnSync(process.execPath, [INSTALL, "--target", missing, "--project-id", PROJECT_ID, "--mcp-dir", MCP_DIR], { encoding: "utf8" });
   assert.equal(result.status, 1);
   assert.match(result.stderr, /git work tree/);
   assert.equal(fs.existsSync(missing), false);
+});
 
+test("runs the same through a symlink", { skip: symlinkRefused() }, () => {
   const link = path.join(tmp("link-"), "install.mjs");
   fs.symlinkSync(INSTALL, link);
   const linked = spawnSync(process.execPath, [link, "--help"], { encoding: "utf8" });

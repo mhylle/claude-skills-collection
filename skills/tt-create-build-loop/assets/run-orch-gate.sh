@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Orchestrator gate for {{PROJECT_NAME}} in a clean worktree: scripts/run-orch-gate.sh <sha> <log>
-# Written by /devflow:tt-create-build-loop; the build loop's gate section says when to use it.
+# Written by /tt-create-build-loop; the build loop's gate section says when to use it.
 #
 # - Gates the committed <sha> in a worktree of its own, so files other agents have in flight in
 #   the main tree never reach the gate.
@@ -8,7 +8,8 @@
 #   runners, and a dead runner's lock is taken over.
 # - Then waits for any other gate (the project's own gate run by an agent, say). The wait lives in
 #   this file, so the pattern is never on the command line that runs it: a
-#   `bash -c 'while pgrep -f <pattern> ...'` matches itself and waits forever.
+#   `bash -c 'while pgrep -f <pattern> ...'` matches itself and waits forever. Git Bash on Windows
+#   has no pgrep, so there PowerShell lists the processes instead.
 # - Reinstalls dependencies when a lockfile changed since the last install in the worktree.
 # - The log's first line appears at once, so a caller can confirm the run has begun; its last
 #   line is `gate exit=<code>`. Once it holds the lock, the runner writes <worktree>.done however it
@@ -22,6 +23,9 @@ set -u
 usage="usage: run-orch-gate.sh <sha> <log>"
 sha=${1:?$usage}
 log=${2:?$usage}
+case "$(uname -s)" in MINGW* | MSYS* | CYGWIN*) windows=1 ;; *) windows= ;; esac
+# A C:\ path is absolute too; cygpath turns it into one the case below can tell is.
+[ -z "$windows" ] || log="$(cygpath -u -- "$log")"
 case "$log" in /*) ;; *) log="$PWD/$log" ;; esac
 REPO="$(git -C "$(dirname "$0")" rev-parse --show-toplevel)" || exit 1
 WORKTREE="${ORCH_GATE_WORKTREE:-{{GATE_WORKTREE}}}"
@@ -49,9 +53,30 @@ run_gate() {
 say() { echo "run-orch-gate: $*" | tee -a "$log"; }
 refuse() { echo "run-orch-gate: refused: $*" | tee -a "$log" >&2; exit 2; }
 
+# Answers as pgrep does: 0 when a process's command line matches GATE_PATTERN, 1 when none does.
+gate_running() {
+  if [ "$lister" = pgrep ]; then
+    pgrep -f -- "$GATE_PATTERN" >/dev/null
+    return
+  fi
+  # PowerShell prints every process's Windows command line (the program's full path, quoted, with
+  # backslashes, then its arguments) but its own. grep -E reads them only once PowerShell has
+  # exited, so the pattern keeps its ERE meaning and is on no command line PowerShell sees.
+  local lines
+  lines="$(powershell.exe -NoProfile -NonInteractive -Command 'Get-CimInstance Win32_Process -Filter "ProcessId != $PID AND CommandLine IS NOT NULL" | ForEach-Object { $_.CommandLine -replace "[\r\n]", " " }')" || return 2
+  printf '%s\n' "$lines" | tr -d '\r' | grep -qE -- "$GATE_PATTERN"
+}
+
 echo "run-orch-gate: $sha queued at $(date -u +%T)" > "$log"
 
-command -v pgrep >/dev/null || refuse "pgrep is not installed"
+if command -v pgrep >/dev/null; then
+  lister=pgrep
+elif [ -n "$windows" ]; then
+  command -v powershell.exe >/dev/null || refuse "neither pgrep nor powershell.exe is installed"
+  lister=powershell.exe
+else
+  refuse "pgrep is not installed"
+fi
 grep -qE -- "$GATE_PATTERN" </dev/null
 [ $? -eq 2 ] && refuse "GATE_PATTERN '$GATE_PATTERN' is not a valid extended regex"
 printf '%s\n' "$0 $*" | grep -qE -- "$GATE_PATTERN" && refuse "GATE_PATTERN '$GATE_PATTERN' matches this script's own command line; pick one that cannot"
@@ -74,10 +99,10 @@ rm -f "$DONE_FILE"
 trap 'rc=$?; echo "Orchestrator gate $sha done at $(date -u +%H:%M) (exit $rc)" > "$DONE_FILE"; rm -rf "$LOCK_DIR"' EXIT
 
 while :; do
-  pgrep -f -- "$GATE_PATTERN" >/dev/null
+  gate_running
   status=$?
   [ "$status" -eq 1 ] && break
-  [ "$status" -ne 0 ] && { say "pgrep failed (exit $status)"; exit 1; }
+  [ "$status" -ne 0 ] && { say "$lister failed (exit $status)"; exit 1; }
   waited_too_long && { say "another gate is still running after $WAIT_MAX s"; exit 3; }
   sleep "$POLL"
 done

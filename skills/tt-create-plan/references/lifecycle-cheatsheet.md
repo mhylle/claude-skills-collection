@@ -6,7 +6,7 @@ Maps the four canonical lifecycle stages to the tools you actually call.
 
 | Stage | Satisfied when | Primary tools |
 |---|---|---|
-| **brainstorm** | A brainstorm is frozen or promoted (or `brainstormPolicy: 'skipped-deliberately'`) | `tasktracker_startBrainstorm`, `addBrainstormDocument`, `recordBrainstormDecision`, `freezeBrainstorm`, `promoteBrainstorm` |
+| **brainstorm** | A TaskTracker brainstorm is frozen or promoted, or the project's `brainstormPolicy` is `'optional'` (and it has no TaskTracker brainstorm) or `'skipped-deliberately'` | `/brainstorm` writes `docs/brainstorms/*.md`; then `tasktracker_updateProject({brainstormPolicy})` and complete the brainstorm phase with the file path as the `note` |
 | **requirements** | At least one requirement has criteria AND is past `draft` | `tasktracker_createRequirement`, `addAcceptanceCriterion`, `updateRequirement` |
 | **architecture** | At least one component exists | `tasktracker_createArchitectureComponent`, `createArchitectureRelationship`, `createArchitectureDiagram` |
 | **plan** | Concrete phases exist beyond the four lifecycle ones (OR all lifecycle phases completed) | `tasktracker_createPhaseFromTemplate`, `batchCreateTasks`, `createTask({type: "phase"})` |
