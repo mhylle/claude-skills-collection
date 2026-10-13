@@ -10,13 +10,15 @@ on. The skills hold without it; the HUD is a runtime backstop and a view.
 One line above the prompt:
 
 ```
-◆ It1 · K2 — Simulation contracts › K2.3 Implement to GREEN  ▮▮▮▯▯ 2/4  AC 0/16  ⚙ devflow:implementer "K2 GREEN-3" 6m  ✗ tests 28✗/186✓ 2m  ◈ orchestrator
+◆ It1 · K2 — Simulation contracts › K2.3 Implement to GREEN  ▮▮▮▯▯ 2/4  AC 0/16  ⏱ 3h08m  ⚙ devflow:implementer "K2 GREEN-3" 6m  ✗ tests 28✗/186✓ 2m  ◈ orchestrator
 ```
 
 What it shows:
 - the phase of the active TaskTracker task, and the active sub-task;
 - the sub-task progress;
 - satisfied acceptance criteria of the phase's linked requirements;
+- the time TaskTracker has booked for the phase: its own time plus every task under it (`⏱`, with `≥` when a task's
+  summary couldn't be read);
 - the running agents;
 - the last build, test or verify result read from any thread's shell output;
 - the orchestrator guard, while it is active.
@@ -27,7 +29,7 @@ It shows nothing until there is something to show.
 
 | Command | Does |
 |---|---|
-| `/hud` | Opens the pane: the phase's sub-tasks, every requirement with each AC, the agents, the last 10 checks and the guard. Buttons: Refresh (r), Guard (g), Band (b). |
+| `/hud` | Opens the pane: the phase's sub-tasks, its booked time (and the active task's), every requirement with each AC, the agents, the last 10 checks and the guard. Buttons: Refresh (r), Guard (g), Band (b). |
 | `/hud refresh` | Reads TaskTracker again, including the requirement links (otherwise cached for an hour). |
 | `/hud guard on\|off` | Switches the orchestrator guard. Kept across sessions. |
 | `/hud band on\|off` | Shows or hides the band. |
@@ -56,6 +58,11 @@ It shows nothing until there is something to show.
   - When a `dotnet test` of a solution reports no result for one of the solution's test projects, the model gets a note
     to run that project separately. `dotnet test` skips a test project whose referenced test project failed.
 - **Notifications.** A native notification fires when a task is set to `blocked` or the shown phase is completed.
+- **Booked time.** TaskTracker's `getTimeSummary` reports one task's own closed time segments, so the HUD sums the
+  phase and every descendant (`getTaskDescendants`). It reads them when it refreshes the phase (a task activated, a
+  task written, `/hud refresh`), never on a timer, because each read heartbeats the active task. Completed tasks that
+  aren't active are read once per session. The segment still open is counted once it closes (a pause, a task switch,
+  or five quiet minutes).
 
 ## Options
 
@@ -72,6 +79,7 @@ Set them in `/config`, among devflow's options.
   model not to work around it.
 - Checks are read from what a command printed. Output redirected to a file is not seen. A filtered or piped run is not
   checked for missing projects unless it still shows dotnet's `Test run for` lines.
+- The booked time lags while a segment is open: it grows when segments close, not by the minute.
 - TaskTracker answers are parsed from their text. A change to the MCP server's wording shows up as "last refresh
   failed" in the pane.
 
@@ -81,7 +89,7 @@ From the repository root:
 
 ```
 claude plugin validate .
-claude plugin test .     # 19 tests: parsers, guard, checks, band and pane on terminal and desktop
+claude plugin test .     # 22 tests: parsers, guard, checks, booked time, band and pane on terminal and desktop
 ```
 
 The module's state contract is `types/index.d.ts`, declared under the plugin name `devflow`. Every function that takes

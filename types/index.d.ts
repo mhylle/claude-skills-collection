@@ -17,7 +17,19 @@ export type HudPhase = {
   refreshedAt: number
   /** True when no task is active any more (the view is the last one seen). */
   isIdle: boolean
+  /** Time TaskTracker has booked; absent until first read. */
+  time?: HudTime
   error?: string
+}
+
+/** Booked time from TaskTracker's summaries, which count closed time segments only. */
+export type HudTime = {
+  /** The phase and every task under it. */
+  totalMs: number
+  /** The active task's own time; null when the phase itself is active. */
+  activeMs: number | null
+  /** True when a task's summary could not be read, so the total is a lower bound. */
+  isPartial: boolean
 }
 
 /** A subagent of this session. */

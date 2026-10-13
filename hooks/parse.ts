@@ -34,6 +34,24 @@ export function parseCriteria(text: string): HudCriterion[] {
   return [...text.matchAll(line)].map(m => ({ isSatisfied: group(m, 1) !== ' ', text: group(m, 2) }))
 }
 
+const UNIT_MS: Record<string, number> = { h: 3_600_000, m: 60_000, s: 1_000 }
+
+/**
+ * Milliseconds from getTimeSummary's `<duration> measured across <n> completed segment(s)`, where the duration
+ * reads like `36 min`, `2h 32m` or `24s`; null for any other answer. Only closed segments are counted.
+ */
+export function parseTimeSummary(text: string): number | null {
+  const m = /^(.*?)\bmeasured across\b/m.exec(text)
+  if (!m) return null
+  let ms = 0
+  let isFound = false
+  for (const t of group(m, 1).matchAll(/(\d+(?:\.\d+)?)\s*(h(?:ours?|rs?)?|m(?:in(?:utes?|s)?)?|s(?:ec(?:onds?|s)?)?)\b/g)) {
+    ms += Number(group(t, 1)) * (UNIT_MS[group(t, 2).charAt(0)] ?? 0)
+    isFound = true
+  }
+  return isFound ? Math.round(ms) : null
+}
+
 /** Whether listRequirementTaskLinks' answer links the requirement to task `taskId`. */
 export function linksTask(text: string, taskId: string): boolean {
   return new RegExp(`\\btask ${taskId}\\b`).test(text)

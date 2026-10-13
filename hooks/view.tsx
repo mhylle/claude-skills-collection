@@ -65,6 +65,12 @@ export function band(elements: ElementTable, view: HudView, columns: number) {
             {'  '}AC {acProgress(phase).done}/{acProgress(phase).total}
           </Text>
         )}
+        {phase?.time !== undefined && phase.time.totalMs > 0 && (
+          <Text dimColor>
+            {'  '}⏱ {phase.time.isPartial ? '≥' : ''}
+            {formatDuration(phase.time.totalMs)}
+          </Text>
+        )}
         {first !== undefined && (
           <Text color="suggestion">
             {'  '}⚙ {running.length > 1 ? `${running.length}× ` : ''}
@@ -119,6 +125,14 @@ export function pane(
             {STATUS_GLYPH[phase.phase.status] ?? '?'} {phase.phase.title} <Text dimColor>({phase.phase.status}{phase.isIdle ? ', no active task' : ''})</Text>
           </Text>
           {phase.error && <Text color="error">  last refresh failed: {phase.error}</Text>}
+          {phase.time !== undefined && (
+            <Text>
+              {'  '}⏱ {phase.time.isPartial ? 'at least ' : ''}
+              {formatDuration(phase.time.totalMs)} booked for the phase and its tasks
+              {phase.active !== null && phase.time.activeMs !== null && `; ${formatDuration(phase.time.activeMs)} on ${phase.active.title}`}
+              <Text dimColor> (closed time segments; the open one counts once it closes)</Text>
+            </Text>
+          )}
           {phase.subtasks.map(task => (
             <Text color={phase.active?.id === task.id ? 'suggestion' : undefined} dimColor={task.status === 'completed'}>
               {'  '}

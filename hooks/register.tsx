@@ -1,11 +1,11 @@
 // devflow HUD (part of the devflow plugin): a progress band and a /hud pane for the devflow TaskTracker skills, and the functions
 // the skills lean on: the orchestrator guard, the in-flight watch, the time-tracking heartbeat and
-// pause, and the test-run alarms. See README.md.
+// pause, the booked time of the phase, and the test-run alarms. See docs/guides/devflow-hud.md.
 
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register, ToolCallResult } from 'claude-code'
 
-import type { HudAgent, HudCheck, HudGuard, HudPhase, HudRequirement, HudTask } from '../types'
+import type { HudAgent, HudCheck, HudGuard, HudPhase, HudRequirement, HudTask, HudTime } from '../types'
 import {
   formatDuration,
   isGuardExempt,
@@ -18,6 +18,7 @@ import {
   parseTaskList,
   parseTestRuns,
   parseTestSummaries,
+  parseTimeSummary,
   shapeOf,
 } from './parse'
 import { isRunning, PANE } from './state'
@@ -78,6 +79,8 @@ const hud = {
   lastHeartbeat: 0,
   lastRedraw: 0,
   slnTests: new Map<string, string[]>(),
+  /** Booked ms of completed tasks that aren't active: their time no longer changes, so it is read once. */
+  bookedDone: new Map<string, number>(),
 }
 
 // TaskTracker, through the session's own MCP connection. Every call heartbeats the active task (TaskTracker
@@ -136,7 +139,50 @@ async function loadPhase($: EngineInterface, taskId: string, isForced: boolean):
     }
   }
 
-  return { phase, active: task.id === phase.id ? null : task, subtasks, requirements, refreshedAt: await $.clock.now(), isIdle: false }
+  const time = await bookedTime($, phase, task)
+  return { phase, active: task.id === phase.id ? null : task, subtasks, requirements, time, refreshedAt: await $.clock.now(), isIdle: false }
+}
+
+/** One task's own booked ms (getTimeSummary counts closed segments of that task alone); null when unreadable. */
+async function ownBooked($: EngineInterface, task: HudTask, activeId: string): Promise<number | null> {
+  const isSettled = task.status === 'completed' && task.id !== activeId
+  const cached = hud.bookedDone.get(task.id)
+  if (isSettled && cached !== undefined) {
+    return cached
+  }
+
+  const ms = parseTimeSummary(await call($, 'getTimeSummary', { taskId: task.id }).catch(() => ''))
+  if (isSettled && ms !== null) {
+    hud.bookedDone.set(task.id, ms)
+  }
+
+  return ms
+}
+
+/** The phase's booked time: its own plus every descendant's, since TaskTracker sums neither. */
+async function bookedTime($: EngineInterface, phase: HudTask, active: HudTask): Promise<HudTime | undefined> {
+  if (phase.type !== 'phase') {
+    return undefined
+  }
+
+  const descendants = parseTaskList(await call($, 'getTaskDescendants', { taskId: phase.id }).catch(() => ''))
+  let totalMs = 0
+  let isPartial = false
+  let activeMs: number | null = null
+  for (const task of [phase, ...descendants]) {
+    const ms = await ownBooked($, task, active.id)
+    if (ms === null) {
+      isPartial = true
+      continue
+    }
+
+    totalMs += ms
+    if (task.id === active.id && active.id !== phase.id) {
+      activeMs = ms
+    }
+  }
+
+  return { totalMs, activeMs, isPartial }
 }
 
 function requestRefresh(isForced: boolean, isUser: boolean) {

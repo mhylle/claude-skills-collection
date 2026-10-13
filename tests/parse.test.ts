@@ -12,6 +12,7 @@ import {
   parseTaskList,
   parseTestRuns,
   parseTestSummaries,
+  parseTimeSummary,
   progressBar,
   shapeOf,
 } from '../hooks/parse'
@@ -19,6 +20,16 @@ import {
 // Samples are TaskTracker answers and dotnet output as they appeared in a real session.
 
 describe('TaskTracker texts', () => {
+  test('getTimeSummary gives the closed segments in milliseconds, in any of its duration forms', () => {
+    expect(parseTimeSummary('36 min measured across 15 completed segments')).toBe(36 * 60_000)
+    expect(parseTimeSummary('2h 32m measured across 5 completed segments')).toBe((2 * 60 + 32) * 60_000)
+    expect(parseTimeSummary('24s measured across 4 completed segments')).toBe(24_000)
+    expect(parseTimeSummary('8 min measured across 1 completed segment')).toBe(8 * 60_000)
+    expect(parseTimeSummary('0s measured across 0 completed segments')).toBe(0)
+    expect(parseTimeSummary('No active timer')).toBe(null)
+    expect(parseTimeSummary('')).toBe(null)
+  })
+
   test('getTask head gives title, id, type and status', () => {
     const text = 'Task "It1 · K2 — Simulation contracts" (id 6d9e3f91-23eb-4fc8-bc7d-d927fefba1db) v2 [phase/in_progress/high]\n\n## Objective'
     expect(parseTask(text)).toEqual({
