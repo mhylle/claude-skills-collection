@@ -1,0 +1,69 @@
+{
+  "skill_name": "visual-explainer",
+  "evals": [
+    {
+      "id": 1,
+      "name": "oauth-sign-in-full",
+      "prompt": "Can you explain to me how 'Sign in with Google' actually works? I want a visual explainer page, full visual please, I'm going to share it with my team.",
+      "expected_output": "A single self-contained HTML explainer in full interactive mode: a one-minute short version stating that the app never sees the password, a plain-language how-it-works layer with diagrams and self-checks, an animated walkthrough of the sign-in (on screen and the messages behind it), interactive elements that make the reader think, and a deep dive with the extra protections and sources.",
+      "files": [],
+      "assertions": [
+        "Produces exactly one HTML file",
+        "Self-contained: no external scripts, stylesheets or images (a web-font link is allowed)",
+        "The opening screen states the answer as a sentence (not a topic title like 'OAuth explained')",
+        "Opens with a short management-style summary: the answer plus at most four takeaways, readable in about a minute",
+        "Has distinct layers: a short version, a plain-language how-it-works part, and a deeper detail part",
+        "Every abbreviation is spelled out at its first appearance",
+        "Technical terms (for example access token, scope, redirect) are explained in plain words",
+        "Has an animated, step-by-step demonstration of the sign-in that the reader can pause or step through",
+        "Has at least three interactive elements that require the reader to think (guess, order, slide, explore)",
+        "Has at least three self-check questions",
+        "Animations respect the reader's reduced-motion setting",
+        "No emoji used as icons or decoration",
+        "No horizontal overflow or overlapping text at 1280px and 400px widths",
+        "Accurate: never says the app receives or stores the user's password, and explains the code-for-token exchange"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "git-rebase-baseline",
+      "prompt": "I never understood git rebase vs merge. make me an explainer page, keep it simple",
+      "expected_output": "A calm, simple HTML explainer: the answer first (what each does and when to use which), diagrams of the commit history before and after a merge and a rebase, the risk of rebasing shared history, a step-by-step demonstration of the commands, and self-checks, with no heavy interactive extras.",
+      "files": [],
+      "assertions": [
+        "Produces exactly one HTML file",
+        "The opening states when to use rebase versus merge, before any background",
+        "Shows the commit history before and after, as diagrams, for both merge and rebase",
+        "Explains the risk of rebasing commits that others already have (rewriting shared history)",
+        "Shows the exact commands to run, in order (for example git switch feature, then git rebase main)",
+        "Has at least two self-check questions",
+        "Every abbreviation is spelled out at its first appearance",
+        "Respects 'keep it simple': under about 700 words in total, and no deep-dive section",
+        "Kept simple: no sentence longer than 28 words",
+        "Animations respect the reader's reduced-motion setting",
+        "No emoji used as icons or decoration",
+        "No horizontal overflow or overlapping text at 1280px and 400px widths"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "repo-pipeline-for-management",
+      "prompt": "Make a one-pager for management explaining how our devflow pipeline in this repo takes an idea from brainstorm to shipped code. They have one minute. Visual please.",
+      "expected_output": "An explainer built from the repository itself, whose first screen gives the pipeline in one statement, a diagram of the stages, a few takeaways about what makes it safe, and what it means for managers. Facts come from the repository's files.",
+      "files": [],
+      "assertions": [
+        "Read the repository (README and the pipeline skills) before writing, per the transcript",
+        "In the first screen of a 1280x800 window the reader sees an answer headline and a diagram of the pipeline, with the key takeaways directly below",
+        "Respects the one-minute brief: under about 700 words in total, and at most two pages or tabs",
+        "States what the pipeline means for management (a decision, benefit or risk)",
+        "Every stage on the page corresponds to a real part of the pipeline in the repository (no invented stages)",
+        "Shows the stages as a visual flow or sequence diagram",
+        "Technical terms (for example quality gate, code review) are explained in plain language",
+        "Every abbreviation is spelled out at its first appearance",
+        "Contains no invented numbers or claims that are not in the repository",
+        "No emoji used as icons or decoration",
+        "No horizontal overflow or overlapping text at 1280px and 400px widths"
+      ]
+    }
+  ]
+}

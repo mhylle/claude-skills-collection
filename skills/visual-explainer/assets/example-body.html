@@ -1,0 +1,401 @@
+<!-- ============================ PAGE 1 ============================ -->
+<section class="page" id="short" data-title="The short version">
+  <div class="hero">
+    <div class="wrap hero-grid">
+      <div>
+        <p class="eyebrow">The short version · 1 minute</p>
+        <h1><span class="ln"><span>“Sign in with Google” tells an app who you are.</span></span><span class="ln"><span class="soft">It never sees your password.</span></span></h1>
+        <p class="dek">Google checks your password, then gives the app a short-lived key that opens only what you agreed to share. The app collects that key straight from Google, out of sight.</p>
+        <div class="big-number"><span class="num">~<span class="count" style="--to:60"></span> min</span><small>is how long Google's key usually works. After that, the app has to ask again.</small></div>
+      </div>
+      <figure class="fig hero-visual">
+        <p class="fig-title"><span>Who gets what</span></p>
+        <div class="d-seq" style="--lanes:3">
+          <div class="seq-actors">
+            <div class="seq-actor"><span class="disc"><svg class="ic"><use href="#i-server"/></svg></span><b>The app</b></div>
+            <div class="seq-actor"><span class="disc"><svg class="ic"><use href="#i-user"/></svg></span><b>You</b></div>
+            <div class="seq-actor"><span class="disc"><svg class="ic"><use href="#i-shield-check"/></svg></span><b>Google</b></div>
+          </div>
+          <div class="seq-rows">
+            <div class="msg secret" style="--a:1;--b:2"><span class="line"></span><span class="lbl">your password</span><span class="pkt">password</span></div>
+            <div class="msg direct" style="--a:2;--b:0"><span class="line"></span><span class="lbl">a key, straight to the app</span><span class="pkt">key</span></div>
+          </div>
+        </div>
+        <p class="fig-note"><b>What to notice:</b> the password only goes to Google. The app only ever gets the key.</p>
+      </figure>
+    </div>
+  </div>
+  <div class="wrap">
+    <ol class="takeaways">
+      <li><span class="n">01</span><h3><svg class="ic"><use href="#i-lock"/></svg>Your password stays with Google</h3><p>The app never sees or stores it. Google checks it and vouches for you.</p></li>
+      <li><span class="n">02</span><h3><svg class="ic"><use href="#i-key-round"/></svg>The app gets a key instead</h3><p>The key opens only what you agreed to share, and stops working after about an hour.</p></li>
+      <li><span class="n">03</span><h3><svg class="ic"><use href="#i-eye-off"/></svg>The key is handed over out of sight</h3><p>The app collects it straight from Google, so it never passes through your browser.</p></li>
+    </ol>
+    <div class="so-what">
+      <p class="eyebrow">What this means for you</p>
+      <p>Signing in with Google is safer than making yet another password, as long as you read what the app asks to see. You can switch off any app's access at any time in the security settings of your Google Account.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ PAGE 2 ============================ -->
+<section class="page" id="how" data-title="How it works">
+  <div class="words">
+    <div class="wrap">
+      <p class="eyebrow">Words you'll meet</p>
+      <dl class="words-grid">
+        <div><dt>Access token</dt><dd>A short-lived digital key. Whoever holds it can open what it unlocks, so it must stay secret.</dd></div>
+        <div><dt>Scope</dt><dd>One thing an app asks permission for, such as "see your email address".</dd></div>
+        <div><dt>Redirect</dt><dd>When one website automatically sends your browser on to another.</dd></div>
+        <div><dt>One-time code</dt><dd>A ticket the app trades for the access token. It works once, for a few minutes.</dd></div>
+        <div><dt>Open Authorization (OAuth)</dt><dd>The open standard behind "Sign in with…" buttons. Version 2.0 is the one in use.</dd></div>
+      </dl>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <section class="section">
+      <div class="text">
+        <p class="kicker">2.1</p>
+        <h2>Why not give the app your password?</h2>
+        <p>Because then the app could do <b>anything</b> you can do, for as long as it likes. And every app would be one more place your password could leak from.</p>
+        <p>With Google sign-in, the app gets a <b>narrow, short-lived key</b> instead.</p>
+      </div>
+      <figure class="fig">
+        <p class="fig-title"><span>Two ways to let an app in</span></p>
+        <div class="d-versus">
+          <div class="vs-col"><h3><svg class="ic"><use href="#i-circle-x"/></svg>Share your password</h3><ul><li>The app can do everything you can</li><li>Access never runs out</li><li>To stop it, change your password everywhere</li></ul></div>
+          <div class="vs-col win"><h3><svg class="ic"><use href="#i-circle-check"/></svg>Sign in with Google</h3><ul><li>The app can do only what you allowed</li><li>The key stops working after about an hour</li><li>To stop it, switch the app off in your account</li></ul></div>
+        </div>
+        <p class="fig-note"><b>What to notice:</b> every line on the right limits the damage if something goes wrong.</p>
+      </figure>
+      <div class="x-card x-predict">
+        <div class="x-head"><svg class="ic"><use href="#i-message-circle-question"/></svg>Quick check · guess first</div>
+        <p class="x-q">An app you signed into with Google gets hacked. What can the attackers get?</p>
+        <div class="x-choices">
+          <button class="x-choice" type="button" aria-pressed="false">Your Google password</button>
+          <button class="x-choice" type="button" aria-pressed="false">Your whole Google account</button>
+          <button class="x-choice" type="button" aria-pressed="false" data-correct>Only what you let that app see</button>
+          <button class="x-choice" type="button" aria-pressed="false">Nothing at all</button>
+        </div>
+        <div class="x-reveal" hidden>
+          <p class="if-right" hidden><b>Right.</b> The app never had your password, so it can't leak it. At worst, attackers get what you allowed that one app to see, until you switch its access off.</p>
+          <p class="if-wrong" hidden><b>Not quite.</b> The app never had your password, so it can't leak it. At worst, attackers get what you allowed that one app to see, until you switch its access off.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="text">
+        <p class="kicker">2.2</p>
+        <h2>Who takes part, and what does each one know?</h2>
+        <p>Three parties pass notes: <b>you</b> (through your browser), <b>the app</b>, and <b>Google</b>.</p>
+        <p>The trick is that each one knows only what it needs. Click each party to see.</p>
+      </div>
+      <figure class="fig">
+        <p class="fig-title"><span>What each party knows</span></p>
+        <div class="x-card x-explore">
+          <div class="x-parts">
+            <button class="x-part" type="button" data-k="app"><span class="disc"><svg class="ic"><use href="#i-server"/></svg></span>The app</button>
+            <button class="x-part" type="button" data-k="you"><span class="disc"><svg class="ic"><use href="#i-globe"/></svg></span>You</button>
+            <button class="x-part" type="button" data-k="google"><span class="disc"><svg class="ic"><use href="#i-shield-check"/></svg></span>Google</button>
+          </div>
+          <div class="x-panel" data-k="app"><p>Wants to know who you are, without ever handling your password.</p><div class="x-tags"><span>Knows</span><span class="x-tag"><svg class="ic"><use href="#i-key-round"/></svg>its own secret</span><span class="x-tag"><svg class="ic"><use href="#i-key-round"/></svg>the key</span><span class="x-tag"><svg class="ic"><use href="#i-key-round"/></svg>your email</span></div><div class="x-tags"><span>Never sees</span><span class="x-tag no"><svg class="ic"><use href="#i-lock"/></svg>your password</span></div></div>
+          <div class="x-panel" data-k="you"><p>Your browser carries messages back and forth, but only the ones meant to pass through it.</p><div class="x-tags"><span>Knows</span><span class="x-tag"><svg class="ic"><use href="#i-key-round"/></svg>your password</span><span class="x-tag"><svg class="ic"><use href="#i-key-round"/></svg>the one-time code</span></div><div class="x-tags"><span>Never sees</span><span class="x-tag no"><svg class="ic"><use href="#i-lock"/></svg>the app's secret</span><span class="x-tag no"><svg class="ic"><use href="#i-lock"/></svg>the key</span></div></div>
+          <div class="x-panel" data-k="google"><p>Checks everyone, and decides what the app may see.</p><div class="x-tags"><span>Knows</span><span class="x-tag"><svg class="ic"><use href="#i-key-round"/></svg>your password</span><span class="x-tag"><svg class="ic"><use href="#i-key-round"/></svg>the app's secret</span><span class="x-tag"><svg class="ic"><use href="#i-key-round"/></svg>the code</span><span class="x-tag"><svg class="ic"><use href="#i-key-round"/></svg>the key</span></div></div>
+        </div>
+        <p class="fig-note"><b>What to notice:</b> nobody except Google ever holds both your password and the key.</p>
+      </figure>
+      <details class="qc"><summary><span class="qc-label">Quick check</span><span class="qc-q">Which party checks your password?</span><span class="qc-cta">Show answer</span></summary><p class="ans">Only Google. The app never receives it, so it can't check it, store it or leak it.</p></details>
+    </section>
+
+    <section class="section">
+      <div class="text">
+        <p class="kicker">2.3</p>
+        <h2>What exactly is the key the app gets?</h2>
+        <p>It's an <span class="term" tabindex="0" data-def="A short-lived digital key. Whoever holds it can open what it unlocks.">access token</span>: a long random string that Google recognises. It works like a hotel key card.</p>
+        <div class="analogy">A hotel key card opens your room, not every room, and stops working when you check out. Losing it is annoying, not a disaster.</div>
+      </div>
+      <figure class="fig">
+        <p class="fig-title"><span>How long each ticket lasts</span></p>
+        <div class="d-stats">
+          <div class="stat"><span class="num">1 use</span><span>The one-time code works once, then it's spent.</span></div>
+          <div class="stat"><span class="num">≤ 10 min</span><span>The longest the code may live before it expires.</span></div>
+          <div class="stat hi"><span class="num">~<span class="count" style="--to:60"></span> min</span><span>How long Google's access token usually works.</span></div>
+        </div>
+        <p class="fig-note"><b>What to notice:</b> everything that travels is short-lived, so a stolen ticket soon becomes worthless.</p>
+      </figure>
+      <details class="qc"><summary><span class="qc-label">Quick check</span><span class="qc-q">You find an access token in a log file from last week. How worried should you be?</span><span class="qc-cta">Show answer</span></summary><p class="ans">Not very: it stopped working after about an hour. Apps can also hold longer-lived "refresh" tokens, and those must be stored safely. The deep dive explains them.</p></details>
+    </section>
+
+    <section class="section wide">
+      <div class="text">
+        <p class="kicker">2.4</p>
+        <h2>Why is the key handed over out of sight?</h2>
+        <p>Anything that passes through your browser can end up in its history, in add-ons or on a shared computer. So the valuable part is done directly between the app and Google. Scroll through it.</p>
+      </div>
+      <div class="x-scrolly">
+        <div class="scrolly-steps">
+          <div class="scrolly-step"><div><b>Google sends you back to the app</b> with a one-time code. This trip goes through your browser, so the code could be seen. That's fine: on its own, it's useless.</div></div>
+          <div class="scrolly-step"><div><b>The app calls Google directly</b>, server to server, sending the code plus its own secret. Your browser is not involved.</div></div>
+          <div class="scrolly-step"><div><b>Google checks both</b> and answers with the access token, on the same private line.</div></div>
+          <div class="scrolly-step"><div><b>The key never touched your browser.</b> Even if someone copied the code, they couldn't use it without the app's secret.</div></div>
+        </div>
+        <div class="scrolly-stage">
+          <figure class="fig">
+            <p class="fig-title"><span>Through the browser, then out of sight</span></p>
+            <div class="d-seq" style="--lanes:3">
+              <div class="seq-actors">
+                <div class="seq-actor"><span class="disc"><svg class="ic"><use href="#i-server"/></svg></span><b>The app</b><small>its server</small></div>
+                <div class="seq-actor"><span class="disc"><svg class="ic"><use href="#i-globe"/></svg></span><b>You</b><small>your browser</small></div>
+                <div class="seq-actor"><span class="disc"><svg class="ic"><use href="#i-shield-check"/></svg></span><b>Google</b><small>sign-in</small></div>
+              </div>
+              <div class="seq-rows">
+                <div class="msg" data-at="0" style="--a:2;--b:0"><span class="line"></span><span class="lbl">one-time code, via you</span><span class="pkt">code</span></div>
+                <div class="msg direct" data-at="1" style="--a:0;--b:2"><span class="line"></span><span class="lbl">code + the app's secret</span><span class="pkt">code + secret</span></div>
+                <div class="msg direct" data-at="2" style="--a:2;--b:0"><span class="line"></span><span class="lbl">access token</span><span class="pkt">key</span></div>
+              </div>
+              <div class="seq-legend"><span>through your browser</span><span class="solid">direct, out of sight</span></div>
+            </div>
+          </figure>
+        </div>
+      </div>
+      <div class="x-card x-order">
+        <div class="x-head"><svg class="ic"><use href="#i-list-ordered"/></svg>Quick check · put it in order</div>
+        <p class="x-q">Tap the steps in the order they happen.</p>
+        <ol>
+          <li><button type="button" data-pos="4"><span>The app swaps the code for a key</span></button></li>
+          <li><button type="button" data-pos="2"><span>You type your password at Google</span></button></li>
+          <li><button type="button" data-pos="5"><span>The app reads your email address with the key</span></button></li>
+          <li><button type="button" data-pos="1"><span>You click "Sign in with Google"</span></button></li>
+          <li><button type="button" data-pos="3"><span>Google sends you back with a one-time code</span></button></li>
+        </ol>
+        <div class="x-row"><button class="x-btn" type="button" data-check>Check</button><button class="x-btn ghost" type="button" data-reset>Start over</button><span class="x-msg" aria-live="polite"></span></div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="text">
+        <p class="kicker">2.5</p>
+        <h2>What decides how much the app can see?</h2>
+        <p>The app lists what it wants. Each item is a <b>scope</b>, and Google shows them to you on the "Allow" screen.</p>
+        <p>Sign-in needs very little. Slide to see how the request grows, and when it should make you stop and think.</p>
+      </div>
+      <figure class="fig">
+        <p class="fig-title"><span>What the app asks for</span></p>
+        <div class="x-card x-whatif" data-labels="Sign-in only|+ email address|+ name and photo|+ your Drive files">
+          <label for="scopes">How much the app asks for <output></output></label>
+          <input id="scopes" type="range" min="1" max="4" value="1">
+          <div class="ui-panel consent">
+            <div class="ui-h">TaskTracker wants to:</div>
+            <div class="ui-list">
+              <span class="x-fade" data-on="1-"><svg class="ic sm"><use href="#i-user-check"/></svg>Know who you are on Google</span>
+              <span class="x-fade" data-on="2-"><svg class="ic sm"><use href="#i-mail"/></svg>See your email address</span>
+              <span class="x-fade" data-on="3-"><svg class="ic sm"><use href="#i-image"/></svg>See your name and profile picture</span>
+              <span class="x-fade risky" data-on="4-"><svg class="ic sm"><use href="#i-folder"/></svg>See and download all your Drive files</span>
+            </div>
+          </div>
+          <p class="x-result"><span class="ok" data-show="1-3"><svg class="ic sm"><use href="#i-circle-check"/></svg> Enough to sign you in, and nothing more.</span><span class="warn" data-show="4-"><svg class="ic sm"><use href="#i-triangle-alert"/></svg> More than sign-in needs. Ask why before you click Allow.</span></p>
+        </div>
+        <p class="fig-note"><b>What to notice:</b> the first three are normal for sign-in. The fourth has nothing to do with knowing who you are.</p>
+      </figure>
+      <details class="qc"><summary><span class="qc-label">Quick check</span><span class="qc-q">A to-do app that only needs to sign you in asks to read your Google Drive. What should you do?</span><span class="qc-cta">Show answer</span></summary><p class="ans">Click Cancel, or find out why first. Signing in needs only who you are, your email address and maybe your name. A request for your files is a sign the app wants more than it needs.</p></details>
+    </section>
+  </div>
+</section>
+
+<!-- ============================ PAGE 3 ============================ -->
+<section class="page" id="show" data-title="Show me">
+  <div class="wrap">
+    <div class="page-intro">
+      <p class="eyebrow">Show me</p>
+      <h2>Watch it happen, on screen and behind it.</h2>
+      <p>First what you see in your browser, then what the three parties say to each other while you click. Both play once; step through at your own pace with the arrows.</p>
+    </div>
+
+    <div class="walk">
+      <div>
+        <p class="kicker">On your screen</p>
+        <ol class="walk-steps">
+          <li data-click=".u-gbtn">On the app's sign-in page, click <b>Sign in with Google</b>.</li>
+          <li data-click=".u-acct">Google asks which account to use. Click <b>yours</b>.</li>
+          <li data-click=".u-pw" data-type="••••••••••" data-into=".u-pw">Type your <b>password</b>. This page belongs to Google, not the app.</li>
+          <li data-click=".u-next">Click <b>Next</b>.</li>
+          <li data-click=".u-allow">Google lists what the app wants to see. Read it, then click <b>Allow</b>.</li>
+          <li data-ms="3200">You're back in the app, <b>signed in</b>.</li>
+        </ol>
+        <p class="walk-note">A simplified drawing of the screens, not a screenshot. Check the address bar: your password should only ever be typed on accounts.google.com.</p>
+      </div>
+      <div class="walk-stage">
+        <div class="ui" style="--ui-h:400px" aria-hidden="true">
+          <div class="ui-top"><span class="ui-logo"></span>
+            <span class="ui-url" data-show="0,5-">tasktracker.app</span>
+            <span class="ui-url" data-show="1-4">accounts.google.com</span>
+            <span class="ui-space"></span><span class="ui-avatar u-avatar" data-show="5-">A</span></div>
+          <div class="ui-body">
+            <div class="ui-main">
+              <div class="ui-view ui-center" data-show="0">
+                <div class="ui-panel">
+                  <div class="ui-h">Sign in to TaskTracker</div>
+                  <span class="ui-btn u-gbtn" style="text-align:center">Sign in with Google</span>
+                  <span class="ui-btn ghost" style="text-align:center">Use an email address instead</span>
+                </div>
+              </div>
+              <div class="ui-view ui-center" data-show="1">
+                <div class="ui-panel">
+                  <div class="ui-h">Choose an account</div>
+                  <div class="ui-list"><span class="u-acct"><span class="ui-avatar">A</span><span>Alex Kim<small>alex.kim@gmail.com</small></span></span><span><span class="ui-avatar" style="background:var(--series)">+</span><span>Use another account</span></span></div>
+                </div>
+              </div>
+              <div class="ui-view ui-center" data-show="2-3">
+                <div class="ui-panel">
+                  <div class="ui-h">Welcome, Alex</div>
+                  <span class="ui-label">Enter your password</span>
+                  <span class="ui-input u-pw"><span class="typed"></span><i class="caret" data-show="2"></i></span>
+                  <div class="ui-actions"><span class="ui-btn u-next">Next</span></div>
+                </div>
+              </div>
+              <div class="ui-view ui-center" data-show="4">
+                <div class="ui-panel">
+                  <div class="ui-h">TaskTracker wants to access your Google Account</div>
+                  <div class="ui-list"><span><svg class="ic sm"><use href="#i-mail"/></svg>See your email address</span><span><svg class="ic sm"><use href="#i-user"/></svg>See your name and photo</span></div>
+                  <div class="ui-actions"><span class="ui-btn ghost">Cancel</span><span class="ui-btn u-allow">Allow</span></div>
+                </div>
+              </div>
+              <div class="ui-view" data-show="5-">
+                <div class="ui-h">Good morning, Alex <span class="ui-btn ghost">New task</span></div>
+                <div class="ui-grid"><div class="ui-card ui-lines"><i style="--w:70%"></i><i></i><i style="--w:40%"></i></div><div class="ui-card ui-lines"><i style="--w:50%"></i><i></i><i style="--w:80%"></i></div><div class="ui-card ui-lines ui-hide-narrow"><i style="--w:60%"></i><i></i><i style="--w:30%"></i></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="walk">
+      <div>
+        <p class="kicker">Behind the screen</p>
+        <ol class="walk-steps">
+          <li>You click <b>Sign in with Google</b> in the app.</li>
+          <li>The app sends your browser to Google, with a note saying <b>who is asking</b> and <b>what it wants</b>.</li>
+          <li>You type your <b>password</b> and click <b>Allow</b>. Only Google sees the password.</li>
+          <li>Google sends your browser back to the app with a <b>one-time code</b>.</li>
+          <li>Out of sight, the app sends the code and its own <b>secret</b> straight to Google.</li>
+          <li>Google checks both and returns an <b>access token</b>: the key.</li>
+          <li data-ms="3400">The app shows the key to Google and gets back your <b>email address</b>.</li>
+          <li>You're signed in. <b>The app never saw your password.</b></li>
+        </ol>
+      </div>
+      <div class="walk-stage">
+        <div class="stage-box d-seq" style="--lanes:3" aria-hidden="true">
+          <div class="seq-actors">
+            <div class="seq-actor"><span class="disc"><svg class="ic"><use href="#i-server"/></svg></span><b>The app</b><small>its server</small></div>
+            <div class="seq-actor"><span class="disc"><svg class="ic"><use href="#i-globe"/></svg></span><b>You</b><small>your browser</small></div>
+            <div class="seq-actor"><span class="disc"><svg class="ic"><use href="#i-shield-check"/></svg></span><b>Google</b><small>sign-in and data</small></div>
+          </div>
+          <div class="seq-rows">
+            <div class="msg" data-at="0" style="--a:1;--b:0"><span class="line"></span><span class="lbl">sign me in</span><span class="pkt">click</span></div>
+            <div class="msg" data-at="1" style="--a:0;--b:2"><span class="line"></span><span class="lbl">who is asking, and what for</span><span class="pkt">request</span></div>
+            <div class="msg secret" data-at="2" style="--a:1;--b:2"><span class="line"></span><span class="lbl">password + Allow</span><span class="pkt">password</span></div>
+            <div class="msg" data-at="3" style="--a:2;--b:0"><span class="line"></span><span class="lbl">one-time code</span><span class="pkt">code</span></div>
+            <div class="msg direct" data-at="4" style="--a:0;--b:2"><span class="line"></span><span class="lbl">code + the app's secret</span><span class="pkt">code + secret</span></div>
+            <div class="msg direct" data-at="5" style="--a:2;--b:0"><span class="line"></span><span class="lbl">access token</span><span class="pkt">key</span></div>
+            <div class="msg direct" data-at="6" style="--a:0;--b:2"><span class="line"></span><span class="lbl">key in, email address out</span><span class="pkt">key</span></div>
+            <div class="msg" data-at="7" style="--a:0;--b:1"><span class="line"></span><span class="lbl">you're in</span><span class="pkt">welcome</span></div>
+          </div>
+          <div class="seq-legend"><span>through your browser</span><span class="solid">direct, out of sight</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ PAGE 4 ============================ -->
+<section class="page" id="deep" data-title="Deep dive">
+  <div class="wrap">
+    <div class="page-intro">
+      <p class="eyebrow">Deep dive</p>
+      <h2>The details, for the curious.</h2>
+      <p>The real standard adds several safety checks on top of the story so far. None of them change the big picture; each one closes a specific trick an attacker might try.</p>
+    </div>
+
+    <section class="section wide">
+      <div class="text">
+        <h2>Which extra checks protect the flow?</h2>
+        <p>Six layers, each covering a different attack. Pick a layer to see what it stops.</p>
+      </div>
+      <div class="x-card x-exploded">
+        <div class="xe-stage"><div class="xe-stack">
+          <div class="xe-layer">Encrypted connection</div>
+          <div class="xe-layer">Registered return address</div>
+          <div class="xe-layer">State value</div>
+          <div class="xe-layer">Code verifier</div>
+          <div class="xe-layer">App secret</div>
+          <div class="xe-layer">Short lifetimes</div>
+        </div></div>
+        <div>
+          <ol class="xe-list">
+            <li><button type="button"><b>Encrypted connection</b><span>Every message travels over HyperText Transfer Protocol Secure (HTTPS), so nobody on the network can read it.</span></button></li>
+            <li><button type="button"><b>Registered return address</b><span>Google only sends codes back to addresses the app registered in advance, never to a look-alike site.</span></button></li>
+            <li><button type="button"><b>State value</b><span>A random value the app sends out and checks on return, so nobody can slip their own sign-in into your session.</span></button></li>
+            <li><button type="button"><b>Code verifier</b><span>Proof Key for Code Exchange (PKCE): the app proves it started the sign-in, so a stolen code is useless to anyone else.</span></button></li>
+            <li><button type="button"><b>App secret</b><span>Server-side apps also prove who they are with a secret that never leaves their server.</span></button></li>
+            <li><button type="button"><b>Short lifetimes</b><span>Codes live minutes, access tokens about an hour, so stolen tickets expire quickly.</span></button></li>
+          </ol>
+          <div class="x-row" style="margin-top:12px"><button class="x-btn ghost" type="button" data-explode>Take it apart</button></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section wide">
+      <div class="text">
+        <h2>Where does each piece live?</h2>
+        <p>The whole system on one map. Click a part to zoom in and read what it does; click it again, or use the button, to zoom back out.</p>
+      </div>
+      <div class="x-card x-zoom">
+        <div class="xz-view"><div class="xz-world">
+          <button class="xz-region" type="button" style="--x:4;--y:10;--w:27;--h:36"><b><svg class="ic sm"><use href="#i-globe"/></svg>Your browser</b><small>Carries the redirects</small><span class="xz-detail">Shows the sign-in pages and follows each redirect. It sees the one-time code for a moment, but never the app's secret or the access token.</span></button>
+          <button class="xz-region" type="button" style="--x:37;--y:10;--w:27;--h:36"><b><svg class="ic sm"><use href="#i-server"/></svg>The app's server</b><small>Holds the secret</small><span class="xz-detail">Starts the sign-in, checks the state value, swaps the code for tokens and keeps them. It must store refresh tokens as carefully as passwords.</span></button>
+          <button class="xz-region" type="button" style="--x:69;--y:10;--w:27;--h:36"><b><svg class="ic sm"><use href="#i-shield-check"/></svg>Google sign-in</b><small>Checks you and the app</small><span class="xz-detail">Checks your password, shows the Allow screen, issues the one-time code, and later swaps it for tokens after checking the app's secret and code verifier.</span></button>
+          <button class="xz-region" type="button" style="--x:37;--y:56;--w:27;--h:36"><b><svg class="ic sm"><use href="#i-database"/></svg>Google's data services</b><small>Answer with a valid key</small><span class="xz-detail">Hold your email address, profile and files. They answer only requests that carry a valid access token, and only for the scopes you allowed.</span></button>
+          <button class="xz-region" type="button" style="--x:69;--y:56;--w:27;--h:36"><b><svg class="ic sm"><use href="#i-settings"/></svg>Your Google Account</b><small>Lets you switch apps off</small><span class="xz-detail">Lists every app you have signed into with Google. Removing an app here cancels its tokens, so it has to ask again.</span></button>
+        </div></div>
+        <div class="xz-bar"><span class="xz-where"></span><button class="x-btn ghost" type="button" data-zoom-out>Back to overview</button></div>
+      </div>
+    </section>
+
+    <section class="section wide">
+      <div class="text"><h2>Which tickets exist, and how long do they last?</h2></div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Ticket</th><th>What it's for</th><th>Who holds it</th><th>Lifetime</th></tr></thead>
+        <tbody>
+          <tr><td><b>One-time code</b></td><td>Traded once for tokens</td><td>Passes through your browser</td><td>Minutes, single use</td></tr>
+          <tr><td><b>Access token</b></td><td>Opens what you allowed</td><td>The app's server</td><td>About an hour</td></tr>
+          <tr><td><b>Refresh token</b></td><td>Gets a new access token without asking you again</td><td>The app's server, stored securely</td><td>Until you remove the app, or it goes unused for a long time</td></tr>
+          <tr><td><b>Identity token (ID token)</b></td><td>States who you are, signed by Google</td><td>The app's server</td><td>About an hour</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section class="section wide">
+      <div class="text"><h2>What about the edge cases?</h2></div>
+      <div class="edge-cases">
+        <div><b>You remove the app from your Google Account</b>Its tokens stop working. Next time, it has to ask you again.</div>
+        <div><b>A fake page looks like Google</b>Check the address bar says accounts.google.com before typing your password. The registered return address stops codes going to a fake app, but it can't stop you typing a password into a fake page.</div>
+        <div><b>You sign out of the app</b>The app forgets you, but you stay signed in to Google. Signing out of Google is a separate step.</div>
+        <div><b>The app asks again later</b>Normal if its key expired and it has no refresh token, or if it now wants more than before. Read the list again.</div>
+      </div>
+    </section>
+
+    <section class="section wide">
+      <div class="text"><h2>Sources</h2></div>
+      <ol class="sources">
+        <li><a href="https://datatracker.ietf.org/doc/html/rfc6749">The OAuth 2.0 Authorization Framework, Request for Comments (RFC) 6749</a></li>
+        <li><a href="https://datatracker.ietf.org/doc/html/rfc7636">Proof Key for Code Exchange, RFC 7636</a></li>
+        <li><a href="https://datatracker.ietf.org/doc/html/rfc9700">OAuth 2.0 Security Best Current Practice, RFC 9700</a></li>
+        <li><a href="https://openid.net/specs/openid-connect-core-1_0.html">OpenID Connect Core 1.0</a></li>
+        <li><a href="https://developers.google.com/identity/protocols/oauth2">Google: Using OAuth 2.0 to access Google services</a></li>
+      </ol>
+    </section>
+  </div>
+</section>
