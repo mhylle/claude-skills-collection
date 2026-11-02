@@ -5,76 +5,78 @@
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "tool == \"Bash\" && tool_input.command matches \"(npm run dev|pnpm( run)? dev|yarn dev|bun run dev)\"",
+        "matcher": "Bash",
         "hooks": [
           {
             "type": "command",
-            "command": "node -e \"console.error('[Hook] BLOCKED: Dev server must run in tmux for log access');console.error('[Hook] Use: tmux new-session -d -s dev \\\"npm run dev\\\"');console.error('[Hook] Then: tmux attach -t dev');process.exit(1)\""
+            "command": "node -e \"let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{let i;try{i=JSON.parse(d)}catch(e){return}const out=o=>console.log(JSON.stringify(o));if(process.platform==='win32'||process.env.TMUX)return;const cmd=(i.tool_input&&i.tool_input.command)||'';if(/\\b(npm run dev|pnpm( run)? dev|yarn dev|bun run dev)\\b/.test(cmd))out({systemMessage:'[Hook] Dev servers are easier to follow in tmux: tmux new-session -d -s dev, then tmux attach -t dev'})})\""
           }
         ]
       },
       {
-        "matcher": "tool == \"Bash\" && tool_input.command matches \"(npm (install|test)|pnpm (install|test)|yarn (install|test)?|bun (install|test)|cargo build|make|docker|pytest|vitest|playwright)\"",
+        "matcher": "Bash",
         "hooks": [
           {
             "type": "command",
-            "command": "node -e \"if(!process.env.TMUX){console.error('[Hook] Consider running in tmux for session persistence');console.error('[Hook] tmux new -s dev  |  tmux attach -t dev')}\""
+            "command": "node -e \"let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{let i;try{i=JSON.parse(d)}catch(e){return}const out=o=>console.log(JSON.stringify(o));if(process.platform==='win32'||process.env.TMUX)return;const cmd=(i.tool_input&&i.tool_input.command)||'';if(/\\b(npm (install|test)|pnpm (install|test)|yarn|bun (install|test)|cargo build|make|docker|pytest|vitest|playwright)\\b/.test(cmd))out({systemMessage:'[Hook] Consider running long commands in tmux for session persistence: tmux new -s dev, tmux attach -t dev'})})\""
           }
         ]
       },
       {
-        "matcher": "tool == \"Bash\" && tool_input.command matches \"git push\"",
+        "matcher": "Bash",
         "hooks": [
           {
             "type": "command",
-            "command": "node -e \"console.error('[Hook] Review changes before push...');console.error('[Hook] Continuing with push')\""
+            "command": "node -e \"let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{let i;try{i=JSON.parse(d)}catch(e){return}const out=o=>console.log(JSON.stringify(o));const cmd=(i.tool_input&&i.tool_input.command)||'';if(/\\bgit push\\b/.test(cmd))out({systemMessage:'[Hook] Review your changes before pushing'})})\""
           }
         ]
       },
       {
-        "matcher": "tool == \"Write\" && tool_input.file_path matches \"\\\\.(md|txt)$\" && !(tool_input.file_path matches \"README\\\\.md|CLAUDE\\\\.md|AGENTS\\\\.md|CONTRIBUTING\\\\.md|ADR-.*\\\\.md|SKILL\\\\.md|INDEX\\\\.md|CONTEXT-.*\\\\.md\")",
+        "matcher": "Write",
         "hooks": [
           {
             "type": "command",
-            "command": "node -e \"const fs=require('fs');let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{const i=JSON.parse(d);const p=i.tool_input?.file_path||'';if(/\\.(md|txt)$/.test(p)&&!/(README|CLAUDE|AGENTS|CONTRIBUTING|SKILL|INDEX|CONTEXT-.*|ADR-.*)\\.md$/.test(p)&&!/docs\\/(plans|decisions|brainstorms|prompts|context)\\//.test(p)){console.error('[Hook] WARNING: Creating documentation file: '+p);console.error('[Hook] Consider using docs/ subdirectories for organization')}console.log(d)})\""
+            "command": "node -e \"let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{let i;try{i=JSON.parse(d)}catch(e){return}const out=o=>console.log(JSON.stringify(o));const p=((i.tool_input&&i.tool_input.file_path)||'').replace(/\\x5c/g,'/');if(/\\.(md|txt)$/.test(p)&&!/(README|CLAUDE|AGENTS|CONTRIBUTING|SKILL|INDEX|CONTEXT-.*|ADR-.*)\\.md$/.test(p)&&!/docs\\/(plans|decisions|brainstorms|prompts|context)\\//.test(p))out({systemMessage:'[Hook] Creating a documentation file outside the docs/ structure: '+p})})\""
           }
         ]
       }
     ],
     "PostToolUse": [
       {
-        "matcher": "tool == \"Bash\" && tool_input.command matches \"gh pr create\"",
+        "matcher": "Bash",
         "hooks": [
           {
             "type": "command",
-            "command": "node -e \"let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{const i=JSON.parse(d);const cmd=i.tool_input?.command||'';if(/gh pr create/.test(cmd)){const out=i.tool_output?.output||'';const m=out.match(/https:\\/\\/github.com\\/[^/]+\\/[^/]+\\/pull\\/\\d+/);if(m){console.error('[Hook] PR created: '+m[0]);const repo=m[0].replace(/https:\\/\\/github.com\\/([^/]+\\/[^/]+)\\/pull\\/\\d+/,'$1');const pr=m[0].replace(/.*\\/pull\\/(\\d+)/,'$1');console.error('[Hook] To review: gh pr review '+pr+' --repo '+repo)}}console.log(d)})\""
+            "command": "node -e \"let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{let i;try{i=JSON.parse(d)}catch(e){return}const out=o=>console.log(JSON.stringify(o));const cmd=(i.tool_input&&i.tool_input.command)||'';if(!/gh pr create/.test(cmd))return;const m=JSON.stringify(i.tool_response||'').match(/https:\\/\\/github\\.com\\/([^\\/]+\\/[^\\/]+)\\/pull\\/(\\d+)/);if(m)out({systemMessage:'[Hook] PR created: '+m[0]+' (review: gh pr review '+m[2]+' --repo '+m[1]+')'})})\""
           }
         ]
       },
       {
-        "matcher": "tool == \"Edit\" && tool_input.file_path matches \"\\\\.(ts|tsx|js|jsx)$\"",
+        "matcher": "Edit|Write",
         "hooks": [
           {
             "type": "command",
-            "command": "node -e \"const{execSync}=require('child_process');const fs=require('fs');let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{const i=JSON.parse(d);const p=i.tool_input?.file_path;if(p&&fs.existsSync(p)){try{execSync('npx prettier --write \"'+p+'\" 2>/dev/null',{stdio:['pipe','pipe','pipe']})}catch(e){}}console.log(d)})\""
+            "command": "node -e \"let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{let i;try{i=JSON.parse(d)}catch(e){return}const out=o=>console.log(JSON.stringify(o));const{execSync}=require('child_process');const fs=require('fs');const path=require('path');const p=(i.tool_input&&i.tool_input.file_path)||'';if(!p||!/\\.(ts|tsx|js|jsx)$/.test(p)||!fs.existsSync(p))return;const q=String.fromCharCode(34);const findBin=(d,n)=>{for(;;){const b=path.join(d,'node_modules','.bin',n);if(fs.existsSync(b))return process.platform==='win32'?b+'.cmd':b;const up=path.dirname(d);if(up===d)return null;d=up}};const bin=findBin(path.dirname(p),'prettier');if(!bin)return;try{execSync(q+bin+q+' --write '+q+p+q,{cwd:path.resolve(bin,'..','..','..'),stdio:'ignore'})}catch(e){}})\"",
+            "timeout": 30
           }
         ]
       },
       {
-        "matcher": "tool == \"Edit\" && tool_input.file_path matches \"\\\\.(ts|tsx)$\"",
+        "matcher": "Edit|Write",
         "hooks": [
           {
             "type": "command",
-            "command": "node -e \"const{execSync}=require('child_process');const fs=require('fs');const path=require('path');let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{const i=JSON.parse(d);const p=i.tool_input?.file_path;if(p&&fs.existsSync(p)){let dir=path.dirname(p);while(dir!==path.dirname(dir)&&!fs.existsSync(path.join(dir,'tsconfig.json'))){dir=path.dirname(dir)}if(fs.existsSync(path.join(dir,'tsconfig.json'))){try{const r=execSync('npx tsc --noEmit --pretty false 2>&1',{cwd:dir,encoding:'utf8',stdio:['pipe','pipe','pipe']});const lines=r.split('\\n').filter(l=>l.includes(path.basename(p))).slice(0,5);if(lines.length)console.error('[Hook] TypeScript errors:\\n'+lines.join('\\n'))}catch(e){const lines=(e.stdout||'').split('\\n').filter(l=>l.includes(path.basename(p))).slice(0,5);if(lines.length)console.error('[Hook] TypeScript errors:\\n'+lines.join('\\n'))}}}console.log(d)})\""
+            "command": "node -e \"let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{let i;try{i=JSON.parse(d)}catch(e){return}const out=o=>console.log(JSON.stringify(o));const{execSync}=require('child_process');const fs=require('fs');const path=require('path');const p=(i.tool_input&&i.tool_input.file_path)||'';if(!p||!/\\.tsx?$/.test(p)||!fs.existsSync(p))return;let dir=path.dirname(p);while(dir!==path.dirname(dir)&&!fs.existsSync(path.join(dir,'tsconfig.json')))dir=path.dirname(dir);if(!fs.existsSync(path.join(dir,'tsconfig.json')))return;const q=String.fromCharCode(34);const findBin=(d,n)=>{for(;;){const b=path.join(d,'node_modules','.bin',n);if(fs.existsSync(b))return process.platform==='win32'?b+'.cmd':b;const up=path.dirname(d);if(up===d)return null;d=up}};const bin=findBin(dir,'tsc');if(!bin)return;try{execSync(q+bin+q+' --noEmit --pretty false',{cwd:dir,encoding:'utf8',stdio:['ignore','pipe','pipe']})}catch(e){const lines=String(e.stdout||'').split('\\n').filter(l=>l.includes(path.basename(p))).slice(0,5);if(lines.length)out({hookSpecificOutput:{hookEventName:'PostToolUse',additionalContext:'TypeScript errors in '+path.basename(p)+':\\n'+lines.join('\\n')}})}})\"",
+            "timeout": 30
           }
         ]
       },
       {
-        "matcher": "tool == \"Edit\" && tool_input.file_path matches \"\\\\.(ts|tsx|js|jsx)$\"",
+        "matcher": "Edit|Write",
         "hooks": [
           {
             "type": "command",
-            "command": "node -e \"const fs=require('fs');let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{const i=JSON.parse(d);const p=i.tool_input?.file_path;if(p&&fs.existsSync(p)){const c=fs.readFileSync(p,'utf8');const lines=c.split('\\n');const matches=[];lines.forEach((l,idx)=>{if(/console\\.log/.test(l))matches.push((idx+1)+': '+l.trim())});if(matches.length){console.error('[Hook] WARNING: console.log found in '+p);matches.slice(0,3).forEach(m=>console.error('  '+m));console.error('[Hook] Remove before committing')}}console.log(d)})\""
+            "command": "node -e \"let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{let i;try{i=JSON.parse(d)}catch(e){return}const out=o=>console.log(JSON.stringify(o));const fs=require('fs');const p=(i.tool_input&&i.tool_input.file_path)||'';if(!p||!/\\.(ts|tsx|js|jsx)$/.test(p)||!fs.existsSync(p))return;const hits=[];fs.readFileSync(p,'utf8').split('\\n').forEach((l,n)=>{if(/console\\.log/.test(l))hits.push((n+1)+': '+l.trim())});if(hits.length)out({hookSpecificOutput:{hookEventName:'PostToolUse',additionalContext:'console.log in '+p+' (remove before committing):\\n'+hits.slice(0,3).join('\\n')}})})\""
           }
         ]
       }
@@ -85,7 +87,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node -e \"const{execSync}=require('child_process');const fs=require('fs');try{execSync('git rev-parse --git-dir',{stdio:'pipe'})}catch{process.exit(0)}try{const files=execSync('git diff --name-only HEAD',{encoding:'utf8',stdio:['pipe','pipe','pipe']}).split('\\n').filter(f=>/\\.(ts|tsx|js|jsx)$/.test(f)&&fs.existsSync(f));let hasConsole=false;for(const f of files){if(fs.readFileSync(f,'utf8').includes('console.log')){console.error('[Hook] WARNING: console.log found in '+f);hasConsole=true}}if(hasConsole)console.error('[Hook] Remove console.log statements before committing')}catch(e){}\""
+            "command": "node -e \"(()=>{const out=o=>console.log(JSON.stringify(o));const{execSync}=require('child_process');const fs=require('fs');try{execSync('git rev-parse --git-dir',{stdio:'ignore'})}catch(e){return}try{const files=execSync('git diff --name-only HEAD',{encoding:'utf8',stdio:['ignore','pipe','ignore']}).split('\\n').filter(f=>/\\.(ts|tsx|js|jsx)$/.test(f)&&fs.existsSync(f));const hits=files.filter(f=>fs.readFileSync(f,'utf8').includes('console.log'));if(hits.length)out({systemMessage:'[Hook] console.log found in: '+hits.join(', ')+' (remove before committing)'})}catch(e){}})()\""
           }
         ]
       }
@@ -96,7 +98,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node -e \"const fs=require('fs');const path=require('path');const contextDir=path.join(process.cwd(),'docs','context');if(fs.existsSync(contextDir)){const files=fs.readdirSync(contextDir).filter(f=>f.startsWith('CONTEXT-')&&f.endsWith('.md'));if(files.length){console.error('[Hook] Found '+files.length+' context file(s) in docs/context/');files.slice(0,3).forEach(f=>console.error('  - '+f));console.error('[Hook] Use: Read docs/context/'+files[0]+' to resume')}}\""
+            "command": "node -e \"(()=>{const out=o=>console.log(JSON.stringify(o));const fs=require('fs');const path=require('path');const dir=path.join(process.cwd(),'docs','context');if(!fs.existsSync(dir))return;const files=fs.readdirSync(dir).filter(f=>f.startsWith('CONTEXT-')&&f.endsWith('.md'));if(files.length)out({hookSpecificOutput:{hookEventName:'SessionStart',additionalContext:'Saved context files in docs/context/: '+files.slice(0,3).join(', ')+'. Read one to resume earlier work.'}})})()\""
           }
         ]
       }
@@ -107,7 +109,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node -e \"console.error('[Hook] Consider saving context before compaction');console.error('[Hook] Use /context-saver to preserve important state')\""
+            "command": "node -e \"(()=>{const out=o=>console.log(JSON.stringify(o));out({systemMessage:'[Hook] Consider saving context before compaction: /devflow:context-saver preserves the important state'})})()\""
           }
         ]
       }

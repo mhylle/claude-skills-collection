@@ -321,17 +321,21 @@ default component locations (`skills/`, `agents/`, `hooks/hooks.json`).
 
 | Hook Type | Name | Trigger | Purpose |
 |-----------|------|---------|---------|
-| **PreToolUse** | tmux-dev-block | `npm run dev` etc. | Block dev servers outside tmux |
-| **PreToolUse** | tmux-reminder | Long-running commands | Suggest tmux for session persistence |
+| **PreToolUse** | tmux-dev-reminder | `npm run dev` etc. | Suggest running dev servers in tmux (skipped on Windows and inside tmux) |
+| **PreToolUse** | tmux-reminder | Long-running commands | Suggest tmux for session persistence (skipped on Windows and inside tmux) |
 | **PreToolUse** | git-push-review | `git push` | Reminder to review before push |
 | **PreToolUse** | doc-file-warn | `.md/.txt` creation | Warn about docs outside `docs/` structure |
 | **PostToolUse** | pr-url-logger | `gh pr create` | Log PR URL and review command |
-| **PostToolUse** | prettier-format | JS/TS file edits | Auto-format with Prettier |
-| **PostToolUse** | typescript-check | `.ts/.tsx` edits | Run `tsc --noEmit` and show errors |
-| **PostToolUse** | console-log-warn | JS/TS file edits | Warn about `console.log` statements |
-| **Stop** | console-log-audit | Session end | Audit modified files for `console.log` |
-| **SessionStart** | load-context | Session start | Detect saved context files in `docs/context/` |
+| **PostToolUse** | prettier-format | JS/TS file edits | Auto-format with the project's own Prettier; does nothing if the project doesn't have it |
+| **PostToolUse** | typescript-check | `.ts/.tsx` edits | Run the project's own `tsc --noEmit` and tell Claude about errors in the edited file; does nothing if the project doesn't have TypeScript |
+| **PostToolUse** | console-log-warn | JS/TS file edits | Tell Claude about `console.log` statements |
+| **Stop** | console-log-audit | End of each response | Audit modified files for `console.log` |
+| **SessionStart** | load-context | Session start | Tell Claude about saved context files in `docs/context/` |
 | **PreCompact** | save-context-before-compact | Before `/compact` | Remind to save context before compaction |
+
+Before v2.4.1, the PreToolUse and PostToolUse matchers were written as expressions
+(`tool == "Bash" && ...`) that never match a tool name, so those eight hooks never ran
+and the other three printed only to stderr, where nobody sees it. Updating turns them on.
 
 **HUD** (function hooks, `hooks/register.tsx`): a progress band above the prompt and a `/hud` pane for TaskTracker
 phases (sub-tasks, acceptance criteria, booked time, running agents, the last build or test result), plus an orchestrator guard
