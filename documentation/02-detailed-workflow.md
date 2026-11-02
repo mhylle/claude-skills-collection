@@ -689,7 +689,7 @@ Each promoted pattern is its own skill at `~/.claude/skills/learned-<slug>/SKILL
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                              │
 │  PreToolUse (before tool execution):                                         │
-│  ├── tmux-dev-block: Block dev servers outside tmux                        │
+│  ├── tmux-dev-reminder: Suggest tmux for dev servers                       │
 │  ├── tmux-reminder: Suggest tmux for long-running commands                 │
 │  ├── git-push-review: Reminder before git push                             │
 │  ├── doc-file-warn: Warn about docs outside docs/ structure                │
